@@ -341,13 +341,10 @@ app.post("/v1/match/game/score", async (c) => {
 });
 
 // helper to get avg elo of a team
-    function avgElo(ids: string[], players: MatchPlayer[]): number {
-      const vals = ids.map((id) => {
-        const p = players.find((x:any)=>x.id===id);
-        return p ? p.elo : 0;
-      });
-      if (!vals.length) return 0;
-      return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+    function avgElo(p1?: MatchPlayer | null, p2?: MatchPlayer | null): number {
+      const elo1 = (p1 && typeof p1.elo === 'number') ? p1.elo : 500;
+      const elo2 = (p2 && typeof p2.elo === 'number') ? p2.elo : 500;
+      return Math.round((elo1 + elo2) / 2);
     }
 
 // Finish match endpoint: computes results, updates profiles, saves history, renders result
@@ -395,8 +392,14 @@ app.post("/v1/match/game/finish", async (c) => {
       if (aScore > bScore) winnerSide = 'a';
       else if (bScore > aScore) winnerSide = 'b';
       // compute avg elos
-      const avgA = avgElo(a, players);
-      const avgB = avgElo(b, players);
+
+      const a0 = players.find((x:any)=>x.id===a[0]);
+      const a1 = players.find((x:any)=>x.id===a[1]);
+      const b0 = players.find((x:any)=>x.id===b[0]);
+      const b1 = players.find((x:any)=>x.id===b[1]);
+
+      const avgA = avgElo(a0, a1);
+      const avgB = avgElo(b0, b1);
       const diff = Math.abs(avgA - avgB);
       const adj = Math.min(10, Math.floor(diff / 25));
 
@@ -409,7 +412,7 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].gamesAdded += 1;
           if (aScore === 10 && bScore === 0) {
             byId[id].xpGained += 50;
-            byId[id].perfectWins = (byId[id].perfectWins || 0) + 1;
+            byId[id].perfectWins += 1;
           }
         });
         b.forEach((id:string) => {
@@ -422,9 +425,11 @@ app.post("/v1/match/game/finish", async (c) => {
         if (avgA > avgB) {
           // winners stronger -> penalty
           a.forEach((id:string) => byId[id].newElo -= adj);
+          b.forEach((id:string) => byId[id].newElo += adj);
         } else if (avgA < avgB) {
           // winners weaker -> bonus
           a.forEach((id:string) => byId[id].newElo += adj);
+          b.forEach((id:string) => byId[id].newElo -= adj);
         }
       } else if (winnerSide === 'b') {
         b.forEach((id:string) => {
@@ -445,8 +450,10 @@ app.post("/v1/match/game/finish", async (c) => {
         });
         if (avgB > avgA) {
           b.forEach((id:string) => byId[id].newElo -= adj);
+          a.forEach((id:string) => byId[id].newElo += adj);
         } else if (avgB < avgA) {
           b.forEach((id:string) => byId[id].newElo += adj);
+          a.forEach((id:string) => byId[id].newElo -= adj);
         }
       } else {
         // tie -> treat as no wins/losses (no xp/elo)
@@ -632,16 +639,22 @@ function computeEloBreakdown(playerId: string, rec: any, scores: any[], players:
       isLoser = a.includes(playerId);
     }
 
+    const a0 = players.find((x:any)=>x.id===a[0]);
+    const a1 = players.find((x:any)=>x.id===a[1]);
+    const b0 = players.find((x:any)=>x.id===b[0]);
+    const b1 = players.find((x:any)=>x.id===b[1]);
+
+    const avgWinner = avgElo(isWinner ? a0 : b0, isWinner ? a1 : b1);
+    const avgLoser = avgElo(isLoser ? a0 : b0, isLoser ? a1 : b1);
+    const diff = Math.abs(avgWinner - avgLoser);
+    const adj = Math.min(10, Math.floor(diff / 25));
+
     if (isWinner) {
       delta = 20;
       breakdown.push({ match: idx + 1, reason: `Won match ${idx + 1}`, delta });
       total += delta;
 
       // strength adjustment
-      const avgWinner = avgElo(isWinner ? a : b, players);
-      const avgLoser = avgElo(isLoser ? b : a, players);
-      const diff = Math.abs(avgWinner - avgLoser);
-      const adj = Math.min(10, Math.floor(diff / 25));
       if (avgWinner > avgLoser) {
         breakdown.push({ match: idx + 1, reason: `Stronger team penalty`, delta: -adj });
         total -= adj;
@@ -653,6 +666,15 @@ function computeEloBreakdown(playerId: string, rec: any, scores: any[], players:
       delta = -20;
       breakdown.push({ match: idx + 1, reason: `Lost match ${idx + 1}`, delta });
       total += delta;
+
+      // strength adjustment
+      if (avgWinner > avgLoser) {
+        breakdown.push({ match: idx + 1, reason: `Weaker team bonus`, delta: +adj });
+        total += adj;
+      } else if (avgWinner < avgLoser) {
+        breakdown.push({ match: idx + 1, reason: `Stronger team penalty`, delta: -adj });
+        total -= adj;
+      }
     }
   });
 

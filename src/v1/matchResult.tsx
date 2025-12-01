@@ -22,7 +22,7 @@ export function MatchResultPage({ c, result }: { c: Context; result: any }) {
                     <div className="text-xs text-neutral-400">Games +{p.gamesAdded} — Wins +{p.winsAdded} — Loses +{p.losesAdded}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-neutral-300">ELO: <span className="font-bold text-yellow-400">{p.oldElo}</span> → <span className="font-bold text-green-400">{p.newElo}</span> ({p.newElo - p.oldElo >= 0 ? '+' : ''}{p.newElo - p.oldElo})</div>
+                    <div className="text-sm text-neutral-300">ELO: <span className="font-bold text-yellow-400">{p.oldElo}</span> → <span className={p.newElo - p.oldElo >= 0 ? 'text-green-400' : 'text-red-400'}>{p.newElo}</span> ({p.newElo - p.oldElo >= 0 ? '+' : ''}{p.newElo - p.oldElo})</div>
                     <div className="text-sm text-neutral-300">XP: <span className="font-bold text-green-400">+{p.xpGained}</span></div>
                   </div>
                 </div>
@@ -39,7 +39,7 @@ export function MatchResultPage({ c, result }: { c: Context; result: any }) {
                     ))}
                     <div className="text-xs font-semibold text-neutral-200 flex justify-between border-t border-neutral-700 pt-1 mt-1">
                       <span>Total ELO</span>
-                      <span className="text-green-400">+{p.eloBreakdown?.total || 0}</span>
+                      <span className={p.eloBreakdown?.total || 0 >= 0 ? 'text-green-400' : 'text-red-400'}>{p.eloBreakdown?.total || 0 >= 0 ? '+' : ''}{p.eloBreakdown?.total || 0}</span>
                     </div>
                   </div>
                 </div>

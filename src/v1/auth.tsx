@@ -1,7 +1,7 @@
 const sdk = require('node-appwrite');
 import { createPlayerProfile } from './profile';
 
-const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
+const endpoint = process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_PROJECT;
 const apiKey = process.env.APPWRITE_KEY;
 

@@ -13,12 +13,12 @@ interface PlayerData {
   ultimate_loses: number;
 }
 
-const levelsXp = [0, 15, 45, 95, 170, 270, 300, 480, 600, 1000]; // Example XP thresholds for levels 1-10
+const levelsXp = [0, 15, 45, 95, 170, 270, 300, 480, 600, 1000];
 
 function computeLevel(xp: number) {
   let level = 1;
   let currentLevelXp = 0;
-  let nextLevelXp = levelsXp[1] || 100;
+  let nextLevelXp = levelsXp[1];
 
   for (let i = 0; i < levelsXp.length; i++) {
     if (xp >= levelsXp[i]) {
@@ -48,7 +48,7 @@ function getLevelBadgeColor(level: number): { bg: string; text: string } {
 
 function eloRank(elo: number) {
   const tiers = [
-    { name: "Bronze", min: 0, max: 999, color: "from-yellow-900 to-yellow-500", colorKey: "text-yellow-500" },
+    { name: "Bronze", min: 0, max: 999, color: "from-amber-800 to-amber-600", colorKey: "text-amber-800" },
     { name: "Silver", min: 1000, max: 1999, color: "from-gray-900 to-gray-500", colorKey: "text-gray-500" },
     { name: "Gold", min: 2000, max: 2999, color: "from-amber-900 to-amber-500", colorKey: "text-amber-500" },
     { name: "Platinum", min: 3000, max: 3999, color: "from-sky-900 to-sky-500", colorKey: "text-sky-500" },
@@ -129,7 +129,7 @@ export function LobbyPage({ c, playerProfile }: { c: Context; playerProfile: Pla
                   </div>
                 </div>
                 <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-neutral-800 text-neutral-200 text-xs rounded p-2 w-48 border border-neutral-700 z-10">
-                  <p className="font-bold mb-1">XP Gains:</p>
+                  <p className="font-bold mb-1 text-blue-400">XP Gains:</p>
                   <p>• Win: +15 XP</p>
                   <p>• Lose: +5 XP</p>
                   <p>• Ultimate Winner: +25 XP</p>
@@ -148,41 +148,34 @@ export function LobbyPage({ c, playerProfile }: { c: Context; playerProfile: Pla
 
             {/* ELO Rank Section */}
             <div className="mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <p className={`text-sm font-bold ${rank.colorKey}`}>Rank</p>
-              </div>
-              <p className={`text-xl font-bold ${rank.colorKey} mb-1`}>{rank.name}</p>
+              <p className={`text-xl font-bold ${rank.colorKey} mb-2`}>{rank.name}</p>
               
-              {/* ELO Thresholds */}
-              <p className="text-xs text-neutral-400 mb-2">{rank.min} - {rank.max} ELO</p>
-              
-              {/* Previous/Next Rank Info */}
-              <p className="text-xs text-neutral-500 mb-2">
-                {rank.prevTierName && <span>← {rank.prevTierName} | </span>}
-                {rank.nextTierName && <span>{rank.nextTierName} →</span>}
-              </p>
-
               {/* ELO Info with Hover and Icon */}
               <div className="relative group">
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-sm text-neutral-300 cursor-help">{playerData.elo} ELO</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-m text-neutral-300 cursor-help">{playerData.elo} ELO</p>
                   <div className="w-5 h-5 rounded-full bg-neutral-700 text-neutral-300 flex items-center justify-center text-xs font-bold cursor-help group-hover:bg-neutral-600">
                     i
                   </div>
                 </div>
-                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-neutral-800 text-neutral-200 text-xs rounded p-2 w-56 border border-neutral-700 z-10">
-                  <p className="font-bold mb-1">ELO Changes:</p>
-                  <p>• Win: +20 ELO</p>
-                  <p>• Lose: -20 ELO</p>
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-neutral-800 text-neutral-200 text-xs rounded p-2 w-84 border border-neutral-700 z-10">
+                  <p className="font-bold mb-1 text-blue-400">ELO Changes:</p>
+                  <p className="text-green-400">• Win: +20 ELO</p>
+                  <p className="text-red-400">• Lose: -20 ELO</p>
                   <p>• Opponent avg ±25 ELO: ±1 (max ±10)</p>
-                  <p>• Ultimate Winner: 2 ELO from each opponent (total +6) </p>
-                  <p>• Ultimate Loser: 1 ELO to each opponent (total -3)</p>
+                  <p className="text-green-400">• Ultimate Winner: 2 ELO from each opponent (total +6) </p>
+                  <p className="text-red-400">• Ultimate Loser: 1 ELO to each opponent (total -3)</p>
                 </div>
               </div>
 
               {/* ELO Progress Bar */}
               <div className="w-full bg-neutral-800 rounded-full h-2 mt-2 overflow-hidden">
                 <div className={`h-2 rounded-full bg-gradient-to-r ${rank.color}`} style={{ width: `${rank.progress}%` }} />
+              </div>
+
+              <div className="flex justify-between text-xs mt-1 text-neutral-400">
+                <span>{rank.min}</span>
+                <span>{rank.max}</span>
               </div>
             </div>
 
@@ -240,6 +233,11 @@ export function LobbyPage({ c, playerProfile }: { c: Context; playerProfile: Pla
 
           <button disabled className="w-full max-w-sm py-4 bg-neutral-700/40 text-neutral-400 font-bold text-lg rounded-md cursor-not-allowed opacity-60">
             🏆 TOURNAMENTS
+            <div className="text-xs mt-1">Coming Soon</div>
+          </button>
+
+          <button disabled className="w-full max-w-sm py-4 bg-neutral-700/40 text-neutral-400 font-bold text-lg rounded-md cursor-not-allowed opacity-60">
+            MATCH HISTORY
             <div className="text-xs mt-1">Coming Soon</div>
           </button>
         </div>

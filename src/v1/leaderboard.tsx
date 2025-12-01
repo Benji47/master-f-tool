@@ -18,7 +18,7 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
     if (elo >= 3000) return "text-sky-500";
     if (elo >= 2000) return "text-amber-500";
     if (elo >= 1000) return "text-gray-400";
-    return "text-yellow-600";
+    return "text-yellow-600"; // Bronze
   }
 
   return (
@@ -48,8 +48,8 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
                 <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo}</div>
                 <div className="text-green-400">{player.wins}</div>
                 <div className="text-red-400">{player.loses}</div>
-                <div className="text-yellow-400">{player.ultimate_wins}</div>
-                <div className="text-red-300">{player.ultimate_loses}</div>
+                <div className="text-green-400">{player.ultimate_wins}</div>
+                <div className="text-red-400">{player.ultimate_loses}</div>
               </div>
             ))}
           </div>
