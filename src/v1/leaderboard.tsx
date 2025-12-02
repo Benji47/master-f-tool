@@ -18,11 +18,11 @@ type LeaderboardTab = "elo" | "ultimate_wins" | "ultimate_loses" | "vyrazacka" |
 
 export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
   function eloColor(elo: number) {
-    if (elo >= 5000) return "text-red-500";
-    if (elo >= 4000) return "text-indigo-500";
-    if (elo >= 3000) return "text-sky-500";
-    if (elo >= 2000) return "text-amber-500";
-    if (elo >= 1000) return "text-gray-400";
+    if (elo >= 2750) return "text-red-500";
+    if (elo >= 2150) return "text-indigo-500";
+    if (elo >= 1550) return "text-sky-500";
+    if (elo >= 1100) return "text-amber-500";
+    if (elo >= 600) return "text-gray-400";
     return "text-yellow-600";
   }
 
@@ -116,7 +116,7 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</div>
                   <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo}</div>
-                  <div className="text-blue-400">LVL {computeLevel(player.xp)} ({player.xp}xp)</div>
+                  <div className="text-blue-400">LVL {computeLevel(player.xp).level} ({player.xp}xp)</div>
                   <div className="text-neutral-400">{player.wins}:{player.loses}</div>
                 </div>
               );
