@@ -105,7 +105,6 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
             {sortedByElo.map((player, idx) => {
               const isEven = idx % 2 === 0;
               const lvl = computeLevel(player.xp).level - 1;
-              const badge = badges[lvl];
               return (
                 <div
                   key={player.$id}
@@ -134,7 +133,8 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
           <div className="divide-y divide-neutral-800">
             {sortedByUltimateWins.map((player, idx) => {
               const isEven = idx % 2 === 0;
-
+              const lvl = computeLevel(player.xp).level - 1;
+              
               return (
                 <div
                   key={player.$id}
@@ -143,7 +143,8 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
-                  <div className="text-white font-semibold">{player.username}</div>
+                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</div>
+
                   <div className="text-green-400 font-bold">{player.ultimate_wins}</div>
                 </div>
               );
@@ -161,6 +162,7 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
           <div className="divide-y divide-neutral-800">
             {sortedByUltimateLoses.map((player, idx) => {
               const isEven = idx % 2 === 0;
+              const lvl = computeLevel(player.xp).level - 1;
 
               return (
                 <div
@@ -170,7 +172,8 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
-                  <div className="text-white font-semibold">{player.username}</div>
+                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</div>
+
                   <div className="text-red-400 font-bold">{player.ultimate_loses}</div>
                 </div>
               );
@@ -188,6 +191,7 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
           <div className="divide-y divide-neutral-800">
             {sortedByVyrazacka.map((player, idx) => {
               const isEven = idx % 2 === 0;
+              const lvl = computeLevel(player.xp).level - 1;
 
               return (
                 <div
@@ -197,7 +201,8 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
-                  <div className="text-white font-semibold">{player.username}</div>
+                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</div>
+
                   <div className="text-orange-400 font-bold">{player.vyrazacky}</div>
                 </div>
               );
@@ -215,6 +220,7 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
           <div className="divide-y divide-neutral-800">
             {sortedByTotalGames.map((player, idx) => {
               const isEven = idx % 2 === 0;
+              const lvl = computeLevel(player.xp).level - 1;
 
               return (
                 <div
@@ -224,7 +230,8 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
-                  <div className="text-white font-semibold">{player.username}</div>
+                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</div>
+
                   <div className="text-purple-400 font-bold">{player.wins + player.loses}</div>
                 </div>
               );
