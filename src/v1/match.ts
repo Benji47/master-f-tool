@@ -294,8 +294,6 @@ export async function finishMatch(matchId: string): Promise<MatchDoc> {
     // Update the match: set state to 'finished' and store final scores/players
     const updated = await databases.updateDocument(databaseId, collectionId, matchId, {
       state: 'finished',
-      finalPlayers: doc.players ?? [],
-      finalScores: doc.scores ?? [],
     });
 
     return parseDoc(updated);
