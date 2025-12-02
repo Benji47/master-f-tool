@@ -5,9 +5,7 @@ async function initToken() {
     .setProject("692b61b1003bc020cdcf");
   
   const account = new Appwrite.Account(client);
-  
   const response = await account.createJWT();
-  
   return response.jwt;
 }
 
@@ -17,15 +15,13 @@ promise.then((token) => {
   authToken = token;
 });
 
-htmx.on("htmx:beforeSend", (e) => {
-  alert("dva");
+document.body.addEventListener("htmx:beforeRequest", (e) => {
   if (authToken == null) {
     e.preventDefault();
-    promise.then(() => e.detail.issueRequest());
+    promise.then(() => e.detail.issueRequest()); // TODO: Fix
   }
 });
 
-htmx.on("htmx:configRequest", (e) => {
-  alert("Configuring request");
+document.body.addEventListener("htmx:configRequest", (e) => {
   e.detail.headers["x-jwt"] = authToken;
 });

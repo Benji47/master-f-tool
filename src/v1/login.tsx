@@ -50,7 +50,6 @@ export function LoginPage({ c }: { c: Context }) {
             </button>
           </form>
           
-          
           <p hx-trigger="load" hx-get="/blabla">...</p>
 
           <div className="mt-4 text-center">
@@ -61,9 +60,6 @@ export function LoginPage({ c }: { c: Context }) {
         </div>
       </div>
       
-      
-      <script src="https://cdn.jsdelivr.net/npm/appwrite@21.4.0"></script>
-      <script src="//unpkg.com/alpinejs" defer></script>
       <script src="/static/login.js"></script>
     </div>
   );

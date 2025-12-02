@@ -73,8 +73,6 @@ export function RegisterPage({ c }: { c: Context }) {
         </div>
       </div>
 
-      <script src="https://cdn.jsdelivr.net/npm/appwrite@21.4.0"></script>
-      <script src="//unpkg.com/alpinejs" defer></script>
       <script src="/static/register.js"></script>
     </div>
   );
