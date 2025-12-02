@@ -15,6 +15,7 @@ export function MainLayout({ children, c }: { children: Child, c: Context }) {
     <html>
       <head>
         <title>Master F Tool</title>
+        favicon.png
         <meta name="theme-color" content="#0a0a0a" />
         <meta name="msapplication-navbutton-color" content="#0a0a0a" />
         <meta
