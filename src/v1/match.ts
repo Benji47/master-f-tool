@@ -278,6 +278,34 @@ export async function findPlayingMatch(): Promise<MatchDoc | null> {
   }
 }
 
+/**
+ * Mark a match as finished.
+ * Stores final players and scores for later reference.
+ */
+export async function finishMatch(matchId: string): Promise<MatchDoc> {
+  const c = client();
+  const databases = new sdk.Databases(c);
+
+  // Fetch the current match to get existing data
+  const doc = await getMatch(matchId);
+  if (!doc) throw new Error('Match not found');
+
+  try {
+    // Update the match: set state to 'finished' and store final scores/players
+    const updated = await databases.updateDocument(databaseId, collectionId, matchId, {
+      state: 'finished',
+      finalPlayers: doc.players ?? [],
+      finalScores: doc.scores ?? [],
+    });
+
+    return parseDoc(updated);
+  } catch (err: any) {
+    console.error('finishMatch error', err);
+    throw err;
+  }
+}
+
+
 export async function findCurrentMatch(username: string): Promise<MatchDoc | null> {
   const c = client();
   const databases = new sdk.Databases(c);

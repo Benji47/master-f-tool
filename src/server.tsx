@@ -10,7 +10,7 @@ import { LobbyPage } from "./v1/lobby";
 import { LeaderboardPage } from "./v1/leaderboard";
 import { getGlobalStats, getLeaderboard, getPlayerProfile, updateGlobalStats, updatePlayerStats } from "./v1/profile";
 import { deleteCookie } from "hono/cookie";
-import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch } from "./v1/match";
+import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch } from "./v1/match";
 import { MatchLobbyPage } from "./v1/matchLobby";
 import { updateGameScores } from "./v1/match";
 import { MatchGamePage } from "./v1/matchGame";
@@ -675,6 +675,7 @@ app.post("/v1/match/game/finish", async (c) => {
 
     // Delete the match from database after finishing
     try {
+      finishMatch(matchId); 
       //await deleteMatch(matchId);
     } catch (e) {
       console.error('failed to delete match after finish', e);
