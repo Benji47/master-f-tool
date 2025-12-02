@@ -228,7 +228,7 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
     const doc = await res.json();
 
     if (doc.state === "finished") {
-      window.location.href = "/v1/match/result?matchId=" + encodeURIComponent(matchId);
+      window.location.href = "/v1/match/game/finish";
       return;
     }
 

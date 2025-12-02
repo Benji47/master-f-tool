@@ -675,8 +675,8 @@ app.post("/v1/match/game/finish", async (c) => {
 
     // Delete the match from database after finishing
     try {
-      finishMatch(matchId); 
-      //await deleteMatch(matchId);
+      //finishMatch(matchId); 
+      await deleteMatch(matchId);
     } catch (e) {
       console.error('failed to delete match after finish', e);
     }
