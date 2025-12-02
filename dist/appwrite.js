@@ -27883,6 +27883,9 @@ function MainLayout({ children, c }) {
             content: "width=device-width, initial-scale=1"
           }, undefined, false, undefined, this),
           /* @__PURE__ */ jsxDEV("script", {
+            src: "https://cdn.tailwindcss.com"
+          }, undefined, false, undefined, this),
+          /* @__PURE__ */ jsxDEV("script", {
             src: "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"
           }, undefined, false, undefined, this),
           /* @__PURE__ */ jsxDEV("script", {
@@ -27932,7 +27935,10 @@ async function createPlayerProfile(userId, username) {
       ultimate_wins: 0,
       ultimate_loses: 0,
       xp: 0,
-      elo: 500
+      elo: 500,
+      vyrazacky: 0,
+      goals_scored: 0,
+      goals_conceded: 0
     });
     console.log("Player profile created:", profile.$id);
     return profile;
@@ -27989,7 +27995,7 @@ async function getLeaderboard(limit = 50) {
 
 // src/v1/auth.tsx
 var sdk2 = require_dist();
-var endpoint2 = process.env.APPWRITE_ENDPOINT || "https://fra.cloud.appwrite.io/v1";
+var endpoint2 = process.env.APPWRITE_ENDPOINT;
 var projectId2 = process.env.APPWRITE_PROJECT;
 var apiKey2 = process.env.APPWRITE_KEY;
 if (!projectId2 || !apiKey2) {
@@ -28237,23 +28243,32 @@ function RegisterPage({ c }) {
 }
 
 // src/v1/lobby.tsx
-var levelsXp = [0, 15, 45, 95, 170, 270, 300, 480, 600, 1000];
+var levelsXp = [100, 150, 225, 300, 400, 500, 650, 800, 1000];
+function getCumulativeThresholds() {
+  let cumulative = 0;
+  return levelsXp.map((xp) => {
+    const threshold = cumulative;
+    cumulative += xp;
+    return threshold;
+  });
+}
+var cumulativeLevelsXp = getCumulativeThresholds();
 function computeLevel(xp) {
   let level = 1;
   let currentLevelXp = 0;
-  let nextLevelXp = levelsXp[1] || 100;
-  for (let i3 = 0;i3 < levelsXp.length; i3++) {
-    if (xp >= levelsXp[i3]) {
+  let nextLevelXp = levelsXp[1];
+  for (let i3 = 0;i3 < cumulativeLevelsXp.length; i3++) {
+    if (xp >= cumulativeLevelsXp[i3]) {
       level = i3 + 1;
-      currentLevelXp = levelsXp[i3];
-      nextLevelXp = levelsXp[i3 + 1] || levelsXp[levelsXp.length - 1];
+      currentLevelXp = cumulativeLevelsXp[i3];
+      nextLevelXp = cumulativeLevelsXp[i3] + (levelsXp[i3] || 0);
     } else {
       break;
     }
   }
   const xpInCurrentLevel = xp - currentLevelXp;
-  const xpNeededForNext = nextLevelXp - currentLevelXp;
-  const progress = Math.round(xpInCurrentLevel / xpNeededForNext * 100);
+  const xpNeededForNext = levelsXp[level - 1] || 0;
+  const progress = xpNeededForNext > 0 ? Math.round(xpInCurrentLevel / xpNeededForNext * 100) : 100;
   const missing = Math.max(0, nextLevelXp - xp);
   return { level, currentLevelXp, nextLevelXp, xpInCurrentLevel, xpNeededForNext, missing, progress };
 }
@@ -28270,7 +28285,7 @@ function getLevelBadgeColor(level) {
 }
 function eloRank(elo) {
   const tiers = [
-    { name: "Bronze", min: 0, max: 999, color: "from-yellow-900 to-yellow-500", colorKey: "text-yellow-500" },
+    { name: "Bronze", min: 0, max: 999, color: "from-amber-800 to-amber-600", colorKey: "text-amber-800" },
     { name: "Silver", min: 1000, max: 1999, color: "from-gray-900 to-gray-500", colorKey: "text-gray-500" },
     { name: "Gold", min: 2000, max: 2999, color: "from-amber-900 to-amber-500", colorKey: "text-amber-500" },
     { name: "Platinum", min: 3000, max: 3999, color: "from-sky-900 to-sky-500", colorKey: "text-sky-500" },
@@ -28302,7 +28317,10 @@ function LobbyPage({ c, playerProfile }) {
     wins: playerProfile.wins,
     loses: playerProfile.loses,
     ultimate_wins: playerProfile.ultimate_wins,
-    ultimate_loses: playerProfile.ultimate_loses
+    ultimate_loses: playerProfile.ultimate_loses,
+    goals_scored: playerProfile.goals_scored,
+    goals_conceded: playerProfile.goals_conceded,
+    vyrazacky: playerProfile.vyrazacky
   } : {
     username: getCookie(c, "user") ?? "Player",
     elo: 500,
@@ -28310,7 +28328,10 @@ function LobbyPage({ c, playerProfile }) {
     wins: 0,
     loses: 0,
     ultimate_wins: 0,
-    ultimate_loses: 0
+    ultimate_loses: 0,
+    goals_scored: 0,
+    goals_conceded: 0,
+    vyrazacky: 0
   };
   const lvl = computeLevel(playerData.xp);
   const rank = eloRank(playerData.elo);
@@ -28326,12 +28347,15 @@ function LobbyPage({ c, playerProfile }) {
             className: "lg:col-span-1 bg-neutral-900/50 rounded-lg border border-neutral-800 p-6 flex flex-col justify-between",
             children: /* @__PURE__ */ jsxDEV("div", {
               children: [
-                /* @__PURE__ */ jsxDEV("h2", {
-                  className: "text-2xl font-bold text-white font-[Orbitron] mb-6",
-                  children: playerData.username
+                /* @__PURE__ */ jsxDEV("div", {
+                  className: "flex justify-center",
+                  children: /* @__PURE__ */ jsxDEV("h2", {
+                    className: "text-2xl font-bold text-white font-[Orbitron] mb-3",
+                    children: playerData.username
+                  }, undefined, false, undefined, this)
                 }, undefined, false, undefined, this),
                 /* @__PURE__ */ jsxDEV("div", {
-                  className: "w-11/12 mb-5 mt-5 mx-auto h-px bg-white/35 my-3 rounded"
+                  className: "w-11/12 mb-5 mt-3 mx-auto h-px bg-white/35 my-3 rounded"
                 }, undefined, false, undefined, this),
                 /* @__PURE__ */ jsxDEV("div", {
                   className: "mb-6",
@@ -28368,7 +28392,7 @@ function LobbyPage({ c, playerProfile }) {
                           className: "absolute left-0 bottom-full mb-2 hidden group-hover:block bg-neutral-800 text-neutral-200 text-xs rounded p-2 w-48 border border-neutral-700 z-10",
                           children: [
                             /* @__PURE__ */ jsxDEV("p", {
-                              className: "font-bold mb-1",
+                              className: "font-bold mb-1 text-blue-400",
                               children: "XP Gains:"
                             }, undefined, false, undefined, this),
                             /* @__PURE__ */ jsxDEV("p", {
@@ -28382,6 +28406,12 @@ function LobbyPage({ c, playerProfile }) {
                             }, undefined, false, undefined, this),
                             /* @__PURE__ */ jsxDEV("p", {
                               children: "\u2022 Perfect Win (10-0): +50 XP"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("p", {
+                              children: "\u2022 Goal: +1 XP"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("p", {
+                              children: "\u2022 Vyr\xE1\u017Ee\u010Dka: +10 XP"
                             }, undefined, false, undefined, this)
                           ]
                         }, undefined, true, undefined, this)
@@ -28402,52 +28432,18 @@ function LobbyPage({ c, playerProfile }) {
                 /* @__PURE__ */ jsxDEV("div", {
                   className: "mb-6",
                   children: [
-                    /* @__PURE__ */ jsxDEV("div", {
-                      className: "flex items-center gap-2 mb-2",
-                      children: /* @__PURE__ */ jsxDEV("p", {
-                        className: `text-sm font-bold ${rank.colorKey}`,
-                        children: "Rank"
-                      }, undefined, false, undefined, this)
-                    }, undefined, false, undefined, this),
                     /* @__PURE__ */ jsxDEV("p", {
-                      className: `text-xl font-bold ${rank.colorKey} mb-1`,
+                      className: `text-xl font-bold ${rank.colorKey} mb-2`,
                       children: rank.name
                     }, undefined, false, undefined, this),
-                    /* @__PURE__ */ jsxDEV("p", {
-                      className: "text-xs text-neutral-400 mb-2",
-                      children: [
-                        rank.min,
-                        " - ",
-                        rank.max,
-                        " ELO"
-                      ]
-                    }, undefined, true, undefined, this),
-                    /* @__PURE__ */ jsxDEV("p", {
-                      className: "text-xs text-neutral-500 mb-2",
-                      children: [
-                        rank.prevTierName && /* @__PURE__ */ jsxDEV("span", {
-                          children: [
-                            "\u2190 ",
-                            rank.prevTierName,
-                            " | "
-                          ]
-                        }, undefined, true, undefined, this),
-                        rank.nextTierName && /* @__PURE__ */ jsxDEV("span", {
-                          children: [
-                            rank.nextTierName,
-                            " \u2192"
-                          ]
-                        }, undefined, true, undefined, this)
-                      ]
-                    }, undefined, true, undefined, this),
                     /* @__PURE__ */ jsxDEV("div", {
                       className: "relative group",
                       children: [
                         /* @__PURE__ */ jsxDEV("div", {
-                          className: "flex items-center gap-2 mb-2",
+                          className: "flex items-center gap-2 mb-3",
                           children: [
                             /* @__PURE__ */ jsxDEV("p", {
-                              className: "text-sm text-neutral-300 cursor-help",
+                              className: "text-m text-neutral-300 cursor-help",
                               children: [
                                 playerData.elo,
                                 " ELO"
@@ -28460,25 +28456,29 @@ function LobbyPage({ c, playerProfile }) {
                           ]
                         }, undefined, true, undefined, this),
                         /* @__PURE__ */ jsxDEV("div", {
-                          className: "absolute left-0 bottom-full mb-2 hidden group-hover:block bg-neutral-800 text-neutral-200 text-xs rounded p-2 w-56 border border-neutral-700 z-10",
+                          className: "absolute left-0 bottom-full mb-2 hidden group-hover:block bg-neutral-800 text-neutral-200 text-xs rounded p-2 w-84 border border-neutral-700 z-10",
                           children: [
                             /* @__PURE__ */ jsxDEV("p", {
-                              className: "font-bold mb-1",
+                              className: "font-bold mb-1 text-blue-400",
                               children: "ELO Changes:"
                             }, undefined, false, undefined, this),
                             /* @__PURE__ */ jsxDEV("p", {
+                              className: "text-green-400",
                               children: "\u2022 Win: +20 ELO"
                             }, undefined, false, undefined, this),
                             /* @__PURE__ */ jsxDEV("p", {
+                              className: "text-red-400",
                               children: "\u2022 Lose: -20 ELO"
                             }, undefined, false, undefined, this),
                             /* @__PURE__ */ jsxDEV("p", {
                               children: "\u2022 Opponent avg \xB125 ELO: \xB11 (max \xB110)"
                             }, undefined, false, undefined, this),
                             /* @__PURE__ */ jsxDEV("p", {
+                              className: "text-green-400",
                               children: "\u2022 Ultimate Winner: 2 ELO from each opponent (total +6) "
                             }, undefined, false, undefined, this),
                             /* @__PURE__ */ jsxDEV("p", {
+                              className: "text-red-400",
                               children: "\u2022 Ultimate Loser: 1 ELO to each opponent (total -3)"
                             }, undefined, false, undefined, this)
                           ]
@@ -28491,7 +28491,18 @@ function LobbyPage({ c, playerProfile }) {
                         className: `h-2 rounded-full bg-gradient-to-r ${rank.color}`,
                         style: { width: `${rank.progress}%` }
                       }, undefined, false, undefined, this)
-                    }, undefined, false, undefined, this)
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "flex justify-between text-xs mt-1 text-neutral-400",
+                      children: [
+                        /* @__PURE__ */ jsxDEV("span", {
+                          children: rank.min
+                        }, undefined, false, undefined, this),
+                        /* @__PURE__ */ jsxDEV("span", {
+                          children: rank.max
+                        }, undefined, false, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this)
                   ]
                 }, undefined, true, undefined, this),
                 /* @__PURE__ */ jsxDEV("div", {
@@ -28584,6 +28595,44 @@ function LobbyPage({ c, playerProfile }) {
                       ]
                     }, undefined, true, undefined, this)
                   ]
+                }, undefined, true, undefined, this),
+                /* @__PURE__ */ jsxDEV("div", {
+                  className: "w-11/12 mb-5 mt-5 mx-auto h-px bg-white/35 my-3 rounded"
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsxDEV("div", {
+                  className: "space-y-2 text-sm",
+                  children: [
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "flex justify-between text-neutral-300",
+                      children: [
+                        /* @__PURE__ */ jsxDEV("span", {
+                          className: "text-purple-400",
+                          children: "Goals (Scored:Conceded):"
+                        }, undefined, false, undefined, this),
+                        /* @__PURE__ */ jsxDEV("span", {
+                          className: "text-purple-400",
+                          children: [
+                            playerData.goals_scored,
+                            ":",
+                            playerData.goals_conceded
+                          ]
+                        }, undefined, true, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "flex justify-between text-neutral-300",
+                      children: [
+                        /* @__PURE__ */ jsxDEV("span", {
+                          className: "text-orange-400",
+                          children: "Vyr\xE1\u017Ee\u010Dka Count:"
+                        }, undefined, false, undefined, this),
+                        /* @__PURE__ */ jsxDEV("span", {
+                          className: "text-orange-400",
+                          children: playerData.vyrazacky
+                        }, undefined, false, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this)
+                  ]
                 }, undefined, true, undefined, this)
               ]
             }, undefined, true, undefined, this)
@@ -28614,6 +28663,17 @@ function LobbyPage({ c, playerProfile }) {
                 className: "w-full max-w-sm py-4 bg-neutral-700/40 text-neutral-400 font-bold text-lg rounded-md cursor-not-allowed opacity-60",
                 children: [
                   "\uD83C\uDFC6 TOURNAMENTS",
+                  /* @__PURE__ */ jsxDEV("div", {
+                    className: "text-xs mt-1",
+                    children: "Coming Soon"
+                  }, undefined, false, undefined, this)
+                ]
+              }, undefined, true, undefined, this),
+              /* @__PURE__ */ jsxDEV("button", {
+                disabled: true,
+                className: "w-full max-w-sm py-4 bg-neutral-700/40 text-neutral-400 font-bold text-lg rounded-md cursor-not-allowed opacity-60",
+                children: [
+                  "MATCH HISTORY",
                   /* @__PURE__ */ jsxDEV("div", {
                     className: "text-xs mt-1",
                     children: "Coming Soon"
@@ -28656,107 +28716,394 @@ function LeaderboardPage({ players }) {
       return "text-gray-400";
     return "text-yellow-600";
   }
+  const levelsXp2 = [0, 100, 150, 225, 300, 400, 500, 650, 800, 1000];
+  function getCumulativeThresholds2() {
+    let cumulative = 0;
+    return levelsXp2.map((xp) => {
+      const threshold = cumulative;
+      cumulative += xp;
+      return threshold;
+    });
+  }
+  const cumulativeLevelsXp2 = getCumulativeThresholds2();
+  function computeLevel2(xp) {
+    let level = 1;
+    for (let i3 = 1;i3 < cumulativeLevelsXp2.length; i3++) {
+      if (xp >= cumulativeLevelsXp2[i3]) {
+        level = i3 + 1;
+      } else {
+        break;
+      }
+    }
+    return level;
+  }
+  const sortedByElo = [...players].sort((a2, b) => b.elo - a2.elo);
+  const sortedByUltimateWins = [...players].sort((a2, b) => b.ultimate_wins - a2.ultimate_wins);
+  const sortedByUltimateLoses = [...players].sort((a2, b) => b.ultimate_loses - a2.ultimate_loses);
+  const sortedByVyrazacka = [...players].sort((a2, b) => b.vyrazacky - a2.vyrazacky);
+  const sortedByTotalGames = [...players].sort((a2, b) => b.wins + b.loses - (a2.wins + a2.loses));
   return /* @__PURE__ */ jsxDEV("div", {
     className: "min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6",
-    children: /* @__PURE__ */ jsxDEV("div", {
-      className: "max-w-4xl mx-auto",
-      children: [
-        /* @__PURE__ */ jsxDEV("div", {
-          className: "mb-8",
-          children: [
-            /* @__PURE__ */ jsxDEV("h1", {
-              className: "text-5xl font-bold text-white font-[Orbitron] mb-2",
-              children: "Leaderboard"
-            }, undefined, false, undefined, this),
-            /* @__PURE__ */ jsxDEV("p", {
-              className: "text-neutral-400",
-              children: "Top players by ELO rating"
-            }, undefined, false, undefined, this)
-          ]
-        }, undefined, true, undefined, this),
-        /* @__PURE__ */ jsxDEV("div", {
-          className: "bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden",
-          children: [
-            /* @__PURE__ */ jsxDEV("div", {
-              className: "grid grid-cols-7 gap-4 px-6 py-4 bg-neutral-800/50 font-bold text-neutral-200 text-sm",
-              children: [
-                /* @__PURE__ */ jsxDEV("div", {
-                  children: "Rank"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsxDEV("div", {
-                  children: "Player"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsxDEV("div", {
-                  children: "ELO"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsxDEV("div", {
-                  children: "Wins"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsxDEV("div", {
-                  children: "Loses"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsxDEV("div", {
-                  children: "Ultimate Wins"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsxDEV("div", {
-                  children: "Ultimate Loses"
-                }, undefined, false, undefined, this)
-              ]
-            }, undefined, true, undefined, this),
-            /* @__PURE__ */ jsxDEV("div", {
-              className: "divide-y divide-neutral-800",
-              children: players.map((player, idx) => /* @__PURE__ */ jsxDEV("div", {
-                className: "grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 hover:bg-neutral-800/30 transition-colors",
+    children: [
+      /* @__PURE__ */ jsxDEV("div", {
+        className: "max-w-6xl mx-auto",
+        children: [
+          /* @__PURE__ */ jsxDEV("div", {
+            className: "mb-8",
+            children: [
+              /* @__PURE__ */ jsxDEV("h1", {
+                className: "text-5xl font-bold text-white font-[Orbitron] mb-2",
+                children: "Leaderboards"
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsxDEV("p", {
+                className: "text-neutral-400",
+                children: "Top players across different categories"
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsxDEV("div", {
+            className: "flex gap-2 mb-6 flex-wrap",
+            children: [
+              /* @__PURE__ */ jsxDEV("button", {
+                "data-tab": "elo",
+                className: "tab-btn active px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-semibold transition-colors",
+                children: "ELO"
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsxDEV("button", {
+                "data-tab": "ultimate_wins",
+                className: "tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-md font-semibold transition-colors",
+                children: "Ultimate Wins"
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsxDEV("button", {
+                "data-tab": "ultimate_loses",
+                className: "tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-md font-semibold transition-colors",
+                children: "Ultimate Loses"
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsxDEV("button", {
+                "data-tab": "vyrazacka",
+                className: "tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-md font-semibold transition-colors",
+                children: "Vyrazacka"
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsxDEV("button", {
+                "data-tab": "total_games",
+                className: "tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-md font-semibold transition-colors",
+                children: "Total Games"
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsxDEV("div", {
+            id: "elo",
+            className: "leaderboard-tab active bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden",
+            children: [
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-800/50 font-bold text-neutral-200 text-lg",
                 children: [
                   /* @__PURE__ */ jsxDEV("div", {
-                    className: "font-bold text-lg",
+                    children: "Rank"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Player"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "ELO"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Level"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
                     children: [
-                      "#",
-                      idx + 1
+                      /* @__PURE__ */ jsxDEV("span", {
+                        className: "text-green-400",
+                        children: "W"
+                      }, undefined, false, undefined, this),
+                      " : ",
+                      /* @__PURE__ */ jsxDEV("span", {
+                        className: "text-red-400",
+                        children: "L"
+                      }, undefined, false, undefined, this)
                     ]
-                  }, undefined, true, undefined, this),
+                  }, undefined, true, undefined, this)
+                ]
+              }, undefined, true, undefined, this),
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "divide-y divide-neutral-800",
+                children: sortedByElo.map((player, idx) => /* @__PURE__ */ jsxDEV("div", {
+                  className: "grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 hover:bg-neutral-800/30 transition-colors",
+                  children: [
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "font-bold text-lg",
+                      children: [
+                        "#",
+                        idx + 1
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-white font-semibold",
+                      children: player.username
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: `font-bold ${eloColor(player.elo)}`,
+                      children: player.elo
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-blue-400",
+                      children: [
+                        "LVL ",
+                        computeLevel2(player.xp),
+                        " (",
+                        player.xp,
+                        "xp)"
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-neutral-400",
+                      children: [
+                        player.wins,
+                        ":",
+                        player.loses
+                      ]
+                    }, undefined, true, undefined, this)
+                  ]
+                }, player.$id, true, undefined, this))
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsxDEV("div", {
+            id: "ultimate_wins",
+            className: "leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden",
+            children: [
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-800/50 font-bold text-neutral-200 text-lg",
+                children: [
                   /* @__PURE__ */ jsxDEV("div", {
-                    className: "text-white font-semibold",
-                    children: player.username
+                    children: "Rank"
                   }, undefined, false, undefined, this),
                   /* @__PURE__ */ jsxDEV("div", {
-                    className: `font-bold ${eloColor(player.elo)}`,
-                    children: player.elo
+                    children: "Player"
                   }, undefined, false, undefined, this),
                   /* @__PURE__ */ jsxDEV("div", {
-                    className: "text-green-400",
-                    children: player.wins
-                  }, undefined, false, undefined, this),
-                  /* @__PURE__ */ jsxDEV("div", {
-                    className: "text-red-400",
-                    children: player.loses
-                  }, undefined, false, undefined, this),
-                  /* @__PURE__ */ jsxDEV("div", {
-                    className: "text-yellow-400",
-                    children: player.ultimate_wins
-                  }, undefined, false, undefined, this),
-                  /* @__PURE__ */ jsxDEV("div", {
-                    className: "text-red-300",
-                    children: player.ultimate_loses
+                    children: "Ultimate Wins"
                   }, undefined, false, undefined, this)
                 ]
-              }, player.$id, true, undefined, this))
-            }, undefined, false, undefined, this)
-          ]
-        }, undefined, true, undefined, this),
-        /* @__PURE__ */ jsxDEV("div", {
-          className: "mt-6",
-          children: /* @__PURE__ */ jsxDEV("a", {
-            href: "/v1/lobby",
-            children: /* @__PURE__ */ jsxDEV("button", {
-              className: "px-6 py-2 bg-neutral-800/60 hover:bg-neutral-800 text-white rounded-md",
-              children: "\u2190 Back to Lobby"
+              }, undefined, true, undefined, this),
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "divide-y divide-neutral-800",
+                children: sortedByUltimateWins.map((player, idx) => /* @__PURE__ */ jsxDEV("div", {
+                  className: "grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 hover:bg-neutral-800/30 transition-colors",
+                  children: [
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "font-bold text-lg",
+                      children: [
+                        "#",
+                        idx + 1
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-white font-semibold",
+                      children: player.username
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-green-400 font-bold",
+                      children: player.ultimate_wins
+                    }, undefined, false, undefined, this)
+                  ]
+                }, player.$id, true, undefined, this))
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsxDEV("div", {
+            id: "ultimate_loses",
+            className: "leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden",
+            children: [
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-800/50 font-bold text-neutral-200 text-lg",
+                children: [
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Rank"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Player"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Ultimate Loses"
+                  }, undefined, false, undefined, this)
+                ]
+              }, undefined, true, undefined, this),
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "divide-y divide-neutral-800",
+                children: sortedByUltimateLoses.map((player, idx) => /* @__PURE__ */ jsxDEV("div", {
+                  className: "grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 hover:bg-neutral-800/30 transition-colors",
+                  children: [
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "font-bold text-lg",
+                      children: [
+                        "#",
+                        idx + 1
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-white font-semibold",
+                      children: player.username
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-red-400 font-bold",
+                      children: player.ultimate_loses
+                    }, undefined, false, undefined, this)
+                  ]
+                }, player.$id, true, undefined, this))
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsxDEV("div", {
+            id: "vyrazacka",
+            className: "leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden",
+            children: [
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-800/50 font-bold text-neutral-200 text-lg",
+                children: [
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Rank"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Player"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Vyrazacka"
+                  }, undefined, false, undefined, this)
+                ]
+              }, undefined, true, undefined, this),
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "divide-y divide-neutral-800",
+                children: sortedByVyrazacka.map((player, idx) => /* @__PURE__ */ jsxDEV("div", {
+                  className: "grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 hover:bg-neutral-800/30 transition-colors",
+                  children: [
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "font-bold text-lg",
+                      children: [
+                        "#",
+                        idx + 1
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-white font-semibold",
+                      children: player.username
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-orange-400 font-bold",
+                      children: player.vyrazacky
+                    }, undefined, false, undefined, this)
+                  ]
+                }, player.$id, true, undefined, this))
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsxDEV("div", {
+            id: "total_games",
+            className: "leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden",
+            children: [
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-800/50 font-bold text-neutral-200 text-lg",
+                children: [
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Rank"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Player"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Total Games"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("div", {
+                    children: "Record"
+                  }, undefined, false, undefined, this)
+                ]
+              }, undefined, true, undefined, this),
+              /* @__PURE__ */ jsxDEV("div", {
+                className: "divide-y divide-neutral-800",
+                children: sortedByTotalGames.map((player, idx) => /* @__PURE__ */ jsxDEV("div", {
+                  className: "grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 hover:bg-neutral-800/30 transition-colors",
+                  children: [
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "font-bold text-lg",
+                      children: [
+                        "#",
+                        idx + 1
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-white font-semibold",
+                      children: player.username
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-purple-400 font-bold",
+                      children: player.wins + player.loses
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-neutral-400",
+                      children: [
+                        player.wins,
+                        ":",
+                        player.loses
+                      ]
+                    }, undefined, true, undefined, this)
+                  ]
+                }, player.$id, true, undefined, this))
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsxDEV("div", {
+            className: "mt-6",
+            children: /* @__PURE__ */ jsxDEV("a", {
+              href: "/v1/lobby",
+              children: /* @__PURE__ */ jsxDEV("button", {
+                className: "px-6 py-2 bg-neutral-800/60 hover:bg-neutral-800 text-white rounded-md",
+                children: "\u2190 Back to Lobby"
+              }, undefined, false, undefined, this)
             }, undefined, false, undefined, this)
           }, undefined, false, undefined, this)
-        }, undefined, false, undefined, this)
-      ]
-    }, undefined, true, undefined, this)
-  }, undefined, false, undefined, this);
+        ]
+      }, undefined, true, undefined, this),
+      /* @__PURE__ */ jsxDEV("script", {
+        dangerouslySetInnerHTML: {
+          __html: `
+(function(){
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabs = document.querySelectorAll('.leaderboard-tab');
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const tabName = this.getAttribute('data-tab');
+      
+      // Hide all tabs
+      tabs.forEach(tab => {
+        tab.classList.remove('active');
+        tab.classList.add('hidden');
+      });
+      
+      // Remove active state from all buttons
+      tabButtons.forEach(b => {
+        b.classList.remove('bg-green-600');
+        b.classList.add('bg-neutral-700');
+      });
+      
+      // Show selected tab
+      const selectedTab = document.getElementById(tabName);
+      if (selectedTab) {
+        selectedTab.classList.remove('hidden');
+        selectedTab.classList.add('active');
+      }
+      
+      // Highlight active button
+      this.classList.remove('bg-neutral-700');
+      this.classList.add('bg-green-600');
+    });
+  });
+})();
+          `
+        }
+      }, undefined, false, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
 }
 
 // src/v1/match.ts
@@ -28888,14 +29235,16 @@ async function findOrCreateAndJoin(player) {
 function createInitialScoresForPlayers(players) {
   const ids = players.map((p) => p.id);
   const pairings = [];
+  const vyrazackaInit = {};
+  ids.forEach((id) => vyrazackaInit[id] = 0);
   if (ids.length >= 4) {
-    pairings.push({ a: [ids[0], ids[1]], b: [ids[2], ids[3]], scoreA: 0, scoreB: 0 });
-    pairings.push({ a: [ids[0], ids[2]], b: [ids[1], ids[3]], scoreA: 0, scoreB: 0 });
-    pairings.push({ a: [ids[0], ids[3]], b: [ids[1], ids[2]], scoreA: 0, scoreB: 0 });
+    pairings.push({ a: [ids[0], ids[1]], b: [ids[2], ids[3]], scoreA: 0, scoreB: 0, vyrazacka: { ...vyrazackaInit } });
+    pairings.push({ a: [ids[0], ids[2]], b: [ids[1], ids[3]], scoreA: 0, scoreB: 0, vyrazacka: { ...vyrazackaInit } });
+    pairings.push({ a: [ids[0], ids[3]], b: [ids[1], ids[2]], scoreA: 0, scoreB: 0, vyrazacka: { ...vyrazackaInit } });
   } else {
     const a2 = ids.slice(0, Math.ceil(ids.length / 2));
     const b = ids.slice(Math.ceil(ids.length / 2));
-    pairings.push({ a: a2, b, scoreA: 0, scoreB: 0 });
+    pairings.push({ a: a2, b, scoreA: 0, scoreB: 0, vyrazacka: { ...vyrazackaInit } });
   }
   return pairings;
 }
@@ -29140,7 +29489,7 @@ function MatchGamePage({ c, match: match2 }) {
     className: "min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6",
     children: [
       /* @__PURE__ */ jsxDEV("div", {
-        className: "max-w-4xl mx-auto",
+        className: "max-w-6xl mx-auto",
         children: [
           /* @__PURE__ */ jsxDEV("h1", {
             className: "text-4xl font-bold text-white mb-4 font-[Orbitron]",
@@ -29189,158 +29538,257 @@ function MatchGamePage({ c, match: match2 }) {
             id: "pairings",
             className: "space-y-4",
             children: scores.map((s2, idx) => /* @__PURE__ */ jsxDEV("div", {
-              className: "bg-neutral-900/50 rounded-lg p-4 border border-neutral-800 flex items-center justify-between",
+              className: "bg-neutral-900/50 rounded-lg p-4 border border-neutral-800",
               children: [
                 /* @__PURE__ */ jsxDEV("div", {
-                  className: "flex flex-col items-start gap-2 w-1/3",
+                  className: "flex items-center justify-between mb-4",
                   children: [
                     /* @__PURE__ */ jsxDEV("div", {
-                      className: "font-semibold text-white",
-                      children: s2.a.map((id, i3) => {
-                        const p = players.find((x) => x.id === id);
-                        return /* @__PURE__ */ jsxDEV("span", {
-                          children: [
-                            p ? p.username : id,
-                            i3 < s2.a.length - 1 ? " / " : ""
-                          ]
-                        }, i3, true, undefined, this);
-                      })
-                    }, undefined, false, undefined, this),
-                    /* @__PURE__ */ jsxDEV("div", {
-                      className: "flex gap-2",
+                      className: "flex flex-col items-start gap-2 w-1/3",
                       children: [
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-green-600 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "a",
-                          "data-delta": "10",
-                          children: "+10"
+                        /* @__PURE__ */ jsxDEV("div", {
+                          className: "font-semibold text-white text-sm",
+                          children: s2.a.map((id, i3) => {
+                            const p = players.find((x) => x.id === id);
+                            return /* @__PURE__ */ jsxDEV("span", {
+                              children: [
+                                p ? p.username : id,
+                                i3 < s2.a.length - 1 ? " / " : ""
+                              ]
+                            }, i3, true, undefined, this);
+                          })
                         }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-green-500 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "a",
-                          "data-delta": "5",
-                          children: "+5"
+                        /* @__PURE__ */ jsxDEV("div", {
+                          className: "flex gap-2 flex-wrap",
+                          children: [
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "a",
+                              "data-delta": "10",
+                              children: "+10"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-green-500 hover:bg-green-600 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "a",
+                              "data-delta": "5",
+                              children: "+5"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-green-400 hover:bg-green-500 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "a",
+                              "data-delta": "1",
+                              children: "+1"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this),
+                        /* @__PURE__ */ jsxDEV("div", {
+                          className: "flex gap-2 flex-wrap",
+                          children: [
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "a",
+                              "data-delta": "-10",
+                              children: "-10"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-red-500 hover:bg-red-600 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "a",
+                              "data-delta": "-5",
+                              children: "-5"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-red-400 hover:bg-red-500 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "a",
+                              "data-delta": "-1",
+                              children: "-1"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "text-3xl font-bold text-white text-center",
+                      children: [
+                        /* @__PURE__ */ jsxDEV("span", {
+                          id: `scoreA-${idx}`,
+                          children: s2.scoreA
                         }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-green-400 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "a",
-                          "data-delta": "1",
-                          children: "+1"
+                        /* @__PURE__ */ jsxDEV("span", {
+                          className: "mx-4 text-neutral-400",
+                          children: ":"
+                        }, undefined, false, undefined, this),
+                        /* @__PURE__ */ jsxDEV("span", {
+                          id: `scoreB-${idx}`,
+                          children: s2.scoreB
                         }, undefined, false, undefined, this)
                       ]
                     }, undefined, true, undefined, this),
                     /* @__PURE__ */ jsxDEV("div", {
-                      className: "flex gap-2 mt-1",
+                      className: "flex flex-col items-end gap-2 w-1/3",
                       children: [
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-red-600 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "a",
-                          "data-delta": "-10",
-                          children: "-10"
+                        /* @__PURE__ */ jsxDEV("div", {
+                          className: "font-semibold text-white text-sm",
+                          children: s2.b.map((id, i3) => {
+                            const p = players.find((x) => x.id === id);
+                            return /* @__PURE__ */ jsxDEV("span", {
+                              children: [
+                                p ? p.username : id,
+                                i3 < s2.b.length - 1 ? " / " : ""
+                              ]
+                            }, i3, true, undefined, this);
+                          })
                         }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-red-500 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "a",
-                          "data-delta": "-5",
-                          children: "-5"
-                        }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-red-400 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "a",
-                          "data-delta": "-1",
-                          children: "-1"
-                        }, undefined, false, undefined, this)
+                        /* @__PURE__ */ jsxDEV("div", {
+                          className: "flex gap-2 flex-wrap justify-end",
+                          children: [
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "b",
+                              "data-delta": "10",
+                              children: "+10"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-green-500 hover:bg-green-600 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "b",
+                              "data-delta": "5",
+                              children: "+5"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-green-400 hover:bg-green-500 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "b",
+                              "data-delta": "1",
+                              children: "+1"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this),
+                        /* @__PURE__ */ jsxDEV("div", {
+                          className: "flex gap-2 flex-wrap justify-end",
+                          children: [
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "b",
+                              "data-delta": "-10",
+                              children: "-10"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-red-500 hover:bg-red-600 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "b",
+                              "data-delta": "-5",
+                              children: "-5"
+                            }, undefined, false, undefined, this),
+                            /* @__PURE__ */ jsxDEV("button", {
+                              className: "px-3 py-1 bg-red-400 hover:bg-red-500 rounded text-sm",
+                              "data-idx": idx,
+                              "data-side": "b",
+                              "data-delta": "-1",
+                              children: "-1"
+                            }, undefined, false, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this)
                       ]
                     }, undefined, true, undefined, this)
                   ]
                 }, undefined, true, undefined, this),
                 /* @__PURE__ */ jsxDEV("div", {
-                  className: "text-2xl font-bold text-white",
+                  className: "border-t border-neutral-700 pt-4 mt-4",
                   children: [
-                    /* @__PURE__ */ jsxDEV("span", {
-                      id: `scoreA-${idx}`,
-                      children: s2.scoreA
-                    }, undefined, false, undefined, this),
-                    /* @__PURE__ */ jsxDEV("span", {
-                      className: "mx-4 text-neutral-400",
-                      children: ":"
-                    }, undefined, false, undefined, this),
-                    /* @__PURE__ */ jsxDEV("span", {
-                      id: `scoreB-${idx}`,
-                      children: s2.scoreB
-                    }, undefined, false, undefined, this)
-                  ]
-                }, undefined, true, undefined, this),
-                /* @__PURE__ */ jsxDEV("div", {
-                  className: "flex flex-col items-end gap-2 w-1/3",
-                  children: [
-                    /* @__PURE__ */ jsxDEV("div", {
-                      className: "font-semibold text-white",
-                      children: s2.b.map((id, i3) => {
-                        const p = players.find((x) => x.id === id);
-                        return /* @__PURE__ */ jsxDEV("span", {
-                          children: [
-                            p ? p.username : id,
-                            i3 < s2.b.length - 1 ? " / " : ""
-                          ]
-                        }, i3, true, undefined, this);
-                      })
+                    /* @__PURE__ */ jsxDEV("h4", {
+                      className: "text-sm font-semibold text-neutral-300 mb-3",
+                      children: "Vyrazacka"
                     }, undefined, false, undefined, this),
                     /* @__PURE__ */ jsxDEV("div", {
-                      className: "flex gap-2",
+                      className: "grid grid-cols-2 gap-4",
                       children: [
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-green-600 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "b",
-                          "data-delta": "10",
-                          children: "+10"
+                        /* @__PURE__ */ jsxDEV("div", {
+                          className: "space-y-2",
+                          children: s2.a.map((id) => {
+                            const p = players.find((x) => x.id === id);
+                            const vyr = s2.vyrazacka?.[id] ?? 0;
+                            return /* @__PURE__ */ jsxDEV("div", {
+                              className: "flex items-center gap-2 bg-neutral-800/40 p-2 rounded",
+                              children: [
+                                /* @__PURE__ */ jsxDEV("span", {
+                                  className: "text-sm text-neutral-300 flex-1",
+                                  children: p ? p.username : id
+                                }, undefined, false, undefined, this),
+                                /* @__PURE__ */ jsxDEV("div", {
+                                  className: "flex gap-2 items-center",
+                                  children: [
+                                    /* @__PURE__ */ jsxDEV("button", {
+                                      className: "px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs text-white",
+                                      "data-idx": idx,
+                                      "data-player-id": id,
+                                      "data-vyr-delta": "-1",
+                                      children: "-1"
+                                    }, undefined, false, undefined, this),
+                                    /* @__PURE__ */ jsxDEV("span", {
+                                      id: `vyr-${idx}-${id}`,
+                                      className: "text-white font-bold min-w-[2rem] text-center",
+                                      children: vyr
+                                    }, undefined, false, undefined, this),
+                                    /* @__PURE__ */ jsxDEV("button", {
+                                      className: "px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs text-white",
+                                      "data-idx": idx,
+                                      "data-player-id": id,
+                                      "data-vyr-delta": "1",
+                                      children: "+1"
+                                    }, undefined, false, undefined, this)
+                                  ]
+                                }, undefined, true, undefined, this)
+                              ]
+                            }, id, true, undefined, this);
+                          })
                         }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-green-500 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "b",
-                          "data-delta": "5",
-                          children: "+5"
-                        }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-green-400 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "b",
-                          "data-delta": "1",
-                          children: "+1"
-                        }, undefined, false, undefined, this)
-                      ]
-                    }, undefined, true, undefined, this),
-                    /* @__PURE__ */ jsxDEV("div", {
-                      className: "flex gap-2 mt-1",
-                      children: [
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-red-600 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "b",
-                          "data-delta": "-10",
-                          children: "-10"
-                        }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-red-500 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "b",
-                          "data-delta": "-5",
-                          children: "-5"
-                        }, undefined, false, undefined, this),
-                        /* @__PURE__ */ jsxDEV("button", {
-                          className: "px-3 py-1 bg-red-400 rounded text-sm",
-                          "data-idx": idx,
-                          "data-side": "b",
-                          "data-delta": "-1",
-                          children: "-1"
+                        /* @__PURE__ */ jsxDEV("div", {
+                          className: "space-y-2",
+                          children: s2.b.map((id) => {
+                            const p = players.find((x) => x.id === id);
+                            const vyr = s2.vyrazacka?.[id] ?? 0;
+                            return /* @__PURE__ */ jsxDEV("div", {
+                              className: "flex items-center gap-2 bg-neutral-800/40 p-2 rounded",
+                              children: [
+                                /* @__PURE__ */ jsxDEV("span", {
+                                  className: "text-sm text-neutral-300 flex-1",
+                                  children: p ? p.username : id
+                                }, undefined, false, undefined, this),
+                                /* @__PURE__ */ jsxDEV("div", {
+                                  className: "flex gap-2 items-center",
+                                  children: [
+                                    /* @__PURE__ */ jsxDEV("button", {
+                                      className: "px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs text-white",
+                                      "data-idx": idx,
+                                      "data-player-id": id,
+                                      "data-vyr-delta": "-1",
+                                      children: "-1"
+                                    }, undefined, false, undefined, this),
+                                    /* @__PURE__ */ jsxDEV("span", {
+                                      id: `vyr-${idx}-${id}`,
+                                      className: "text-white font-bold min-w-[2rem] text-center",
+                                      children: vyr
+                                    }, undefined, false, undefined, this),
+                                    /* @__PURE__ */ jsxDEV("button", {
+                                      className: "px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs text-white",
+                                      "data-idx": idx,
+                                      "data-player-id": id,
+                                      "data-vyr-delta": "1",
+                                      children: "+1"
+                                    }, undefined, false, undefined, this)
+                                  ]
+                                }, undefined, true, undefined, this)
+                              ]
+                            }, id, true, undefined, this);
+                          })
                         }, undefined, false, undefined, this)
                       ]
                     }, undefined, true, undefined, this)
@@ -29412,9 +29860,31 @@ function MatchGamePage({ c, match: match2 }) {
     }catch(e){ console.error(e); }
   }
 
+  async function sendVyrazackaUpdate(idx, playerId, delta){
+    try{
+      const form = new FormData();
+      form.append('matchId', matchId);
+      form.append('index', String(idx));
+      form.append('playerId', playerId);
+      form.append('delta', String(delta));
+      const res = await fetch('/v1/match/game/vyrazacka', { method: 'POST', body: form });
+      if(!res.ok) {
+        const txt = await res.text().catch(()=>null);
+        console.error('vyrazacka update failed', txt);
+        return;
+      }
+      const data = await res.json();
+      // update DOM vyrazacka value
+      const el = document.getElementById('vyr-'+idx+'-'+playerId);
+      if(el) el.textContent = String(data.newValue);
+    }catch(e){ console.error(e); }
+  }
+
   document.addEventListener('click', function(e){
     const el = e.target;
     if(!(el instanceof HTMLElement)) return;
+    
+    // Score update buttons
     const idx = el.getAttribute('data-idx');
     const side = el.getAttribute('data-side');
     const delta = el.getAttribute('data-delta');
@@ -29425,6 +29895,14 @@ function MatchGamePage({ c, match: match2 }) {
       const newVal = Math.min(10, Math.max(0, cur + Number(delta)));
       // send delta = newVal - cur
       sendUpdate(Number(idx), side, newVal - cur);
+    }
+
+    // Vyrazacka update buttons
+    const vyrIdx = el.getAttribute('data-idx');
+    const playerId = el.getAttribute('data-player-id');
+    const vyrDelta = el.getAttribute('data-vyr-delta');
+    if(vyrIdx !== null && playerId && vyrDelta){
+      sendVyrazackaUpdate(Number(vyrIdx), playerId, Number(vyrDelta));
     }
 
     // finish button
@@ -29512,7 +29990,7 @@ function MatchResultPage({ c, result }) {
                               }, undefined, false, undefined, this),
                               " \u2192 ",
                               /* @__PURE__ */ jsxDEV("span", {
-                                className: "font-bold text-green-400",
+                                className: p.newElo - p.oldElo >= 0 ? "text-green-400" : "text-red-400",
                                 children: p.newElo
                               }, undefined, false, undefined, this),
                               " (",
@@ -29570,9 +30048,9 @@ function MatchResultPage({ c, result }) {
                                 children: "Total ELO"
                               }, undefined, false, undefined, this),
                               /* @__PURE__ */ jsxDEV("span", {
-                                className: "text-green-400",
+                                className: (p.eloBreakdown?.total, "text-green-400"),
                                 children: [
-                                  "+",
+                                  (p.eloBreakdown?.total, "+"),
                                   p.eloBreakdown?.total || 0
                                 ]
                               }, undefined, true, undefined, this)
@@ -29946,14 +30424,40 @@ app.post("/v1/match/game/score", async (c) => {
     return c.json({ error: "failed" }, 500);
   }
 });
-function avgElo(ids, players) {
-  const vals = ids.map((id) => {
-    const p = players.find((x) => x.id === id);
-    return p ? p.elo : 0;
-  });
-  if (!vals.length)
-    return 0;
-  return Math.round(vals.reduce((a2, b) => a2 + b, 0) / vals.length);
+app.post("/v1/match/game/vyrazacka", async (c) => {
+  try {
+    const form3 = await c.req.formData();
+    const matchId = String(form3.get("matchId") ?? "");
+    const index2 = Number(form3.get("index") ?? 0);
+    const playerId = String(form3.get("playerId") ?? "");
+    const delta = Number(form3.get("delta") ?? 0);
+    if (!matchId)
+      return c.json({ error: "missing matchId" }, 400);
+    if (!playerId)
+      return c.json({ error: "missing playerId" }, 400);
+    const match2 = await getMatch(matchId);
+    if (!match2)
+      return c.json({ error: "match not found" }, 404);
+    const scores = match2.scores || [];
+    if (!scores[index2])
+      return c.json({ error: "invalid index" }, 400);
+    if (!scores[index2].vyrazacka) {
+      scores[index2].vyrazacka = {};
+    }
+    const currentVyr = scores[index2].vyrazacka[playerId] ?? 0;
+    const newValue = Math.max(0, currentVyr + delta);
+    scores[index2].vyrazacka[playerId] = newValue;
+    const updated = await updateGameScores(matchId, scores);
+    return c.json({ ok: true, newValue });
+  } catch (err) {
+    console.error("update vyrazacka error", err);
+    return c.json({ error: "failed" }, 500);
+  }
+});
+function avgElo(p1, p2) {
+  const elo1 = p1 && typeof p1.elo === "number" ? p1.elo : 500;
+  const elo2 = p2 && typeof p2.elo === "number" ? p2.elo : 500;
+  return Math.round((elo1 + elo2) / 2);
 }
 app.post("/v1/match/game/finish", async (c) => {
   const endpoint4 = process.env.APPWRITE_ENDPOINT || "https://fra.cloud.appwrite.io/v1";
@@ -29994,8 +30498,12 @@ app.post("/v1/match/game/finish", async (c) => {
         winnerSide = "a";
       else if (bScore > aScore)
         winnerSide = "b";
-      const avgA = avgElo(a2, players);
-      const avgB = avgElo(b, players);
+      const a0 = players.find((x) => x.id === a2[0]);
+      const a1 = players.find((x) => x.id === a2[1]);
+      const b0 = players.find((x) => x.id === b[0]);
+      const b1 = players.find((x) => x.id === b[1]);
+      const avgA = avgElo(a0, a1);
+      const avgB = avgElo(b0, b1);
       const diff = Math.abs(avgA - avgB);
       const adj = Math.min(10, Math.floor(diff / 25));
       if (winnerSide === "a") {
@@ -30006,7 +30514,7 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].gamesAdded += 1;
           if (aScore === 10 && bScore === 0) {
             byId[id].xpGained += 50;
-            byId[id].perfectWins = (byId[id].perfectWins || 0) + 1;
+            byId[id].perfectWins += 1;
           }
         });
         b.forEach((id) => {
@@ -30017,8 +30525,10 @@ app.post("/v1/match/game/finish", async (c) => {
         });
         if (avgA > avgB) {
           a2.forEach((id) => byId[id].newElo -= adj);
+          b.forEach((id) => byId[id].newElo += adj);
         } else if (avgA < avgB) {
           a2.forEach((id) => byId[id].newElo += adj);
+          b.forEach((id) => byId[id].newElo -= adj);
         }
       } else if (winnerSide === "b") {
         b.forEach((id) => {
@@ -30039,8 +30549,10 @@ app.post("/v1/match/game/finish", async (c) => {
         });
         if (avgB > avgA) {
           b.forEach((id) => byId[id].newElo -= adj);
+          a2.forEach((id) => byId[id].newElo += adj);
         } else if (avgB < avgA) {
           b.forEach((id) => byId[id].newElo += adj);
+          a2.forEach((id) => byId[id].newElo -= adj);
         }
       } else {
         a2.forEach((id) => byId[id].gamesAdded += 1);
@@ -30076,6 +30588,15 @@ app.post("/v1/match/game/finish", async (c) => {
         }
       });
     }
+    scores.forEach((s2) => {
+      if (s2.vyrazacka) {
+        Object.entries(s2.vyrazacka).forEach(([playerId, vyrazackaCount]) => {
+          if (byId[playerId]) {
+            byId[playerId].xpGained += Number(vyrazackaCount) * 10;
+          }
+        });
+      }
+    });
     const historyPlayers = [];
     for (const id of ids) {
       const rec = byId[id];
@@ -30197,14 +30718,18 @@ function computeEloBreakdown(playerId, rec, scores, players, totalRounds, ultima
       isWinner = b.includes(playerId);
       isLoser = a2.includes(playerId);
     }
+    const a0 = players.find((x) => x.id === a2[0]);
+    const a1 = players.find((x) => x.id === a2[1]);
+    const b0 = players.find((x) => x.id === b[0]);
+    const b1 = players.find((x) => x.id === b[1]);
+    const avgWinner = avgElo(isWinner ? a0 : b0, isWinner ? a1 : b1);
+    const avgLoser = avgElo(isLoser ? a0 : b0, isLoser ? a1 : b1);
+    const diff = Math.abs(avgWinner - avgLoser);
+    const adj = Math.min(10, Math.floor(diff / 25));
     if (isWinner) {
       delta = 20;
       breakdown.push({ match: idx + 1, reason: `Won match ${idx + 1}`, delta });
       total += delta;
-      const avgWinner = avgElo(isWinner ? a2 : b, players);
-      const avgLoser = avgElo(isLoser ? b : a2, players);
-      const diff = Math.abs(avgWinner - avgLoser);
-      const adj = Math.min(10, Math.floor(diff / 25));
       if (avgWinner > avgLoser) {
         breakdown.push({ match: idx + 1, reason: `Stronger team penalty`, delta: -adj });
         total -= adj;
@@ -30216,6 +30741,13 @@ function computeEloBreakdown(playerId, rec, scores, players, totalRounds, ultima
       delta = -20;
       breakdown.push({ match: idx + 1, reason: `Lost match ${idx + 1}`, delta });
       total += delta;
+      if (avgWinner > avgLoser) {
+        breakdown.push({ match: idx + 1, reason: `Weaker team bonus`, delta: +adj });
+        total += adj;
+      } else if (avgWinner < avgLoser) {
+        breakdown.push({ match: idx + 1, reason: `Stronger team penalty`, delta: -adj });
+        total -= adj;
+      }
     }
   });
   if (ultimateWinnerId === playerId) {
@@ -30237,6 +30769,8 @@ function computeEloBreakdown(playerId, rec, scores, players, totalRounds, ultima
 function computeXpBreakdown(playerId, rec, scores, players, totalRounds, ultimateWinnerId) {
   const breakdown = [];
   let total = 0;
+  let totalGoals = 0;
+  let totalVyrazacka = 0;
   scores.forEach((s2, idx) => {
     const a2 = s2.a || [];
     const b = s2.b || [];
@@ -30251,6 +30785,13 @@ function computeXpBreakdown(playerId, rec, scores, players, totalRounds, ultimat
       isWinner = b.includes(playerId);
       isLoser = a2.includes(playerId);
     }
+    if (a2.includes(playerId)) {
+      totalGoals += aScore;
+    } else if (b.includes(playerId)) {
+      totalGoals += bScore;
+    }
+    const playerVyrazacka = s2.vyrazacka?.[playerId] ?? 0;
+    totalVyrazacka += playerVyrazacka;
     if (isWinner) {
       breakdown.push({ match: idx + 1, reason: `Won match ${idx + 1}`, delta: 15 });
       total += 15;
@@ -30269,6 +30810,12 @@ function computeXpBreakdown(playerId, rec, scores, players, totalRounds, ultimat
   if (ultimateWinnerId === playerId) {
     breakdown.push({ match: null, reason: `Ultimate winner bonus`, delta: 25 });
     total += 25;
+  }
+  breakdown.push({ match: null, reason: `Number of goals`, delta: totalGoals });
+  const vyrazackaBonus = totalVyrazacka * 10;
+  if (vyrazackaBonus > 0) {
+    breakdown.push({ match: null, reason: `Vyrazacka bonus (${totalVyrazacka} \xD7 10)`, delta: vyrazackaBonus });
+    total += vyrazackaBonus;
   }
   return { breakdown, total };
 }

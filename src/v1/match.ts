@@ -24,7 +24,7 @@ export type MatchDoc = {
   players: MatchPlayer[]; // parsed from players_json
   maxPlayers: number;
   createdAt?: string;
-  scores?: { a: string[]; b: string[]; scoreA: number; scoreB: number }[]; // parsed from scores_json
+  scores?: { a: string[]; b: string[]; scoreA: number; scoreB: number; vyrazacka?: Record<string, number> }[]; // parsed from scores_json
   // raw players_json / scores_json exist in DB but not required by callers
 };
 
@@ -168,18 +168,22 @@ function createInitialScoresForPlayers(players: MatchPlayer[]) {
   // expects up to 4 players
   // pairings: (0,1)-(2,3), (0,2)-(1,3), (0,3)-(1,2)
   const ids = players.map(p => p.id);
-  const pairings: { a: string[]; b: string[]; scoreA: number; scoreB: number }[] = [];
+  const pairings: { a: string[]; b: string[]; scoreA: number; scoreB: number; vyrazacka?: Record<string, number> }[] = [];
+
+  // initialize vyrazacka for all players
+  const vyrazackaInit: Record<string, number> = {};
+  ids.forEach(id => vyrazackaInit[id] = 0);
 
   // only create pairings when exactly 4 players, otherwise create best-effort
   if (ids.length >= 4) {
-    pairings.push({ a: [ids[0], ids[1]], b: [ids[2], ids[3]], scoreA: 0, scoreB: 0 });
-    pairings.push({ a: [ids[0], ids[2]], b: [ids[1], ids[3]], scoreA: 0, scoreB: 0 });
-    pairings.push({ a: [ids[0], ids[3]], b: [ids[1], ids[2]], scoreA: 0, scoreB: 0 });
+    pairings.push({ a: [ids[0], ids[1]], b: [ids[2], ids[3]], scoreA: 0, scoreB: 0, vyrazacka: { ...vyrazackaInit } });
+    pairings.push({ a: [ids[0], ids[2]], b: [ids[1], ids[3]], scoreA: 0, scoreB: 0, vyrazacka: { ...vyrazackaInit } });
+    pairings.push({ a: [ids[0], ids[3]], b: [ids[1], ids[2]], scoreA: 0, scoreB: 0, vyrazacka: { ...vyrazackaInit } });
   } else {
     // fallback: create a single pairing using available players (duplicates allowed)
     const a = ids.slice(0, Math.ceil(ids.length/2));
     const b = ids.slice(Math.ceil(ids.length/2));
-    pairings.push({ a, b, scoreA:0, scoreB:0 });
+    pairings.push({ a, b, scoreA:0, scoreB:0, vyrazacka: { ...vyrazackaInit } });
   }
   return pairings;
 }

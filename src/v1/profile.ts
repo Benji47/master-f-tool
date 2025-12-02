@@ -16,6 +16,17 @@ export interface PlayerProfile {
   ultimate_loses: number;
   xp: number;
   elo: number;
+  vyrazacky: number;
+  goals_scored: number;
+  goals_conceded: number;
+  ten_zero_wins: number;
+}
+
+export interface GlobalStats {
+  totalMatches: number;
+  totalPodlezani: number;
+  totalGoals: number;
+  totalVyrazecka: number;
 }
 
 export async function createPlayerProfile(userId: string, username: string): Promise<PlayerProfile> {
@@ -44,6 +55,10 @@ export async function createPlayerProfile(userId: string, username: string): Pro
         ultimate_loses: 0,
         xp: 0,
         elo: 500,
+        vyrazacky: 0,
+        goals_scored: 0,
+        goals_conceded: 0,
+        ten_zero_wins: 0,
       }
     );
     console.log('Player profile created:', profile.$id);
@@ -98,6 +113,51 @@ export async function updatePlayerStats(
     throw new Error(err?.message || 'Failed to update player profile');
   }
 }
+
+export async function updateGlobalStats(
+  updates: Partial<GlobalStats>
+): Promise<GlobalStats> {
+  if (!projectId || !apiKey) {
+    throw new Error('Appwrite credentials not configured');
+  }
+
+  const client = new sdk.Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
+
+  const databases = new sdk.Databases(client);
+
+  try {
+    const globalStats = await databases.updateDocument(databaseId, 'global_stats', '692e9c56001c048e4beb', updates);
+    return globalStats as GlobalStats;
+  } catch (err: any) {
+    console.error('Profile update error:', err);
+    throw new Error(err?.message || 'Failed to update player profile');
+  }
+}
+
+export async function getGlobalStats(): Promise<GlobalStats | null> {
+  if (!projectId || !apiKey) {
+    throw new Error('Appwrite credentials not configured');
+  }
+
+  const client = new sdk.Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
+
+  const databases = new sdk.Databases(client);
+
+  try {
+    const globalStats = await databases.getDocument(databaseId, 'global_stats', '692e9c56001c048e4beb');
+    return globalStats as GlobalStats;
+  } catch (err: any) {
+    console.error('Profile fetch error:', err);
+    return null;
+  }
+}
+
 
 export async function getLeaderboard(limit: number = 50): Promise<PlayerProfile[]> {
   if (!projectId || !apiKey) {

@@ -79,7 +79,7 @@ export function MatchResultPage({ c, result }: { c: Context; result: any }) {
 
         <div className="mt-6">
           <a href="/v1/lobby">
-            <button className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md">Back to Lobby</button>
+            <button className="px-6 py-2 bg-green-600 hover:bg-green-700 cursor-pointer text-white rounded-md">Back to Lobby</button>
           </a>
         </div>
       </div>

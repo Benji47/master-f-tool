@@ -8,7 +8,7 @@ import { LoginPage } from "./v1/login";
 import { RegisterPage } from "./v1/register";
 import { LobbyPage } from "./v1/lobby";
 import { LeaderboardPage } from "./v1/leaderboard";
-import { getLeaderboard, getPlayerProfile, updatePlayerStats } from "./v1/profile";
+import { getGlobalStats, getLeaderboard, getPlayerProfile, updateGlobalStats, updatePlayerStats } from "./v1/profile";
 import { deleteCookie } from "hono/cookie";
 import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch } from "./v1/match";
 import { MatchLobbyPage } from "./v1/matchLobby";
@@ -82,17 +82,18 @@ app.get("/v1/lobby", async (c) => {
     // In a real app, you'd have userId from session, not just username
     // For now, we'll use username as a temporary identifier
     const playerData = await getPlayerProfile(username);
+    const globalStats = await getGlobalStats();
     
     return c.html(
       <MainLayout c={c}>
-        <LobbyPage c={c} playerProfile={playerData} />
+        <LobbyPage c={c} playerProfile={playerData} globalStats={globalStats} />
       </MainLayout>,
     );
   } catch (err: any) {
     console.error("Lobby error:", err);
     return c.html(
       <MainLayout c={c}>
-        <LobbyPage c={c} playerProfile={null} />
+        <LobbyPage c={c} playerProfile={null} globalStats={null}/>
       </MainLayout>,
     );
   }
@@ -340,6 +341,42 @@ app.post("/v1/match/game/score", async (c) => {
   }
 });
 
+// update vyrazacka API for match game
+app.post("/v1/match/game/vyrazacka", async (c) => {
+  try {
+    const form = await c.req.formData();
+    const matchId = String(form.get("matchId") ?? '');
+    const index = Number(form.get("index") ?? 0);
+    const playerId = String(form.get("playerId") ?? '');
+    const delta = Number(form.get("delta") ?? 0);
+
+    if (!matchId) return c.json({ error: 'missing matchId' }, 400);
+    if (!playerId) return c.json({ error: 'missing playerId' }, 400);
+
+    const match = await getMatch(matchId);
+    if (!match) return c.json({ error: 'match not found' }, 404);
+
+    const scores = match.scores || [];
+    if (!scores[index]) return c.json({ error: 'invalid index' }, 400);
+
+    // initialize vyrazacka object if not exists
+    if (!scores[index].vyrazacka) {
+      scores[index].vyrazacka = {};
+    }
+
+    // apply delta with clamping 0..infinity (min 0)
+    const currentVyr = scores[index].vyrazacka[playerId] ?? 0;
+    const newValue = Math.max(0, currentVyr + delta);
+    scores[index].vyrazacka[playerId] = newValue;
+
+    const updated = await updateGameScores(matchId, scores);
+    return c.json({ ok: true, newValue });
+  } catch (err: any) {
+    console.error('update vyrazacka error', err);
+    return c.json({ error: 'failed' }, 500);
+  }
+});
+
 // helper to get avg elo of a team
     function avgElo(p1?: MatchPlayer | null, p2?: MatchPlayer | null): number {
       const elo1 = (p1 && typeof p1.elo === 'number') ? p1.elo : 500;
@@ -353,6 +390,10 @@ app.post("/v1/match/game/finish", async (c) => {
     const projectId = process.env.APPWRITE_PROJECT;
     const apiKey = process.env.APPWRITE_KEY;
     const databaseId = process.env.APPWRITE_DATABASE_ID;
+    let totalSumGoals = 0;
+    let totalSumMatches = 3;
+    let totalSumPodlezani = 0;
+    let totalSumVyrazecka = 0;
   try {
     const form = await c.req.formData();
     const matchId = String(form.get("matchId") ?? c.req.query('matchId') ?? '');
@@ -377,6 +418,7 @@ app.post("/v1/match/game/finish", async (c) => {
         losesAdded: 0,
         perfectWins: 0,
         gamesAdded: 0,
+        ten_zero_wins: 0,
       };
     });
 
@@ -403,6 +445,8 @@ app.post("/v1/match/game/finish", async (c) => {
       const diff = Math.abs(avgA - avgB);
       const adj = Math.min(10, Math.floor(diff / 25));
 
+      totalSumGoals += aScore + bScore;
+
       if (winnerSide === 'a') {
         // winners a
         a.forEach((id:string) => {
@@ -413,6 +457,8 @@ app.post("/v1/match/game/finish", async (c) => {
           if (aScore === 10 && bScore === 0) {
             byId[id].xpGained += 50;
             byId[id].perfectWins += 1;
+            byId[id].ten_zero_wins += 1;
+            totalSumPodlezani += 2;
           }
         });
         b.forEach((id:string) => {
@@ -440,6 +486,8 @@ app.post("/v1/match/game/finish", async (c) => {
           if (bScore === 10 && aScore === 0) {
             byId[id].xpGained += 50;
             byId[id].perfectWins = (byId[id].perfectWins || 0) + 1;
+            byId[id].ten_zero_wins += 1;
+            totalSumPodlezani += 2;
           }
         });
         a.forEach((id:string) => {
@@ -493,6 +541,18 @@ app.post("/v1/match/game/finish", async (c) => {
       });
     }
 
+    // Add vyrazacka bonus: 10 XP per vyrazacka
+    scores.forEach((s: any) => {
+      if (s.vyrazacka) {
+        Object.entries(s.vyrazacka).forEach(([playerId, vyrazackaCount]: [string, any]) => {
+          if (byId[playerId]) {
+            byId[playerId].xpGained += Number(vyrazackaCount) * 10;
+            totalSumVyrazecka += Number(vyrazackaCount);
+          }
+        });
+      }
+    });
+
     // Prepare updates and history data
     const historyPlayers: any[] = [];
     for (const id of ids) {
@@ -518,6 +578,7 @@ app.post("/v1/match/game/finish", async (c) => {
             loses: (profile.loses || 0) + losesAdd,
             ultimate_wins: (profile.ultimate_wins || 0) + ultimateWinInc,
             ultimate_loses: (profile.ultimate_loses || 0) + ultimateLoseInc,
+            ten_zero_wins: (profile.ten_zero_wins || 0) + rec.ten_zero_wins,
           });
         }
       } catch (e) {
@@ -541,6 +602,29 @@ app.post("/v1/match/game/finish", async (c) => {
       byId[id].oldElo = oldElo;
       byId[id].newElo = newElo;
       byId[id].xpGained = xpGain;
+    }
+
+    // Save global stats document in Appwrite with JSON stringified
+    try {
+      if (!projectId || !apiKey || !databaseId) throw new Error('Appwrite not configured for history');
+      const client = new sdk.Client().setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1').setProject(process.env.APPWRITE_PROJECT).setKey(process.env.APPWRITE_KEY);
+      const databases = new sdk.Databases(client);
+      
+      try {
+        const globalStats = await getGlobalStats(); // profile id or username may be used
+        if (globalStats) {
+          await updateGlobalStats({
+            totalGoals: (globalStats.totalGoals || 0) + totalSumGoals,
+            totalMatches: (globalStats.totalMatches || 0) + totalSumMatches,
+            totalPodlezani: (globalStats.totalPodlezani || 0) + totalSumPodlezani,
+            totalVyrazecka: (globalStats.totalVyrazecka || 0) + totalSumVyrazecka,
+          });
+        }
+      } catch (e) {
+        console.error('failed updating gloal stats', e);
+      }
+    } catch (e) {
+      console.error('failed to write match history', e);
     }
 
     // Save match history document in Appwrite with JSON stringified
@@ -700,6 +784,8 @@ function computeEloBreakdown(playerId: string, rec: any, scores: any[], players:
 function computeXpBreakdown(playerId: string, rec: any, scores: any[], players: any[], totalRounds: number, ultimateWinnerId: string | null) {
   const breakdown: any[] = [];
   let total = 0;
+  let totalGoals = 0;
+  let totalVyrazacka = 0;
 
   scores.forEach((s: any, idx: number) => {
     const a = s.a || [];
@@ -717,6 +803,16 @@ function computeXpBreakdown(playerId: string, rec: any, scores: any[], players: 
       isWinner = b.includes(playerId);
       isLoser = a.includes(playerId);
     }
+
+    if (a.includes(playerId)) {
+      totalGoals += aScore;
+    } else if (b.includes(playerId)) {
+      totalGoals += bScore;
+    }
+
+    // Count vyrazacka for this player
+    const playerVyrazacka = s.vyrazacka?.[playerId] ?? 0;
+    totalVyrazacka += playerVyrazacka;
 
     if (isWinner) {
       breakdown.push({ match: idx + 1, reason: `Won match ${idx + 1}`, delta: 15 });
@@ -738,6 +834,15 @@ function computeXpBreakdown(playerId: string, rec: any, scores: any[], players: 
   if (ultimateWinnerId === playerId) {
     breakdown.push({ match: null, reason: `Ultimate winner bonus`, delta: 25 });
     total += 25;
+  }
+
+  breakdown.push({ match: null, reason: `Number of goals`, delta: totalGoals });
+  
+  // Add vyrazacka XP bonus: 10 XP per vyrazacka
+  const vyrazackaBonus = totalVyrazacka * 10;
+  if (vyrazackaBonus > 0) {
+    breakdown.push({ match: null, reason: `Vyrazacka bonus (${totalVyrazacka} × 10)`, delta: vyrazackaBonus });
+    total += vyrazackaBonus;
   }
 
   return { breakdown, total };

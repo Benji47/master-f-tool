@@ -17,7 +17,7 @@ export function Homepage({ c }: { c: Context }) {
         <a href="/v1/auth/login" className="flex-1">
             <button
             type="button"
-            className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-bold rounded-md transition-all duration-200 font-[Orbitron]"
+            className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 cursor-pointer hover:to-green-600 text-white font-bold rounded-md transition-all duration-200 font-[Orbitron]"
             >
             LOGIN
             </button>
@@ -25,7 +25,7 @@ export function Homepage({ c }: { c: Context }) {
         <a href="/v1/auth/register" className="flex-1">
             <button
             type="button"
-            className="w-full px-4 py-2 bg-transparent hover:bg-neutral-800 text-white font-bold rounded-md border border-neutral-700 transition-all duration-200 font-[Orbitron]"
+            className="w-full px-4 py-2 bg-transparent hover:bg-neutral-800 text-white font-bold cursor-pointer rounded-md border border-neutral-700 transition-all duration-200 font-[Orbitron]"
             >
             REGISTER
             </button>

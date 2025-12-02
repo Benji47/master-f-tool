@@ -2,13 +2,17 @@
   "name": "mars-empire",
   "scripts": {
     "dev": "bun run --hot src/server.tsx",
-    "bundle": "bun build --entrypoints src/appwrite.tsx --outdir=dist --target=bun"
+    "bundle": "bun build --entrypoints src/appwrite.tsx --outdir=dist --target=bun",
+    "css": "tailwindcss -i src/styles/Homepage.css -o dist/styles.css --watch"
   },
   "dependencies": {
     "hono": "^4.10.6",
     "node-appwrite": "^20.3.0"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17"
   }
 }

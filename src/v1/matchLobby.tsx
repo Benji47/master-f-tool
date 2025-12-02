@@ -26,7 +26,7 @@ export function MatchLobbyPage({ c, matchId, currentUser }: { c: Context; matchI
 
           <form id="leaveForm" action="/v1/match/leave" method="post" className="flex-1">
             <input type="hidden" name="matchId" value={matchId} />
-            <button type="submit" className="w-full py-3 bg-transparent border border-neutral-700 text-white rounded-md">
+            <button type="submit" className="w-full py-3 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-700 cursor-pointer transition-all">
               Leave
             </button>
           </form>
@@ -65,7 +65,7 @@ export function MatchLobbyPage({ c, matchId, currentUser }: { c: Context; matchI
 
     if(players.length >= 4) {
       startBtn.disabled = false;
-      startBtn.className = 'w-full py-3 bg-red-600 text-white rounded-md';
+      startBtn.className = 'w-full py-3 bg-green-500 text-white rounded-md hover:bg-green-700 cursor-pointer transition-all';
     } else {
       startBtn.disabled = true;
       startBtn.className = 'w-full py-3 bg-neutral-700/40 text-neutral-400 rounded-md';

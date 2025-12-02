@@ -1,4 +1,10 @@
 /* src/styles/Homepage.css */
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+
 .homepage {
   display: flex;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -122,4 +128,22 @@
 
 .submit-btn:active {
   transform: translateY(0);
+}
+
+@layer base {
+  button {
+    @apply cursor-pointer;
+  }
+}
+
+.leaderboard-tab .divide-y > div:nth-child(odd) {
+  background-color: #ffffff05;
+}
+
+.leaderboard-tab .divide-y > div:nth-child(2n) {
+  background-color: #0000;
+}
+
+.leaderboard-tab .divide-y > div:hover {
+  background-color: #9c2b2b0a !important;
 }
