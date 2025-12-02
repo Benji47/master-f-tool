@@ -12,7 +12,9 @@ export function LoginPage({ c }: { c: Context }) {
         </div>
 
         <div className="bg-neutral-900/50 backdrop-blur-sm rounded-lg border border-neutral-800 p-6 shadow-2xl">
-          <form action="/v1/auth/login" method="post" className="space-y-6">
+          <form x-data="login" {...{
+            '@submit.prevent': 'submit()'
+          }} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="username" className="block text-sm font-medium text-neutral-200 font-[Exo_2]">
                 Username
@@ -20,8 +22,7 @@ export function LoginPage({ c }: { c: Context }) {
               <input
                 autoFocus={true}
                 type="text"
-                id="username"
-                name="username"
+                x-model="username"
                 required
                 placeholder="Enter your username"
                 className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 font-[Exo_2]"
@@ -34,8 +35,7 @@ export function LoginPage({ c }: { c: Context }) {
               </label>
               <input
                 type="password"
-                id="password"
-                name="password"
+                x-model="password"
                 required
                 placeholder="Enter your password"
                 className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 font-[Exo_2]"
@@ -49,6 +49,9 @@ export function LoginPage({ c }: { c: Context }) {
               LOGIN
             </button>
           </form>
+          
+          
+          <p hx-trigger="load" hx-get="/blabla">...</p>
 
           <div className="mt-4 text-center">
             <a href="/" className="text-sm text-neutral-400 hover:text-neutral-200">
@@ -57,6 +60,11 @@ export function LoginPage({ c }: { c: Context }) {
           </div>
         </div>
       </div>
+      
+      
+      <script src="https://cdn.jsdelivr.net/npm/appwrite@21.4.0"></script>
+      <script src="//unpkg.com/alpinejs" defer></script>
+      <script src="/static/login.js"></script>
     </div>
   );
 }

@@ -12,16 +12,17 @@ export function RegisterPage({ c }: { c: Context }) {
         </div>
 
         <div className="bg-neutral-900/50 backdrop-blur-sm rounded-lg border border-neutral-800 p-6 shadow-2xl">
-          <form id="registerForm" action="/v1/auth/register" method="post" className="space-y-6">
+          <form x-data="register" {...{
+            '@submit.prevent': 'submit()'
+          }} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="username" className="block text-sm font-medium text-neutral-200 font-[Exo_2]">
                 Username
               </label>
               <input
+                x-model="username"
                 autoFocus={true}
                 type="text"
-                id="username"
-                name="username"
                 required
                 placeholder="Choose a username"
                 className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 font-[Exo_2]"
@@ -34,8 +35,7 @@ export function RegisterPage({ c }: { c: Context }) {
               </label>
               <input
                 type="password"
-                id="password"
-                name="password"
+                 x-model="password"
                 required
                 placeholder="Enter password"
                 className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 font-[Exo_2]"
@@ -48,8 +48,7 @@ export function RegisterPage({ c }: { c: Context }) {
               </label>
               <input
                 type="password"
-                id="confirmPassword"
-                name="confirmPassword"
+                x-model="passwordAgain"
                 required
                 placeholder="Repeat password"
                 className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 font-[Exo_2]"
@@ -74,25 +73,9 @@ export function RegisterPage({ c }: { c: Context }) {
         </div>
       </div>
 
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function(){
-              var form = document.getElementById('registerForm');
-              var err = document.getElementById('regError');
-              form && form.addEventListener('submit', function(e){
-                err.textContent = '';
-                var p = document.getElementById('password').value;
-                var cp = document.getElementById('confirmPassword').value;
-                if(!p || !cp || p !== cp){
-                  e.preventDefault();
-                  err.textContent = 'Passwords must match.';
-                }
-              });
-            })();
-          `,
-        }}
-      />
+      <script src="https://cdn.jsdelivr.net/npm/appwrite@21.4.0"></script>
+      <script src="//unpkg.com/alpinejs" defer></script>
+      <script src="/static/register.js"></script>
     </div>
   );
 }

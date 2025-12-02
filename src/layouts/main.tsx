@@ -35,6 +35,7 @@ export function MainLayout({ children, c }: { children: Child, c: Context }) {
           rel="stylesheet"
         />
         <link rel="stylesheet" href="/static/style.css" />
+        <script src="/static/htmx-hook.js"></script>
       </head>
       <body class="m-0 p-0 min-h-screen bg-neutral-950">
         <GameContextProvider>
