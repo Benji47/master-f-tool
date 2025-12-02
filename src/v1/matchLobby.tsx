@@ -73,18 +73,25 @@ export function MatchLobbyPage({ c, matchId, currentUser }: { c: Context; matchI
   }
 
   async function fetchState(){
-    try{
-      const res = await fetch('/v1/match/state?matchId=' + encodeURIComponent(matchId));
-      if(res.ok){
-        const doc = await res.json();
-        renderPlayers(doc);
+  try{
+    const res = await fetch('/v1/match/state?matchId=' + encodeURIComponent(matchId));
+    if(res.ok){
+      const doc = await res.json();
+      
+      // 🔥 redirect all clients when match actually starts
+      if (doc.state === "playing") {
+        window.location.href = "/v1/match/game";
+        return;
       }
-    }catch(e){ console.error(e); }
-  }
+
+      renderPlayers(doc);
+    }
+  }catch(e){ console.error(e); }
+}
 
   // initial load + polling
   fetchState();
-  const poll = setInterval(fetchState, 2000);
+  const poll = setInterval(fetchState, 4000);
 
   // stop polling when navigating away
   window.addEventListener('beforeunload', function(){ clearInterval(poll); });

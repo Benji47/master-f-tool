@@ -278,6 +278,32 @@ export async function findPlayingMatch(): Promise<MatchDoc | null> {
   }
 }
 
+export async function findCurrentMatch(username: string): Promise<MatchDoc | null> {
+  const c = client();
+  const databases = new sdk.Databases(c);
+
+  try {
+    // Since there is always only ONE match, we just fetch it
+    const res = await databases.listDocuments(databaseId, collectionId, [
+      sdk.Query.limit(1),
+    ]);
+
+    if (!res.documents.length) return null;
+
+    const doc = parseDoc(res.documents[0]);
+
+    // Look for player by username
+    const isPlayer = doc.players?.some(p => p.username === username);
+
+    if (isPlayer) return doc;
+
+    return null;
+  } catch (err) {
+    console.error("findCurrentMatch error", err);
+    return null;
+  }
+}
+
 /** deleteMatch utility (explicit delete) */
 export async function deleteMatch(matchId: string): Promise<void> {
   const c = client();

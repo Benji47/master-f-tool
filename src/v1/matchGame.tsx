@@ -219,6 +219,43 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
       form && form.submit();
     }
   });
+
+  // ---- ADD POLLING HERE ----
+  async function pollState(){
+    const res = await fetch('/v1/match/state?matchId=' + encodeURIComponent(matchId));
+    if (!res.ok) return;
+
+    const doc = await res.json();
+
+    if (doc.state === "finished") {
+      window.location.href = "/v1/match/result?matchId=" + encodeURIComponent(matchId);
+      return;
+    }
+
+    // update scores
+    if (Array.isArray(doc.scores)) {
+      doc.scores.forEach((s, i) => {
+        const a = document.getElementById('scoreA-'+i);
+        const b = document.getElementById('scoreB-'+i);
+        if (a) a.textContent = String(s.scoreA);
+        if (b) b.textContent = String(s.scoreB);
+
+        // vyrazacka
+        if (s.vyrazacka) {
+          for (const pid in s.vyrazacka) {
+            const el = document.getElementById('vyr-'+i+'-'+pid);
+            if (el) el.textContent = String(s.vyrazacka[pid]);
+          }
+        }
+      });
+    }
+  }
+
+  pollState();
+  const poll = setInterval(pollState, 4000);
+  window.addEventListener("beforeunload", () => clearInterval(poll)); 
+
+
 })();
           `,
         }}

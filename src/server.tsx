@@ -15,6 +15,7 @@ import { MatchLobbyPage } from "./v1/matchLobby";
 import { updateGameScores } from "./v1/match";
 import { MatchGamePage } from "./v1/matchGame";
 import { MatchResultPage } from "./v1/matchResult";
+import { findCurrentMatch } from "./v1/match";
 
 const sdk = require('node-appwrite');
 
@@ -39,6 +40,30 @@ app.use(async (c, next) => {
 
   // Check for user cookie on protected routes
   const user = getCookie(c, "user") ?? "";
+
+  if (user) {
+    const activeMatch = await findCurrentMatch(user);
+
+  // ❗ do not redirect JSON/API endpoints
+  const isApiRequest = c.req.header("Accept")?.includes("application/json")
+                    || c.req.path.startsWith("/v1/match/state")
+                    || c.req.path.startsWith("/v1/match/game/score")
+                    || c.req.path.startsWith("/v1/match/game/vyrazacka");
+
+  if (!isApiRequest && activeMatch) {
+
+    if (activeMatch.state === "playing" &&
+        !c.req.path.startsWith("/v1/match/game")) {
+      return c.redirect(`/v1/match/game`);
+    }
+
+    if (activeMatch.state === "open" &&
+        !c.req.path.startsWith("/v1/match/lobby")) {
+      return c.redirect(`/v1/match/lobby`);
+    }
+  }
+  }
+
   
   if (!user && c.req.path.startsWith("/v1/")) {
     return c.redirect("/v1/auth/login");
@@ -650,7 +675,7 @@ app.post("/v1/match/game/finish", async (c) => {
 
     // Delete the match from database after finishing
     try {
-      await deleteMatch(matchId);
+      //await deleteMatch(matchId);
     } catch (e) {
       console.error('failed to delete match after finish', e);
     }
