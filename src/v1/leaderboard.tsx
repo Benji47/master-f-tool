@@ -25,7 +25,7 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
   }
 
   // Helper to compute level from XP
-  const levelsXp = [100, 150, 225, 300, 400, 500, 650, 800, 1000];
+  const levelsXp = [75, 150, 225, 300, 400, 500, 650, 800, 1000];
   function getCumulativeThresholds(): number[] {
     let cumulative = 0;
     return levelsXp.map((xp) => {
