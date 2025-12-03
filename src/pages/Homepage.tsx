@@ -7,7 +7,7 @@ export function Homepage({ c }: { c: Context }) {
         {/* Icon */}
         <div className="flex justify-center mb-6">
           <img
-            src="/icon.jpg"
+            src="https://raw.githubusercontent.com/Benji47/master-f-tool/refs/heads/main/public/icon.jpg"
             alt="App Icon"
             className="w-32 h-32 object-contain drop-shadow-xl"
           />
