@@ -16,6 +16,7 @@ import { MatchGamePage } from "./v1/matchGame";
 import { MatchResultPage } from "./v1/matchResult";
 import { findCurrentMatch } from "./v1/match";
 import { MatchHistoryPage } from "./v1/matchHistory";
+import { readFileSync } from "node:fs";
 
 const sdk = require('node-appwrite');
 
@@ -25,8 +26,22 @@ const app = new Hono<{
 }>();
 
 app.use("/static/*", serveStatic({ root: "./" }));
-app.get('/favicon.ico', serveStatic({ root: './public' }));
-app.get('/icon.jpg', serveStatic({ root: './public' }));
+// app.get('/favicon.ico', serveStatic({ root: './public' }));
+// app.get('/icon.jpg', serveStatic({ root: './public' }));
+
+app.get("/favicon.ico", (c) => {
+  const file = readFileSync("./public/favicon.ico");
+  return c.body(file, 200, {
+    "Content-Type": "image/x-icon",
+  });
+});
+
+app.get("/icon.jpg", (c) => {
+  const file = readFileSync("./public/icon.jpg");
+  return c.body(file, 200, {
+    "Content-Type": "image/jpeg",
+  });
+});
 
 app.use(async (c, next) => {
   // Allow these routes to skip auth check
