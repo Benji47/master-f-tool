@@ -1,7 +1,7 @@
 import { Context } from "hono";
 import { getCookie } from "hono/cookie";
-import { GlobalStats, PlayerProfile } from "./profile";
-import "../styles/Homepage.css";
+import { getAllPlayerProfiles, GlobalStats, PlayerProfile } from "./profile";
+import { useEffect, useState } from "hono/jsx";
 
 interface PlayerData {
   username: string;
@@ -13,11 +13,12 @@ interface PlayerData {
   ultimate_loses: number;
   goals_scored: number;
   goals_conceded: number;
-  vyrazacky: number;
+  vyrazecky: number;
   ten_zero_wins: number;
+  ten_zero_loses: number;
 }
 
-const levelsXp = [100, 150, 225, 300, 400, 500, 650, 800, 1000];
+const levelsXp = [75, 150, 225, 300, 400, 500, 650, 800, 1000];
 
 function getCumulativeThresholds(): number[] {
   let cumulative = 0;
@@ -55,8 +56,8 @@ function computeLevel(xp: number) {
 
 export function getLevelBadgeColor(level: number): { bg: string; text: string, textInLeaderboards: string } {
   if (level <= 1) return { bg: "bg-red-600", text: "text-red-100", textInLeaderboards: "text-red-500" }; // Bronze
-  if (level <= 2) return { bg: "bg-orange-600", text: "text-orange-100", textInLeaderboards: "text-red-500" }; // Bronze
-  if (level <= 3) return { bg: "bg-yellow-600", text: "text-yellow-100", textInLeaderboards: "text-red-500" }; // Bronze
+  if (level <= 2) return { bg: "bg-orange-600", text: "text-orange-100", textInLeaderboards: "text-orange-500" }; // Bronze
+  if (level <= 3) return { bg: "bg-yellow-600", text: "text-yellow-100", textInLeaderboards: "text-yellow-500" }; // Bronze
   if (level <= 4) return { bg: "bg-lime-600", text: "text-lime-100", textInLeaderboards: "text-lime-500" }; // Bronze
   if (level <= 5) return { bg: "bg-green-600", text: "text-green-100", textInLeaderboards: "text-green-500" }; // Bronze
   if (level <= 6) return { bg: "bg-cyan-600", text: "text-cyan-100", textInLeaderboards: "text-cyan-500" }; // Bronze
@@ -71,21 +72,21 @@ export function getLevelBadgeColor(level: number): { bg: string; text: string, t
 export const badges = [
   { name: "Rookie ♖", minLevel: 0, maxLevel: 75, bg: "bg-red-600", text: "text-red-100" },
   { name: "Šnekpán 🐌", minLevel: 75, maxLevel: 225, bg: "bg-orange-600", text: "text-orange-100" },
-  { name: "Cleaner 🧹", minLevel: 250, maxLevel: 450, bg: "bg-yellow-600", text: "text-yellow-100" },
-  { name: "todo", minLevel: 475, maxLevel: 750, bg: "bg-lime-600", text: "text-lime-100" },
+  { name: "Cleaner 🧹", minLevel: 225, maxLevel: 450, bg: "bg-yellow-600", text: "text-yellow-100" },
+  { name: "Own goals master 🥅🫣", minLevel: 450, maxLevel: 750, bg: "bg-lime-600", text: "text-lime-100" },
   { name: "todo", minLevel: 750, maxLevel: 1150, bg: "bg-green-600", text: "text-green-100" },
   { name: "todo", minLevel: 1150, maxLevel: 1550, bg: "bg-cyan-600", text: "text-cyan-100" },
   { name: "todo", minLevel: 1550, maxLevel: 2050, bg: "bg-blue-600", text: "text-blue-100" },
   { name: "todo", minLevel: 2050, maxLevel: 2700, bg: "bg-indigo-600", text: "text-indigo-100" },
-  { name: "todo", minLevel: 2700, maxLevel: 3500, bg: "bg-purple-600", text: "text-purple-100" },
-  { name: "todo", minLevel: 3500, maxLevel: 4500, bg: "bg-black", text: "text-neutral-100" },
+  { name: "▄︻デ══━一💥", minLevel: 2700, maxLevel: 3500, bg: "bg-purple-600", text: "text-purple-100" },
+  { name: "Vyrážeč ➜]", minLevel: 3500, maxLevel: 4500, bg: "bg-black", text: "text-neutral-100" },
 ];
 
 // NEW: ELO rank tiers (so Ranks panel can reuse same info as eloRank)
 const rankTiers = [
-  { name: "Bronze I", min: 0, max: 199, color: "from-amber-800 to-amber-600", textColor: "text-amber-800" },
-  { name: "Bronze II", min: 200, max: 399, color: "from-amber-800 to-amber-600", textColor: "text-amber-800" },
-  { name: "Bronze III", min: 400, max: 599, color: "from-amber-800 to-amber-600", textColor: "text-amber-800" },
+  { name: "Bronze I", min: 0, max: 199, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
+  { name: "Bronze II", min: 200, max: 399, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
+  { name: "Bronze III", min: 400, max: 599, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
 
   { name: "Silver I", min: 600, max: 749, color: "from-gray-900 to-gray-500", textColor: "text-gray-500" },
   { name: "Silver II", min: 750, max: 899, color: "from-gray-900 to-gray-500", textColor: "text-gray-500" },
@@ -128,7 +129,9 @@ function eloRank(elo: number) {
   };
 }
 
-export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playerProfile: PlayerProfile | null; globalStats: GlobalStats | null}) {
+export async function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playerProfile: PlayerProfile | null; globalStats: GlobalStats | null}) {
+  const players = await getAllPlayerProfiles();
+
   const playerData: PlayerData = playerProfile ? {
     username: playerProfile.username,
     elo: playerProfile.elo,
@@ -139,8 +142,9 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
     ultimate_loses: playerProfile.ultimate_loses,
     goals_scored: playerProfile.goals_scored,
     goals_conceded: playerProfile.goals_conceded,
-    vyrazacky: playerProfile.vyrazacky,
+    vyrazecky: playerProfile.vyrazecky,
     ten_zero_wins: playerProfile.ten_zero_wins,
+    ten_zero_loses: playerProfile.ten_zero_loses,
   } : {
     username: getCookie(c, "user") ?? "Player",
     elo: 500,
@@ -151,8 +155,9 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
     ultimate_loses: 0,
     goals_scored: 0,
     goals_conceded: 0,
-    vyrazacky: 0,
+    vyrazecky: 0,
     ten_zero_wins: 0,
+    ten_zero_loses: 0,
   };
 
   const globalStatsData: GlobalStats = globalStats ? {
@@ -202,7 +207,7 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
                     </button>
 
                     {/* POPUP: Levels */}
-                    <div className="absolute -right-2 top-full mt-2 w-72 bg-neutral-900/95 border border-neutral-700 rounded-lg p-4 z-50 shadow-lg text-sm
+                    <div className="absolute -left-2 top-full mt-2 w-90 bg-neutral-900/95 border border-neutral-700 rounded-lg p-4 z-50 shadow-lg text-sm
                                     opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150">
                       <h4 className="font-bold mb-2 text-white">Levels & Badges</h4>
 
@@ -210,7 +215,7 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
                         {badges.map((b, idx) => (
                           <div key={b.name} className="flex items-center justify-between bg-neutral-800/40 rounded px-2 py-1">
                             <div className="flex items-center gap-2">
-                              <span className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-22 text-left`}>
+                              <span className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-26 text-left`}>
                                 {b.name}
                               </span>
                               <div className="text-neutral-200 text-sm">
@@ -238,27 +243,56 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
 
                       {/* Grid layout */}
                       <div className="grid grid-cols-6 gap-4">
-                        {["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master"].map((rankName) => {
-                          const tiers = rankTiers.filter(t => t.name.startsWith(rankName));
-                          const titleColor = tiers[0]?.textColor ?? "text-white"; // use first tier color, fallback to white
+      {["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master"].map((rankName) => {
+  const tiers = rankTiers.filter(t => t.name.startsWith(rankName));
+  const titleColor = tiers[0]?.textColor ?? "text-white";
 
-                          return (
-                            <div key={rankName} className="flex flex-col gap-2 ">
-                              <div className={`font-semibold mb-1 ${titleColor}`}>{rankName}</div>
-                              {tiers.map((tier) => (
-                                <div key={tier.name} className="flex items-center gap-2 bg-neutral-800/40 rounded px-2 py-1">
-                                  <div className={`w-8 h-3 rounded-full bg-gradient-to-r ${tier.color}`} />
-                                  <div className={`${tier.textColor} text-xs font-semibold`}>
-                                    {tier.name} ({tier.min}-{tier.max})
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })}
+  // Players who belong to this rank (Bronze, Silver...)
+  let playersInRank = players.filter(
+    (p) => eloRank(p.elo).name.split(" ")[0] === rankName
+  );
+
+   playersInRank = playersInRank.sort((a, b) => b.elo - a.elo);
+
+  return (
+    <div key={rankName} className="flex flex-col gap-2">
+      
+      {/* Rank Title */}
+      <div className={`font-semibold mb-1 ${titleColor}`}>{rankName}</div>
+
+      {/* Tier Bars (WITHOUT player list) */}
+      {tiers.map((tier) => (
+        <div key={tier.name} className="flex items-center gap-2 bg-neutral-800/40 rounded px-2 py-1">
+          <div className={`w-8 h-3 rounded-full bg-gradient-to-r ${tier.color}`} />
+          <div className={`${tier.textColor} text-xs font-semibold`}>
+            {tier.name} ({tier.min}-{tier.max})
+          </div>
+        </div>
+      ))}
+
+      {/* Player List (only once per rank) */}
+      <div className="mt-1 pl-4">
+        {playersInRank.length > 0 ? (
+          <ul className="text-neutral-300 text-xs list-disc">
+            {playersInRank.map((p) => (
+              <li key={p.username}>
+                {p.username} — {p.elo} ELO
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-neutral-600 text-xs">No players</div>
+        )}
+      </div>
+
+    </div>
+  );
+})}
+    
                       </div>
                     </div>
                   </div>
+
                 </div>
             </div>
 
@@ -338,8 +372,8 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
 
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-neutral-300">
-                <span className="text-blue-400">Total Games:</span>
-                <span className="text-blue-400">{playerData.wins + playerData.loses}</span>
+                <span className="text-blue-400">Total Matches (games):</span>
+                <span className="text-blue-400">{playerData.wins + playerData.loses} ({(playerData.wins + playerData.loses)/3})</span>
               </div>
               <div>
                 <div className="flex justify-between text-neutral-300">
@@ -364,6 +398,10 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
                   <span className="text-red-400">• Ultimate Loses</span>
                   <span className="text-red-400">{playerData.ultimate_loses}</span>
                 </div>
+                <div className="flex justify-between ml-4 text-sm text-neutral-400">
+                  <span className="text-red-400">• 0-10 loses</span>
+                  <span className="text-red-400">{playerData.ten_zero_loses}</span>
+                </div>
               </div>
             </div>
 
@@ -376,7 +414,7 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
               </div>
               <div className="flex justify-between text-neutral-300">
                 <span className="text-orange-400">Vyrážečka Count:</span>
-                <span className="text-orange-400">{playerData.vyrazacky}</span>
+                <span className="text-orange-400">{playerData.vyrazecky}</span>
               </div>
             </div>
           </div>
@@ -386,7 +424,7 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
         <div className="lg:col-span-2 flex flex-col justify-center items-center gap-6">
           <form action="/v1/match/join" method="post" className="w-full max-w-sm">
             <button type="submit" className="w-full py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 cursor-pointer text-white font-bold text-lg rounded-md transition-all">
-              JOIN MATCH
+              ⚔️ JOIN MATCH
             </button>
           </form>
 
@@ -396,13 +434,19 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
             </button>
           </a>
 
+          <a href="/v1/match-history" className="w-full max-w-sm">
+            <button className="w-full py-4 bg-transparent border-2 border-neutral-700 hover:border-green-500 text-white font-bold text-lg cursor-pointer rounded-md transition-all">
+              📜 MATCH HISTORY
+            </button>
+          </a>
+
           <button disabled className="w-full max-w-sm py-4 bg-neutral-700/40 text-neutral-400 font-bold text-lg rounded-md cursor-not-allowed opacity-60">
             🏆 TOURNAMENTS
             <div className="text-xs mt-1">Coming Soon</div>
           </button>
 
           <button disabled className="w-full max-w-sm py-4 bg-neutral-700/40 text-neutral-400 font-bold text-lg rounded-md cursor-not-allowed opacity-60">
-            MATCH HISTORY
+            CREATE MATCH
             <div className="text-xs mt-1">Coming Soon</div>
           </button>
         </div>
@@ -428,8 +472,8 @@ export function LobbyPage({ c, playerProfile, globalStats }: { c: Context; playe
 
         <div className="space-y-2 text-sm">
           <div className="flex justify-between text-neutral-300">
-            <span className="text-blue-400">Total Matches:</span>
-            <span className="text-blue-400">{globalStatsData.totalMatches}</span>
+            <span className="text-blue-400">Total Matches (games):</span>
+            <span className="text-blue-400">{globalStatsData.totalMatches} ({globalStatsData.totalMatches/3})</span>
           </div>
 
           <div className="flex justify-between text-neutral-300">

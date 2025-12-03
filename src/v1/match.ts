@@ -18,6 +18,26 @@ export type MatchPlayer = {
   elo: number;
 };
 
+export type HistoryPlayers = ({
+  id: string,
+  username: string,
+  oldElo: number,
+  newElo: number,
+  xpGain: number,
+  winsAdd: number,
+  losesAdd: number,
+  ultimateWinInc: number,
+  ultimateLoseInc: number,
+  gamesAdded: number,
+});
+
+export type MatchHistoryDoc = {
+  $id: string;
+  players: HistoryPlayers[];
+  scores?: { a: string[]; b: string[]; scoreA: number; scoreB: number; vyrazacka?: Record<string, number> }[];
+  matchId: string
+}
+
 export type MatchDoc = {
   $id: string;
   state: string; // open | full | playing | finished
@@ -33,8 +53,45 @@ function client() {
   return new sdk.Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
 }
 
-function parseDoc(raw: any): MatchDoc {
+export function parseMatchHistoryDoc(raw: any): MatchHistoryDoc {
   const playersJson = raw.players_json ?? raw.players ?? '[]';
+  const scoresJsonRaw = raw.scores_json ?? '[]';
+  let players: HistoryPlayers[] = [];
+  let scores: { a: string[]; b: string[]; scoreA: number; scoreB: number }[] = [];
+  
+  try {
+    // players_json is always a string
+    if (typeof playersJson === 'string') {
+      players = JSON.parse(playersJson || '[]');
+    } else {
+      players = playersJson;
+    }
+  } catch (e) {
+    console.warn('Failed to parse players_json', e);
+    players = [];
+  }
+
+  try {
+    // scores_json is always a string
+    if (typeof scoresJsonRaw === 'string') {
+      scores = JSON.parse(scoresJsonRaw || '[]');
+    } else {
+      scores = scoresJsonRaw;
+    }
+  } catch (e) {
+    console.warn('Failed to parse scores_json', e);
+    scores = [];
+  }
+  return {
+    $id: raw.$id,
+    players: players,
+    scores: scores,
+    matchId: raw.matchId ?? '',
+  };
+}
+
+export function parseDoc(raw: any): MatchDoc {
+  const playersJson = raw.players_json ?? '[]';
   const scoresJsonRaw = raw.scores_json ?? '[]';
   let players: MatchPlayer[] = [];
   let scores: { a: string[]; b: string[]; scoreA: number; scoreB: number }[] = [];

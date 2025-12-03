@@ -1,5 +1,4 @@
 import { Context } from "hono";
-import "../styles/Homepage.css";
 
 export function MatchGamePage({ c, match }: { c: Context; match: any }) {
   const players = match.players || [];
@@ -27,7 +26,7 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
         {/* Pairings */}
         <div id="pairings" className="space-y-4">
           {scores.map((s: any, idx: number) => (
-            <div key={idx} className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-800">
+            <div key={idx} className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-300">
               <div className="flex items-center justify-between mb-4">
                 {/* Left team */}
                 <div className="flex flex-col items-start gap-2 w-1/3">
@@ -79,7 +78,7 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
 
               {/* Vyrazacka section */}
               <div className="border-t border-neutral-700 pt-4 mt-4">
-                <h4 className="text-sm font-semibold text-neutral-300 mb-3">Vyrazacka</h4>
+                <h4 className="text-sm font-semibold text-neutral-300 mb-3">Vyrážečky</h4>
                 <div className="grid grid-cols-2 gap-4">
                   {/* Left team vyrazacka */}
                   <div className="space-y-2">
@@ -223,14 +222,17 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
   // ---- ADD POLLING HERE ----
   async function pollState(){
     const res = await fetch('/v1/match/state?matchId=' + encodeURIComponent(matchId));
-    if (!res.ok) return;
-
-    const doc = await res.json();
-
-    if (doc.state === "finished") {
-      window.location.href = "/v1/match/game/finish";
+    if (res.status === 404 || res.status === 500) {
+      window.location.href = "/v1/match-history";
       return;
     }
+
+    if (!res.ok) {
+      console.error("Error:", res.status);
+      return;
+    }
+
+    const doc = await res.json();
 
     // update scores
     if (Array.isArray(doc.scores)) {

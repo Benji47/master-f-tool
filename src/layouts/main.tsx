@@ -15,7 +15,7 @@ export function MainLayout({ children, c }: { children: Child, c: Context }) {
     <html>
       <head>
         <title>Master F Tool</title>
-        favicon.png
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <meta name="theme-color" content="#0a0a0a" />
         <meta name="msapplication-navbutton-color" content="#0a0a0a" />
         <meta
@@ -34,7 +34,6 @@ export function MainLayout({ children, c }: { children: Child, c: Context }) {
           href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <link rel="stylesheet" href="/static/style.css" />
       </head>
       <body class="m-0 p-0 min-h-screen bg-neutral-950">
         <GameContextProvider>

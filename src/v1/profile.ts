@@ -16,10 +16,11 @@ export interface PlayerProfile {
   ultimate_loses: number;
   xp: number;
   elo: number;
-  vyrazacky: number;
+  vyrazecky: number;
   goals_scored: number;
   goals_conceded: number;
   ten_zero_wins: number;
+  ten_zero_loses: number;
 }
 
 export interface GlobalStats {
@@ -55,13 +56,14 @@ export async function createPlayerProfile(userId: string, username: string): Pro
         ultimate_loses: 0,
         xp: 0,
         elo: 500,
-        vyrazacky: 0,
+        vyrazecky: 0,
         goals_scored: 0,
         goals_conceded: 0,
         ten_zero_wins: 0,
+        ten_zero_loses: 0,
       }
     );
-    console.log('Player profile created:', profile.$id);
+    
     return profile as PlayerProfile;
   } catch (err: any) {
     console.error('Profile creation error:', err);
@@ -87,6 +89,29 @@ export async function getPlayerProfile(userId: string): Promise<PlayerProfile | 
   } catch (err: any) {
     console.error('Profile fetch error:', err);
     return null;
+  }
+}
+
+export async function getAllPlayerProfiles(): Promise<PlayerProfile[]> {
+  if (!projectId || !apiKey) {
+    throw new Error("Appwrite credentials not configured");
+  }
+
+  const client = new sdk.Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
+
+  const databases = new sdk.Databases(client);
+
+  try {
+    const res = await databases.listDocuments(databaseId, collectionId);
+
+    // Cast to strongly typed profiles
+    return res.documents as PlayerProfile[];
+  } catch (err: any) {
+    console.error("Profiles fetch error:", err);
+    return [];
   }
 }
 

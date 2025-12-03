@@ -1,5 +1,4 @@
 import { Context } from "hono";
-import "../styles/Homepage.css";
 
 export function MatchResultPage({ c, result }: { c: Context; result: any }) {
   const players = result.players || [];
@@ -8,8 +7,19 @@ export function MatchResultPage({ c, result }: { c: Context; result: any }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-2 font-[Orbitron]">Match Results</h1>
-        <p className="text-neutral-400 mb-6">Match ID: {result.matchId}</p>
+        {/* HEADER ROW */}
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2 font-[Orbitron]">Match Results</h1>
+            <p className="text-neutral-400 mb-6">Match ID: {result.matchId}</p>
+          </div>
+
+          <a href="/v1/match-history">
+            <button class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
+              ← Back
+            </button>
+          </a>
+        </div>
 
         <div className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-800 mb-6">
           <h3 className="text-lg text-white mb-2">Players & Changes</h3>
@@ -39,7 +49,7 @@ export function MatchResultPage({ c, result }: { c: Context; result: any }) {
                     ))}
                     <div className="text-xs font-semibold text-neutral-200 flex justify-between border-t border-neutral-700 pt-1 mt-1">
                       <span>Total ELO</span>
-                      <span className={p.eloBreakdown?.total || 0 >= 0 ? 'text-green-400' : 'text-red-400'}>{p.eloBreakdown?.total || 0 >= 0 ? '+' : ''}{p.eloBreakdown?.total || 0}</span>
+                      <span className={(p.eloBreakdown?.total || 0) >= 0 ? 'text-green-400' : 'text-red-400'}>{(p.eloBreakdown?.total || 0) >= 0 ? '+' : ''}{p.eloBreakdown?.total || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -56,7 +66,7 @@ export function MatchResultPage({ c, result }: { c: Context; result: any }) {
                     ))}
                     <div className="text-xs font-semibold text-neutral-200 flex justify-between border-t border-neutral-700 pt-1 mt-1">
                       <span>Total XP</span>
-                      <span className="text-green-400">+{p.xpBreakdown?.total || 0}</span>
+                      <span className="text-green-400">+{p.xpGained || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -75,12 +85,6 @@ export function MatchResultPage({ c, result }: { c: Context; result: any }) {
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="mt-6">
-          <a href="/v1/lobby">
-            <button className="px-6 py-2 bg-green-600 hover:bg-green-700 cursor-pointer text-white rounded-md">Back to Lobby</button>
-          </a>
         </div>
       </div>
     </div>

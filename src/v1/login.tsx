@@ -1,5 +1,4 @@
 import { Context } from "hono";
-import "../styles/Homepage.css";
 
 export function LoginPage({ c }: { c: Context }) {
   return (

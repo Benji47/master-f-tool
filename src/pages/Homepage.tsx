@@ -1,10 +1,18 @@
 import { Context } from 'hono';
-import '../styles/Homepage.css';
 
 export function Homepage({ c }: { c: Context }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* Icon */}
+        <div className="flex justify-center mb-6">
+          <img
+            src="/icon.jpg"
+            alt="App Icon"
+            className="w-32 h-32 object-contain drop-shadow-xl"
+          />
+        </div>
+
         {/* Hero Header */}
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent mb-2 font-[Orbitron]">

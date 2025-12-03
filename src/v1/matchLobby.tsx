@@ -1,5 +1,4 @@
 import { Context } from "hono";
-import "../styles/Homepage.css";
 
 export function MatchLobbyPage({ c, matchId, currentUser }: { c: Context; matchId: string; currentUser: string }) {
   return (

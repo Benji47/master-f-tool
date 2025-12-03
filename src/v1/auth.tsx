@@ -24,7 +24,6 @@ export async function registerUser(username: string, password: string) {
 
   try {
     const result = await users.create('unique()', email, null, password, username);
-    console.log('User created:', result.$id);
     
     // Create player profile in database
     await createPlayerProfile(result.$id, username);
@@ -51,7 +50,6 @@ export async function loginUser(username: string, password: string) {
 
   try {
     const session = await account.createEmailPasswordSession(email, password);
-    console.log('Session created:', session.$id);
     return session;
   } catch (err: any) {
     console.error('Appwrite login error:', err);
