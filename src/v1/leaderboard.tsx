@@ -65,7 +65,7 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
   const sortedByUltimateLoses = [...players].sort((a, b) => b.ultimate_loses - a.ultimate_loses);
   const sortedByVyrazacka = [...players].sort((a, b) => b.vyrazecky - a.vyrazecky);
   const sortedByTotalGames = [...players].sort((a, b) => (b.wins + b.loses) - (a.wins + a.loses));
-  const sortedLevels = [...players].sort((a, b) => b.xp - b.xp);
+  const sortedLevels = [...players].sort((a, b) => b.xp - a.xp);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
