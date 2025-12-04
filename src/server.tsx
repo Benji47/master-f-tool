@@ -983,13 +983,17 @@ function computeEloBreakdown(playerId: string, rec: any, scores: any[], players:
       isLoser = a.includes(playerId);
     }
 
-    const a0 = players.find((x:any)=>x.id===a[0]);
-    const a1 = players.find((x:any)=>x.id===a[1]);
-    const b0 = players.find((x:any)=>x.id===b[0]);
-    const b1 = players.find((x:any)=>x.id===b[1]);
+    const winnerTeam = aScore > bScore ? a : b;
+    const loserTeam  = aScore > bScore ? b : a;
+    
+    const w0 = players.find(x => x.id === winnerTeam[0]);
+    const w1 = players.find(x => x.id === winnerTeam[1]);
+    const l0 = players.find(x => x.id === loserTeam[0]);
+    const l1 = players.find(x => x.id === loserTeam[1]);
+    
+    const avgWinner = avgElo(w0.oldElo, w1.oldElo);
+    const avgLoser  = avgElo(l0.oldElo, l1.oldElo);
 
-    const avgWinner = avgElo(isWinner ? a0.oldElo : b0.oldElo, isWinner ? a1.oldElo : b1.oldElo);
-    const avgLoser = avgElo(isLoser ? a0.oldElo : b0.oldElo, isLoser ? a1.oldElo : b1.oldElo);
     const diff = Math.abs(avgWinner - avgLoser);
     const adj = Math.min(10, Math.floor(diff / 25));
 
