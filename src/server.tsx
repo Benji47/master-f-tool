@@ -501,7 +501,6 @@ export async function matchResults(matchId: string) {
         xpGained: 0,
         winsAdded: 0,
         losesAdded: 0,
-        perfectWins: 0,
         gamesAdded: 0,
         ten_zero_wins: 0,
         vyrazecky: 0,
@@ -547,7 +546,6 @@ export async function matchResults(matchId: string) {
           byId[id].goals_scored += aScore;
           if (aScore === 10 && bScore === 0) {
             byId[id].xpGained += 50;
-            byId[id].perfectWins += 1;
             byId[id].ten_zero_wins += 1;
             totalSumPodlezani += 2;
           }
@@ -560,16 +558,7 @@ export async function matchResults(matchId: string) {
           byId[id].xpGained += 5;
           byId[id].gamesAdded += 1;
         });
-        // elo adjust by relative strength
-        if (avgA > avgB) {
-          // winners stronger -> penalty
-          a.forEach((id:string) => byId[id].newElo -= adj);
-          b.forEach((id:string) => byId[id].newElo += adj);
-        } else if (avgA < avgB) {
-          // winners weaker -> bonus
-          a.forEach((id:string) => byId[id].newElo += adj);
-          b.forEach((id:string) => byId[id].newElo -= adj);
-        }
+
       } else if (winnerSide === 'b') {
         b.forEach((id:string) => {
           byId[id].winsAdded += 1;
@@ -580,7 +569,6 @@ export async function matchResults(matchId: string) {
           byId[id].goals_scored += bScore;
           if (bScore === 10 && aScore === 0) {
             byId[id].xpGained += 50;
-            byId[id].perfectWins = (byId[id].perfectWins || 0) + 1;
             byId[id].ten_zero_wins += 1;
             totalSumPodlezani += 2;
           }
@@ -630,8 +618,8 @@ export async function matchResults(matchId: string) {
 
     // Add vyrazacka bonus: 10 XP per vyrazacka
     scores.forEach((s: any) => {
-      if (s.vyrazecka) {
-        Object.entries(s.vyrazecka).forEach(([playerId, vyrazeckaCount]: [string, any]) => {
+      if (s.vyrazacka) {
+        Object.entries(s.vyrazacka).forEach(([playerId, vyrazeckaCount]: [string, any]) => {
           if (byId[playerId]) {
             byId[playerId].xpGained += Number(vyrazeckaCount) * 10;
             byId[playerId].vyrazecky += Number(vyrazeckaCount);
@@ -709,7 +697,6 @@ app.post("/v1/match/game/finish", async (c) => {
         xpGained: 0,
         winsAdded: 0,
         losesAdded: 0,
-        perfectWins: 0,
         gamesAdded: 0,
         ten_zero_wins: 0,
         vyrazecky: 0,
@@ -756,7 +743,6 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].goals_scored += aScore;
           if (aScore === 10 && bScore === 0) {
             byId[id].xpGained += 50;
-            byId[id].perfectWins += 1;
             byId[id].ten_zero_wins += 1;
             totalSumPodlezani += 2;
           }
@@ -791,7 +777,6 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].goals_scored += bScore;
           if (bScore === 10 && aScore === 0) {
             byId[id].xpGained += 50;
-            byId[id].perfectWins = (byId[id].perfectWins || 0) + 1;
             byId[id].ten_zero_wins += 1;
             totalSumPodlezani += 2;
           }
@@ -852,8 +837,8 @@ app.post("/v1/match/game/finish", async (c) => {
 
     // Add vyrazacka bonus: 10 XP per vyrazacka
     scores.forEach((s: any) => {
-      if (s.vyrazecka) {
-        Object.entries(s.vyrazecka).forEach(([playerId, vyrazeckaCount]: [string, any]) => {
+      if (s.vyrazacka) {
+        Object.entries(s.vyrazacka).forEach(([playerId, vyrazeckaCount]: [string, any]) => {
           if (byId[playerId]) {
             byId[playerId].xpGained += Number(vyrazeckaCount) * 10;
             byId[playerId].vyrazecky += Number(vyrazeckaCount);
@@ -1003,8 +988,8 @@ function computeEloBreakdown(playerId: string, rec: any, scores: any[], players:
     const b0 = players.find((x:any)=>x.id===b[0]);
     const b1 = players.find((x:any)=>x.id===b[1]);
 
-    const avgWinner = avgElo(isWinner ? a0 : b0, isWinner ? a1 : b1);
-    const avgLoser = avgElo(isLoser ? a0 : b0, isLoser ? a1 : b1);
+    const avgWinner = avgElo(isWinner ? a0.oldElo : b0.oldElo, isWinner ? a1.elo : b1.oldElo);
+    const avgLoser = avgElo(isLoser ? a0.oldElo : b0.oldElo, isLoser ? a1.oldElo : b1.oldElo);
     const diff = Math.abs(avgWinner - avgLoser);
     const adj = Math.min(10, Math.floor(diff / 25));
 

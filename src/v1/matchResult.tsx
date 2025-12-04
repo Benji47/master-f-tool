@@ -28,7 +28,15 @@ export function MatchResultPage({ c, result }: { c: Context; result: any }) {
               <div key={p.id} className="p-4 bg-neutral-800/30 rounded border border-neutral-700">
                 <div className="flex justify-between mb-3">
                   <div>
-                    <div className="font-semibold text-white text-lg">{p.username}</div>
+                    <div className="font-semibold text-white text-lg">
+                      {p.username}
+                      {p.winsAdded === 3 && (
+                        <span className="text-green-500 ml-1">[ultimate winner]</span>
+                      )}
+                      {p.losesAdded === 3 && (
+                        <span className="text-red-500 ml-1">[ultimate loser]</span>
+                      )}
+                    </div>
                     <div className="text-xs text-neutral-400">Games +{p.gamesAdded} — Wins +{p.winsAdded} — Loses +{p.losesAdded}</div>
                   </div>
                   <div className="text-right">
