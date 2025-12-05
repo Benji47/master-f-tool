@@ -248,7 +248,7 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
             <div>Xp</div>
           </div>
           <div className="divide-y divide-neutral-800">
-            {sortedByTotalGames.map((player, idx) => {
+            {sortedLevels.map((player, idx) => {
               const isEven = idx % 2 === 0;
               const lvl = computeLevel(player.xp).level;
 
