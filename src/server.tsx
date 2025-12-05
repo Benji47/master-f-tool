@@ -98,9 +98,9 @@ app.get("/v1/changes-log", async (c) => {
         "[Feature] -> Added this feature :D",
         "[Feature] -> You can see players match history from leaderboard! Click on a player's name to view their matches.",
         "[Feature] -> Added how many % of goals are \"vyrážečky\" in global stats.",
-        "[Fix] -> sorting of leaderboard by level now works correctly.",
-        "[Fix] -> there is no scroll in lobby anymore.",
-        "[Fix] -> redirection to match history after finishing a match now works properly.",
+        "[Fix] -> Sorting of leaderboard by level now works correctly.",
+        "[Fix] -> There is no scroll in lobby anymore.",
+        "[Fix] -> Redirection to match history after finishing a match now works properly.",
       ],
     },
   ];

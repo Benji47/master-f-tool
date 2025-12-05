@@ -1,7 +1,16 @@
 export function ChangesLogPage({ changes }: { changes: { date: string; updates: string[] }[] }) {
   return (
     <div class="p-6 max-w-2xl mx-auto text-white">
-      <h1 class="text-3xl font-bold mb-6">Changes Log</h1>
+      {/* HEADER ROW */}
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Changes Log</h1>
+
+        <a href="/v1/lobby">
+          <button class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
+            ← Back to Lobby
+          </button>
+        </a>
+      </div>
 
       <div class="space-y-6">
         {changes.map((entry) => (
