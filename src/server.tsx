@@ -68,18 +68,18 @@ app.use(async (c, next) => {
                     || c.req.path.startsWith("/v1/match/game/score")
                     || c.req.path.startsWith("/v1/match/game/vyrazacka");
 
-  if (!isApiRequest && activeMatch) {
+  // if (!isApiRequest && activeMatch) {
 
-    if (activeMatch.state === "playing" &&
-        !c.req.path.startsWith("/v1/match/game")) {
-      return c.redirect(`/v1/match/game`);
-    }
+  //   if (activeMatch.state === "playing" &&
+  //       !c.req.path.startsWith("/v1/match/game")) {
+  //     return c.redirect(`/v1/match/game`);
+  //   }
 
-    // if (activeMatch.state === "open" &&
-    //     !c.req.path.startsWith("/v1/match/lobby")) {
-    //   return c.redirect(`/v1/match/lobby`);
-    // }
-  }
+  //   // if (activeMatch.state === "open" &&
+  //   //     !c.req.path.startsWith("/v1/match/lobby")) {
+  //   //   return c.redirect(`/v1/match/lobby`);
+  //   // }
+  // }
   }
 
   
@@ -100,6 +100,7 @@ app.get("/v1/changes-log", async (c) => {
         "[Feature] -> Added how many % of goals are \"vyrážečky\" in global stats.",
         "[Fix] -> sorting of leaderboard by level now works correctly.",
         "[Fix] -> there is no scroll in lobby anymore.",
+        "[Fix] -> redirection to match history after finishing a match now works properly.",
       ],
     },
   ];
@@ -1022,6 +1023,8 @@ app.post("/v1/match/game/finish", async (c) => {
     console.error('finish match error', err);
     return c.text('Failed to finish match', 500);
   }
+
+  return c.redirect(`/v1/match-history`);
 });
 
 // helper functions for detailed breakdowns

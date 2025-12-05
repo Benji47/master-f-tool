@@ -222,6 +222,9 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
   // ---- ADD POLLING HERE ----
   async function pollState(){
     const res = await fetch('/v1/match/state?matchId=' + encodeURIComponent(matchId));
+
+    console.log(res.status);
+    console.log(res.status === 500);
     if (res.status === 404 || res.status === 500) {
       window.location.href = "/v1/match-history";
       return;
