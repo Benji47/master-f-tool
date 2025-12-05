@@ -14,11 +14,9 @@ export function MatchResultPage({ c, result }: { c: Context; result: any }) {
             <p className="text-neutral-400 mb-6">Match ID: {result.matchId}</p>
           </div>
 
-          <a href="/v1/match-history">
-            <button class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
-              ← Back
-            </button>
-          </a>
+          <button onclick="history.back()" class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
+            ← Back
+          </button>
         </div>
 
         <div className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-800 mb-6">

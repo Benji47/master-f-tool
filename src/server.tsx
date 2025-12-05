@@ -139,7 +139,7 @@ app.get("/v1/match-history", async (c) => {
   );
 });
 
-app.get("/v1/match-history/:username", async (c) => {
+app.get("/v1/match-history/players/:username", async (c) => {
   const username = c.req.param("username");
 
   const client = new sdk.Client()

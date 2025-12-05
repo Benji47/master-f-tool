@@ -17,7 +17,7 @@ interface LeaderboardPlayer {
 function PlayerLink({ username, children }: { username: string; children: any }) {
   return (
     <a 
-      href={`/v1/match-history/${username}`} 
+      href={`/v1/match-history/players/${username}`} 
       className="cursor-pointer hover:underline"
     >
       {children}

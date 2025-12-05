@@ -9,7 +9,7 @@ export function MatchHistoryPage({ c, matches, username }: { c: Context; matches
         <h1 class="text-3xl font-bold">Match History</h1>
 
         { username ? (
-          <a href={`/v1/match-history/${username}`}>
+          <a href={`/v1/match-history/players/${username}`}>
             <button class="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">
               Your Matches
             </button>
@@ -22,11 +22,9 @@ export function MatchHistoryPage({ c, matches, username }: { c: Context; matches
           </a>
         )}
 
-        <a href="/v1/lobby">
-          <button class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
-            ← Back to Lobby
-          </button>
-        </a>
+        <button onclick="history.back()" class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
+          Back
+        </button>
       </div>
 
       <div class="flex flex-col gap-4">
