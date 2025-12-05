@@ -490,6 +490,11 @@ export async function LobbyPage({ c, playerProfile, globalStats }: { c: Context;
             <span className="text-purple-400">Vyrážečka:</span>
             <span className="text-purple-400">{globalStatsData.totalVyrazecka}</span>
           </div>
+
+          <div className="flex justify-between text-neutral-300">
+            <span className="text-purple-400">Vyrážečka %:</span>
+            <span className="text-purple-400">{Math.round(globalStatsData.totalVyrazecka / globalStatsData.totalGoals * 10000) / 100} %</span>
+          </div>
         </div>
       </div>
 
