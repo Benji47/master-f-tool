@@ -1,12 +1,26 @@
 import { Context } from "hono";
 import { MatchDoc } from "./match";
 
-export function MatchHistoryPage({ c, matches }: { c: Context; matches: MatchDoc[] }) {
+export function MatchHistoryPage({ c, matches, username }: { c: Context; matches: MatchDoc[]; username: string | null}) {
   return (
     <div class="p-6 text-white max-w-2xl mx-auto">
       {/* HEADER ROW */}
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Match History</h1>
+
+        { username ? (
+          <a href={`/v1/match-history/${username}`}>
+            <button class="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">
+              Your Matches
+            </button>
+          </a>
+        ) : (
+          <a href={`/v1/match-history`}>
+            <button class="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">
+              All Matches
+            </button>
+          </a>
+        )}
 
         <a href="/v1/lobby">
           <button class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">

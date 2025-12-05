@@ -17,6 +17,7 @@ import { MatchResultPage } from "./v1/matchResult";
 import { findCurrentMatch } from "./v1/match";
 import { MatchHistoryPage } from "./v1/matchHistory";
 import { readFileSync } from "node:fs";
+import { ChangesLogPage } from "./v1/changesLog";
 
 const sdk = require('node-appwrite');
 
@@ -89,6 +90,28 @@ app.use(async (c, next) => {
   await next();
 });
 
+app.get("/v1/changes-log", async (c) => {
+  const changes = [
+    {
+      date: "12.05.2025",
+      updates: [
+        "[Feature] -> Added this feature :D",
+        "[Feature] -> You can see players match history from leaderboard! Click on a player's name to view their matches.",
+        "[Feature] -> Added how many % of goals are \"vyrážečky\" in global stats.",
+        "[Fix] -> sorting of leaderboard by level now works correctly.",
+        "[Fix] -> there is no scroll in lobby anymore.",
+      ],
+    },
+  ];
+
+  return c.html(
+    <MainLayout c={c}>
+      <ChangesLogPage changes={changes} />
+    </MainLayout>
+  );
+});
+
+
 app.get("/v1/match-history", async (c) => {
   const client = new sdk.Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT!)
@@ -106,9 +129,50 @@ app.get("/v1/match-history", async (c) => {
   // parse each document similar to match docs
   const matches = res.documents.map((doc: MatchDoc) => (parseDoc(doc)));
 
+  const user = getCookie(c, "user") ?? "";
+
   return c.html(
     <MainLayout c={c}>
-      <MatchHistoryPage c={c} matches={matches} />
+      <MatchHistoryPage c={c} matches={matches} username={user} />
+    </MainLayout>
+  );
+});
+
+app.get("/v1/match-history/:username", async (c) => {
+  const username = c.req.param("username");
+
+  const client = new sdk.Client()
+    .setEndpoint(process.env.APPWRITE_ENDPOINT!)
+    .setProject(process.env.APPWRITE_PROJECT!)
+    .setKey(process.env.APPWRITE_KEY!);
+
+  const databases = new sdk.Databases(client);
+
+  const res = await databases.listDocuments(
+    process.env.APPWRITE_DATABASE_ID!,
+    'matches_history',
+    [
+      sdk.Query.orderDesc("$createdAt")
+    ]
+  );
+
+  // parse each document similar to match docs
+  const matches = res.documents
+  .filter((doc: any) => {
+    // Parse JSON if it's a string
+    const players = typeof doc.players_json === "string"
+      ? JSON.parse(doc.players_json)
+      : doc.players_json;
+
+    return Array.isArray(players) &&
+           players.some((p: any) => p.username === username);
+  })
+  .map((doc: MatchDoc) => parseDoc(doc));
+
+
+  return c.html(
+    <MainLayout c={c}>
+      <MatchHistoryPage c={c} matches={matches} username={null} />
     </MainLayout>
   );
 });

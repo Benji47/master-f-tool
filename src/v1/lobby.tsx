@@ -181,7 +181,7 @@ export async function LobbyPage({ c, playerProfile, globalStats }: { c: Context;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-4">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-screen">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         
         {/* Left Sidebar - Player Info */}
         <div className="lg:col-span-1 bg-neutral-900/50 rounded-lg border border-neutral-800 p-6 flex flex-col justify-between relative">
@@ -440,15 +440,11 @@ export async function LobbyPage({ c, playerProfile, globalStats }: { c: Context;
             </button>
           </a>
 
-          <button disabled className="w-full max-w-sm py-4 bg-neutral-700/40 text-neutral-400 font-bold text-lg rounded-md cursor-not-allowed opacity-60">
-            🏆 TOURNAMENTS
-            <div className="text-xs mt-1">Coming Soon</div>
-          </button>
-
-          <button disabled className="w-full max-w-sm py-4 bg-neutral-700/40 text-neutral-400 font-bold text-lg rounded-md cursor-not-allowed opacity-60">
-            CREATE MATCH
-            <div className="text-xs mt-1">Coming Soon</div>
-          </button>
+          <a href="/v1/changes-log" className="w-full max-w-sm">
+            <button className="w-full py-4 bg-transparent border-2 border-neutral-700 hover:border-green-500 text-white font-bold text-lg cursor-pointer rounded-md transition-all">
+              🛠️ Changes & Fixes
+            </button>
+          </a>
         </div>
 
         {/* Right Sidebar */}
