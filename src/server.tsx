@@ -93,6 +93,13 @@ app.use(async (c, next) => {
 app.get("/v1/changes-log", async (c) => {
   const changes = [
     {
+      date: "12.08.2025",
+      updates: [
+        "[Feature] -> Added average goals per match column to elo leaderboard.",
+        "[Feature] -> Added W/L amd goals ratio as float number to leaderboard.",
+      ],
+    },
+    {
       date: "12.05.2025",
       updates: [
         "[Feature] -> Added this feature :D",
@@ -102,7 +109,7 @@ app.get("/v1/changes-log", async (c) => {
         "[Fix] -> There is no scroll in lobby anymore.",
         "[Fix] -> Redirection to match history after finishing a match now works properly.",
       ],
-    },
+    }
   ];
 
   return c.html(
