@@ -29,11 +29,11 @@ type LeaderboardTab = "elo" | "ultimate_wins" | "ultimate_loses" | "vyrážečka
 
 export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
   function eloColor(elo: number) {
-    if (elo >= 2750) return "text-red-500";
-    if (elo >= 2150) return "text-indigo-500";
-    if (elo >= 1550) return "text-sky-500";
-    if (elo >= 1100) return "text-amber-500";
-    if (elo >= 600) return "text-gray-400";
+    if (elo >= 1000) return "text-red-500";
+    if (elo >= 800) return "text-indigo-500";
+    if (elo >= 600) return "text-sky-500";
+    if (elo >= 400) return "text-amber-500";
+    if (elo >= 200) return "text-gray-400";
     return "text-yellow-600";
   }
 
