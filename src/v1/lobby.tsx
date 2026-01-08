@@ -84,29 +84,29 @@ export const badges = [
 
 // NEW: ELO rank tiers (so Ranks panel can reuse same info as eloRank)
 const rankTiers = [
-  { name: "Bronze I", min: 0, max: 199, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
-  { name: "Bronze II", min: 200, max: 399, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
-  { name: "Bronze III", min: 400, max: 599, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
+  { name: "Bronze I", min: 0, max: 49, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
+  { name: "Bronze II", min: 50, max: 99, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
+  { name: "Bronze III", min: 100, max: 199, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
 
-  { name: "Silver I", min: 600, max: 749, color: "from-gray-900 to-gray-500", textColor: "text-gray-500" },
-  { name: "Silver II", min: 750, max: 899, color: "from-gray-900 to-gray-500", textColor: "text-gray-500" },
-  { name: "Silver III", min: 900, max: 1099, color: "from-gray-900 to-gray-500", textColor: "text-gray-500" },
+  { name: "Silver I", min: 200, max: 249, color: "from-gray-900 to-gray-500", textColor: "text-gray-500" },
+  { name: "Silver II", min: 250, max: 299, color: "from-gray-900 to-gray-500", textColor: "text-gray-500" },
+  { name: "Silver III", min: 300, max: 399, color: "from-gray-900 to-gray-500", textColor: "text-gray-500" },
   
-  { name: "Gold I", min: 1100, max: 1249, color: "from-amber-900 to-amber-500", textColor: "text-amber-500" },
-  { name: "Gold II", min: 1250, max: 1399, color: "from-amber-900 to-amber-500", textColor: "text-amber-500" },
-  { name: "Gold III", min: 1400, max: 1549, color: "from-amber-900 to-amber-500", textColor: "text-amber-500" },
+  { name: "Gold I", min: 400, max: 449, color: "from-amber-900 to-amber-500", textColor: "text-amber-500" },
+  { name: "Gold II", min: 450, max: 499, color: "from-amber-900 to-amber-500", textColor: "text-amber-500" },
+  { name: "Gold III", min: 500, max: 599, color: "from-amber-900 to-amber-500", textColor: "text-amber-500" },
   
-  { name: "Platinum I", min: 1550, max: 1749, color: "from-sky-900 to-sky-500", textColor: "text-sky-500" },
-  { name: "Platinum II", min: 1750, max: 1949, color: "from-sky-900 to-sky-500", textColor: "text-sky-500" },
-  { name: "Platinum III", min: 1950, max: 2149, color: "from-sky-900 to-sky-500", textColor: "text-sky-500" },
+  { name: "Platinum I", min: 600, max: 649, color: "from-sky-900 to-sky-500", textColor: "text-sky-500" },
+  { name: "Platinum II", min: 650, max: 699, color: "from-sky-900 to-sky-500", textColor: "text-sky-500" },
+  { name: "Platinum III", min: 700, max: 799, color: "from-sky-900 to-sky-500", textColor: "text-sky-500" },
   
-  { name: "Diamond I", min: 2150, max: 2349, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
-  { name: "Diamond II", min: 2350, max: 2499, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
-  { name: "Diamond III", min: 2500, max: 2749, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
+  { name: "Diamond I", min: 800, max: 849, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
+  { name: "Diamond II", min: 850, max: 899, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
+  { name: "Diamond III", min: 900, max: 999, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
   
-  { name: "Master", min: 2750, max: 2999, color: "from-red-900 to-red-500", textColor: "text-red-500" },
-  { name: "Master F", min: 3000, max: 3249, color: "from-red-900 to-red-500", textColor: "text-red-500" },
-  { name: "Masters Blythe", min: 3250, max: 3499, color: "from-red-900 to-red-500", textColor: "text-red-500" },
+  { name: "Master", min: 1000, max: 1049, color: "from-red-900 to-red-500", textColor: "text-red-500" },
+  { name: "Master F", min: 1050, max: 1099, color: "from-red-900 to-red-500", textColor: "text-red-500" },
+  { name: "Masters Blythe", min: 1100, max: 5000, color: "from-red-900 to-red-500", textColor: "text-red-500" },
 ];
 
 function eloRank(elo: number) {
