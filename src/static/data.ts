@@ -45,9 +45,9 @@ export const rankTiers = [
   { name: "Diamond I", min: 800, max: 849, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
   { name: "Diamond II", min: 850, max: 899, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
   { name: "Diamond III", min: 900, max: 999, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
-  { name: "Master", min: 1000, max: 1049, color: "from-red-900 to-red-500", textColor: "text-red-500" },
-  { name: "Master F", min: 1050, max: 1099, color: "from-red-900 to-red-500", textColor: "text-red-500" },
-  { name: "Masters Blythe", min: 1100, max: 1199, color: "from-red-900 to-red-500", textColor: "text-red-500" },
+  { name: "Master", min: 1000, max: 1049, color: "from-purple-900 to-purple-500", textColor: "text-purple-500" },
+  { name: "Master F", min: 1050, max: 1099, color: "from-purple-900 to-purple-500", textColor: "text-purple-500" },
+  { name: "Masters Blythe", min: 1100, max: 1199, color: "from-purple-900 to-purple-500", textColor: "text-purple-500" },
   { name: "Grandmaster", min: 1200, max: 5000, color: "from-red-900 to-red-500", textColor: "text-red-500" },
 ];
 

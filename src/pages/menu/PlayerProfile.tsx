@@ -62,46 +62,82 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
                 Ranks
               </button>
 
-              {/* POPUP: Ranks Grid */}
-              <div className="absolute -left-2 top-full mt-2 w-[1300px] bg-neutral-900/95 border border-neutral-700 rounded-lg p-4 z-50 shadow-lg text-sm
-                                  opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150">
-                <div className="grid grid-cols-6 gap-4">
-                  {["zElo","Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Grandmaster"].map((rankName) => {
-                    const tiers = rankTiers.filter(t => t.name.startsWith(rankName));
-                    const titleColor = tiers[0]?.textColor ?? "text-white";
+              {/* POPUP: Ranks Grid - 8 columns (2 rows of 4) */}
+              <div className="absolute -left-2 top-full mt-2 bg-neutral-900/95 border border-neutral-700 rounded-lg p-4 z-50 shadow-lg text-sm
+                                  opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 overflow-y-auto"
+                   style={{ width: '1400px', maxHeight: '85vh' }}>
+                <div className="flex flex-col gap-4">
+                  {[
+                    ["zElo", "Bronze", "Silver", "Gold"],
+                    ["Platinum", "Diamond", "Master", "Grandmaster"]
+                  ].map((rankRow, rowIdx) => (
+                    <div key={`row-${rowIdx}`} className="flex gap-4">
+                      {rankRow.map((rankName) => {
+                        const tiers = rankTiers.filter(t => t.name.startsWith(rankName));
+                        
+                        if (tiers.length === 0) return null;
+                        
+                        const firstTier = tiers[0];
+                        const rankColors: Record<string, string> = {
+                          'zElo': 'bg-gray-700/30',
+                          'Bronze': 'bg-amber-900/40',
+                          'Silver': 'bg-slate-600/40',
+                          'Gold': 'bg-yellow-700/40',
+                          'Platinum': 'bg-cyan-600/40',
+                          'Diamond': 'bg-blue-600/40',
+                          'Master': 'bg-purple-600/40',
+                          'Grandmaster': 'bg-red-600/40'
+                        };
 
-                    let playersInRank = players.filter((p) => getRankInfoFromElo(p.elo).name.split(" ")[0] === rankName);
-                    playersInRank = playersInRank.sort((a, b) => b.elo - a.elo);
+                        return (
+                          <div key={rankName} 
+                            className={`flex-1 rounded-lg p-3 border-2 ${rankColors[rankName] || 'bg-neutral-800/40'}`}
+                            style={{ 
+                              borderColor: firstTier.textColor.split(' ').pop()
+                            }}>
+                            <div className={`text-lg font-bold text-center mb-3 ${firstTier.textColor}`}>
+                              {rankName === 'zElo' ? '🥬 zElo' : rankName}
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                              {tiers.map((tier) => {
+                                const playersInTier = players.filter((p) => getRankInfoFromElo(p.elo).name === tier.name);
+                                const sortedPlayers = playersInTier.sort((a, b) => b.elo - a.elo);
 
-                    return (
-                      <div key={rankName} className="flex flex-col gap-2">
-                        <div className={`font-semibold mb-1 ${titleColor}`}>{rankName}</div>
+                                return (
+                                  <div key={tier.name} className="flex flex-col gap-2 bg-neutral-800/50 rounded p-2">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <div className="flex items-center gap-1">
+                                        <div className={`w-6 h-2 rounded-full bg-gradient-to-r ${tier.color}`} />
+                                        <div className={`${tier.textColor} text-xs font-bold`}>
+                                          {tier.name.split(" ")[1]}
+                                        </div>
+                                      </div>
+                                      <div className="text-neutral-400 text-xs">
+                                        ({tier.min}-{tier.max})
+                                      </div>
+                                    </div>
 
-                        {tiers.map((tier) => (
-                          <div key={tier.name} className="flex items-center gap-2 bg-neutral-800/40 rounded px-2 py-1">
-                            <div className={`w-8 h-3 rounded-full bg-gradient-to-r ${tier.color}`} />
-                            <div className={`${tier.textColor} text-xs font-semibold`}>
-                              {tier.name} ({tier.min}-{tier.max})
+                                    {sortedPlayers.length > 0 ? (
+                                      <ul className="text-neutral-300 text-xs list-disc pl-3 max-h-32 overflow-y-auto">
+                                        {sortedPlayers.map((p) => (
+                                          <li key={p.username} className="truncate">
+                                            {p.username} ({p.elo})
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <div className="text-neutral-600 text-xs italic"></div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
-                        ))}
-
-                        <div className="mt-1 pl-4">
-                          {playersInRank.length > 0 ? (
-                            <ul className="text-neutral-300 text-xs list-disc">
-                              {playersInRank.map((p) => (
-                                <li key={p.username}>
-                                  {p.username} — {p.elo} ELO
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div className="text-neutral-600 text-xs">No players</div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
