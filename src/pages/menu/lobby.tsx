@@ -46,7 +46,7 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
         <PlayerProfilePanel playerProfile={playerProfile} players={players} />
 
         {/* Center - Main Actions (unchanged) */}
-        <div className="lg:col-span-2 flex flex-col justify-center items-center gap-6">
+        <div className="lg:col-span-2 flex flex-col justify-start items-center gap-6 pt-110">
           <a href="/v1/match/lobby" className="w-full max-w-sm">
             <button className="w-full py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 cursor-pointer text-white font-bold text-lg rounded-md transition-all">
               ⚔️ PLAY
