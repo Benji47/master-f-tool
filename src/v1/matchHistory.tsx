@@ -22,9 +22,11 @@ export function MatchHistoryPage({ c, matches, username }: { c: Context; matches
           </a>
         )}
 
-        <button onclick="history.back()" class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
-          Back
-        </button>
+        <a href={`/v1/lobby`}>
+          <button class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
+            Back to lobby
+          </button>
+        </a>
       </div>
 
       <div class="flex flex-col gap-4">

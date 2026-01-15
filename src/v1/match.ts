@@ -399,3 +399,26 @@ export async function deleteMatch(matchId: string): Promise<void> {
     throw err;
   }
 }
+
+/** List all matches that are not finished or playing (open or full) */
+export async function listAvailableMatches(): Promise<MatchDoc[]> {
+  const c = client();
+  const databases = new sdk.Databases(c);
+  try {
+    const res = await databases.listDocuments(databaseId, collectionId, [
+      sdk.Query.or([
+        sdk.Query.equal('state', 'open'),
+        sdk.Query.equal('state', 'full'),
+        sdk.Query.equal('state', 'playing'),
+      ]),
+      sdk.Query.limit(100),
+    ]);
+    if (res.documents) {
+      return res.documents.map((doc: any) => parseDoc(doc));
+    }
+    return [];
+  } catch (err: any) {
+    console.error('listAvailableMatches error', err);
+    return [];
+  }
+}

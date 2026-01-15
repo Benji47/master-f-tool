@@ -1,15 +1,15 @@
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { getCookie } from "hono/cookie";
-import { Homepage } from "./pages/Homepage";
-import { MainLayout } from "./layouts/main";
+import { Homepage } from "./pages/auth/homepage";
+import { MainLayout } from "./main";
 import { registerUser, loginUser } from "./v1/auth";
-import { LoginPage } from "./v1/login";
-import { RegisterPage } from "./v1/register";
-import { LobbyPage } from "./v1/lobby";
+import { LoginPage } from "./pages/auth/login";
+import { RegisterPage } from "./pages/auth/register";
+import { LobbyPage } from "./pages/menu/lobby";
 import { LeaderboardPage } from "./v1/leaderboard";
 import { getGlobalStats, getLeaderboard, getPlayerProfile, updateGlobalStats, updatePlayerStats } from "./v1/profile";
-import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch, parseDoc, parseMatchHistoryDoc, MatchHistoryDoc, HistoryPlayers } from "./v1/match";
+import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch, parseDoc, parseMatchHistoryDoc, MatchHistoryDoc, HistoryPlayers, createMatch, joinMatch, listAvailableMatches } from "./v1/match";
 import { MatchLobbyPage } from "./v1/matchLobby";
 import { updateGameScores } from "./v1/match";
 import { MatchGamePage } from "./v1/matchGame";
@@ -17,7 +17,9 @@ import { MatchResultPage } from "./v1/matchResult";
 import { findCurrentMatch } from "./v1/match";
 import { MatchHistoryPage } from "./v1/matchHistory";
 import { readFileSync } from "node:fs";
-import { ChangesLogPage } from "./v1/changesLog";
+import { FBetPage } from "./pages/f-bet";
+import { AchievementsPage } from "./pages/achievements";
+import { TournamentsPage } from "./pages/tournaments";
 
 const sdk = require('node-appwrite');
 
@@ -65,6 +67,7 @@ app.use(async (c, next) => {
   // ❗ do not redirect JSON/API endpoints
   const isApiRequest = c.req.header("Accept")?.includes("application/json")
                     || c.req.path.startsWith("/v1/match/state")
+                    || c.req.path.startsWith("/v1/match/list")
                     || c.req.path.startsWith("/v1/match/game/score")
                     || c.req.path.startsWith("/v1/match/game/vyrazacka");
 
@@ -89,36 +92,6 @@ app.use(async (c, next) => {
 
   await next();
 });
-
-app.get("/v1/changes-log", async (c) => {
-  const changes = [
-    {
-      date: "12.08.2025",
-      updates: [
-        "[Feature] -> Added average goals per match column to elo leaderboard.",
-        "[Feature] -> Added W/L amd goals ratio as float number to leaderboard.",
-      ],
-    },
-    {
-      date: "12.05.2025",
-      updates: [
-        "[Feature] -> Added this feature :D",
-        "[Feature] -> You can see players match history from leaderboard! Click on a player's name to view their matches.",
-        "[Feature] -> Added how many % of goals are \"vyrážečky\" in global stats.",
-        "[Fix] -> Sorting of leaderboard by level now works correctly.",
-        "[Fix] -> There is no scroll in lobby anymore.",
-        "[Fix] -> Redirection to match history after finishing a match now works properly.",
-      ],
-    }
-  ];
-
-  return c.html(
-    <MainLayout c={c}>
-      <ChangesLogPage changes={changes} />
-    </MainLayout>
-  );
-});
-
 
 app.get("/v1/match-history", async (c) => {
   const client = new sdk.Client()
@@ -351,16 +324,14 @@ app.post("/v1/match/join", async (c) => {
   }
 });
 
-// Match lobby page (GET)
+// Match lobby page (GET) - show all matches
 app.get("/v1/match/lobby", async (c) => {
   try {
-    const matchId = getCookie(c, "match_id") ?? '';
     const username = getCookie(c, "user") ?? 'Player';
-    if (!matchId) return c.redirect("/v1/lobby");
 
     return c.html(
       <MainLayout c={c}>
-        <MatchLobbyPage c={c} matchId={matchId} currentUser={username} />
+        <MatchLobbyPage c={c} currentUser={username} />
       </MainLayout>
     );
   } catch (err: any) {
@@ -382,18 +353,98 @@ app.get("/v1/match/state", async (c) => {
   }
 });
 
+// List all available matches (open or full)
+app.get("/v1/match/list", async (c) => {
+  try {
+    const matches = await listAvailableMatches();
+    return c.json({ matches });
+  } catch (err: any) {
+    console.error("list matches error:", err);
+    return c.json({ matches: [], error: 'failed' }, 500);
+  }
+});
+
+// Create a new match
+app.post("/v1/match/create", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.redirect("/v1/auth/login");
+
+    // fetch player profile doc by username
+    const profile = await getPlayerProfile(username);
+    const player: MatchPlayer = {
+      id: profile ? profile.$id : username,
+      username: username,
+      wins: profile ? profile.wins : 0,
+      loses: profile ? profile.loses : 0,
+      elo: profile ? profile.elo : 500,
+    };
+
+    const match = await createMatch(player, 4);
+    return c.redirect("/v1/match/lobby");
+  } catch (err: any) {
+    console.error("create match error:", err);
+    return c.text('Failed to create match', 500);
+  }
+});
+
+// Join a specific match
+app.post("/v1/match/join-specific", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.redirect("/v1/auth/login");
+
+    const form = await c.req.formData();
+    const matchId = String(form.get("matchId") ?? "");
+    if (!matchId) return c.text("missing matchId", 400);
+
+    // Check if match is playing - if so, redirect to game
+    const matchCheck = await getMatch(matchId);
+    if (matchCheck && matchCheck.state === 'playing') {
+      // Check if player is in the match
+      const profile = await getPlayerProfile(username);
+      const playerId = profile ? profile.$id : username;
+      const isPlayerInMatch = matchCheck.players.some(p => p.id === playerId);
+      
+      if (isPlayerInMatch) {
+        // Player is in this match, redirect to game
+        c.res.headers.set("Set-Cookie", `match_id=${encodeURIComponent(matchId)}; Path=/; HttpOnly; SameSite=Lax`);
+        return c.redirect("/v1/match/game");
+      } else {
+        // Player is not in this match, reject
+        return c.text("Cannot join a match in progress", 400);
+      }
+    }
+
+    // fetch player profile doc by username
+    const profile = await getPlayerProfile(username);
+    const player: MatchPlayer = {
+      id: profile ? profile.$id : username,
+      username: username,
+      wins: profile ? profile.wins : 0,
+      loses: profile ? profile.loses : 0,
+      elo: profile ? profile.elo : 500,
+    };
+
+    const match = await joinMatch(matchId, player);
+    return c.redirect("/v1/match/lobby");
+  } catch (err: any) {
+    console.error("join specific match error:", err);
+    return c.text('Failed to join match', 500);
+  }
+});
+
 // Leave match: remove player from players_json, delete match if empty
 app.post("/v1/match/leave", async (c) => {
   try {
-    const matchIdFromCookie = getCookie(c, "match_id") ?? "";
     const form = await c.req.formData();
-    const matchId = String(form.get("matchId") ?? matchIdFromCookie ?? "");
+    const matchId = String(form.get("matchId") ?? "");
     const username = getCookie(c, "user") ?? null;
     if (!matchId) return c.text("missing matchId", 400);
     if (!username) {
       // no user — just clear cookie and redirect
       c.res.headers.set("Set-Cookie", "match_id=; Path=/; Max-Age=0; HttpOnly");
-      return c.redirect("/v1/lobby");
+      return c.redirect("/v1/match/lobby");
     }
 
     // resolve player id same way as join: profile id if exists, otherwise username
@@ -403,7 +454,7 @@ app.post("/v1/match/leave", async (c) => {
     const res = await leaveMatch(matchId, playerId);
     // clear match cookie
     c.res.headers.set("Set-Cookie", "match_id=; Path=/; Max-Age=0; HttpOnly");
-    return c.redirect("/v1/lobby");
+    return c.redirect("/v1/match/lobby");
   } catch (err: any) {
     console.error("leave match error:", err);
     return c.text("Failed to leave match", 500);
@@ -420,6 +471,8 @@ app.post("/v1/match/start", async (c) => {
 
     // start match and initialize scores
     await startMatch(matchId);
+    // set match cookie and redirect to game
+    c.res.headers.set("Set-Cookie", `match_id=${encodeURIComponent(matchId)}; Path=/; HttpOnly; SameSite=Lax`);
     return c.redirect("/v1/match/game");
   } catch (err: any) {
     console.error('start error', err);
@@ -1032,6 +1085,31 @@ app.post("/v1/match/game/finish", async (c) => {
   }
 
   return c.redirect(`/v1/match-history`);
+});
+
+// New simple pages
+app.get("/v1/f-bet", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <FBetPage c={c} />
+    </MainLayout>
+  );
+});
+
+app.get("/v1/achievements", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <AchievementsPage c={c} />
+    </MainLayout>
+  );
+});
+
+app.get("/v1/tournaments", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <TournamentsPage c={c} />
+    </MainLayout>
+  );
 });
 
 // helper functions for detailed breakdowns

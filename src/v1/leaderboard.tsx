@@ -1,4 +1,5 @@
-import { badges, getLevelBadgeColor } from "./lobby";
+import { badges, getLevelBadgeColor } from "../static/data";
+import { levelsXp, getCumulativeThresholds } from "../static/data";
 
 interface LeaderboardPlayer {
   $id: string;
@@ -25,8 +26,6 @@ function PlayerLink({ username, children }: { username: string; children: any })
   );
 }
 
-type LeaderboardTab = "elo" | "ultimate_wins" | "ultimate_loses" | "vyrážečka" | "total_games";
-
 export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
   function eloColor(elo: number) {
     if (elo >= 1000) return "text-red-500";
@@ -34,19 +33,9 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
     if (elo >= 600) return "text-sky-500";
     if (elo >= 400) return "text-amber-500";
     if (elo >= 200) return "text-gray-400";
-    return "text-yellow-600";
+    return "text-yellow-800";
   }
 
-  // Helper to compute level from XP
-  const levelsXp = [75, 150, 225, 300, 400, 500, 650, 800, 1000];
-  function getCumulativeThresholds(): number[] {
-    let cumulative = 0;
-    return levelsXp.map((xp) => {
-      const threshold = cumulative;
-      cumulative += xp;
-      return threshold;
-    });
-  }
   const cumulativeLevelsXp = getCumulativeThresholds();
 
   function computeLevel(xp: number) { 
