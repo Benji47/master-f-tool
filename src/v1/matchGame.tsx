@@ -27,6 +27,30 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
         <div id="pairings" className="space-y-4">
           {scores.map((s: any, idx: number) => (
             <div key={idx} className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-300">
+              {/* Golden Vyrážečka checkboxes */}
+              <div className="mb-4 p-3 bg-neutral-800/60 rounded border border-yellow-700/50 flex gap-6">
+                <label className="flex items-center gap-2 cursor-pointer text-neutral-300">
+                  <input 
+                    type="checkbox" 
+                    data-idx={idx} 
+                    data-side="a" 
+                    className="w-4 h-4 cursor-pointer golden-vyrazacka-checkbox"
+                    checked={s.goldenVyrazacka?.side === 'a' || false}
+                  />
+                  <span className="text-sm font-semibold">🏆 Golden Vyrážečka Team A</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-neutral-300">
+                  <input 
+                    type="checkbox" 
+                    data-idx={idx} 
+                    data-side="b" 
+                    className="w-4 h-4 cursor-pointer golden-vyrazacka-checkbox"
+                    checked={s.goldenVyrazacka?.side === 'b' || false}
+                  />
+                  <span className="text-sm font-semibold">🏆 Golden Vyrážečka Team B</span>
+                </label>
+              </div>
+
               <div className="flex items-center justify-between mb-4">
                 {/* Left team */}
                 <div className="flex flex-col items-start gap-2 w-1/3">
@@ -183,6 +207,28 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
     }catch(e){ console.error(e); }
   }
 
+  async function sendGoldenVyrazackaUpdate(idx, side, isChecked){
+    try{
+      const form = new FormData();
+      form.append('matchId', matchId);
+      form.append('index', String(idx));
+      form.append('side', side);
+      form.append('isChecked', String(isChecked));
+      const res = await fetch('/v1/match/game/golden-vyrazacka', { method: 'POST', body: form });
+      if(!res.ok) {
+        const txt = await res.text().catch(()=>null);
+        console.error('golden vyrazacka update failed', txt);
+        return;
+      }
+      const data = await res.json();
+      // update DOM scores with the new values
+      const scoreAEl = document.getElementById('scoreA-'+idx);
+      const scoreBEl = document.getElementById('scoreB-'+idx);
+      if(scoreAEl) scoreAEl.textContent = String(data.scoreA);
+      if(scoreBEl) scoreBEl.textContent = String(data.scoreB);
+    }catch(e){ console.error(e); }
+  }
+
   document.addEventListener('click', function(e){
     const el = e.target;
     if(!(el instanceof HTMLElement)) return;
@@ -219,6 +265,26 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
     }
   });
 
+  document.addEventListener('change', function(e){
+    const el = e.target;
+    if(!(el instanceof HTMLInputElement)) return;
+    
+    // Golden vyrazacka checkbox
+    if(el.classList.contains('golden-vyrazacka-checkbox')){
+      const idx = el.getAttribute('data-idx');
+      const side = el.getAttribute('data-side');
+      if(idx !== null && side){
+        // Uncheck the other side's checkbox
+        const otherSide = side === 'a' ? 'b' : 'a';
+        const otherCheckbox = document.querySelector(\`.golden-vyrazacka-checkbox[data-idx="\${idx}"][data-side="\${otherSide}"]\`);
+        if(otherCheckbox && el.checked){
+          otherCheckbox.checked = false;
+        }
+        sendGoldenVyrazackaUpdate(Number(idx), side, el.checked);
+      }
+    }
+  });
+
   // ---- ADD POLLING HERE ----
   async function pollState(){
     const res = await fetch('/v1/match/state?matchId=' + encodeURIComponent(matchId));
@@ -251,6 +317,14 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
             const el = document.getElementById('vyr-'+i+'-'+pid);
             if (el) el.textContent = String(s.vyrazacka[pid]);
           }
+        }
+
+        // golden vyrazacka checkbox state
+        if (s.goldenVyrazacka) {
+          const aCheckbox = document.querySelector(\`.golden-vyrazacka-checkbox[data-idx="\${i}"][data-side="a"]\`);
+          const bCheckbox = document.querySelector(\`.golden-vyrazacka-checkbox[data-idx="\${i}"][data-side="b"]\`);
+          if (aCheckbox) aCheckbox.checked = s.goldenVyrazacka.side === 'a';
+          if (bCheckbox) bCheckbox.checked = s.goldenVyrazacka.side === 'b';
         }
       });
     }

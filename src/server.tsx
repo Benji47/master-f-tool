@@ -69,7 +69,8 @@ app.use(async (c, next) => {
                     || c.req.path.startsWith("/v1/match/state")
                     || c.req.path.startsWith("/v1/match/list")
                     || c.req.path.startsWith("/v1/match/game/score")
-                    || c.req.path.startsWith("/v1/match/game/vyrazacka");
+                    || c.req.path.startsWith("/v1/match/game/vyrazacka")
+                    || c.req.path.startsWith("/v1/match/game/golden-vyrazacka");
 
   // if (!isApiRequest && activeMatch) {
 
@@ -580,6 +581,64 @@ app.post("/v1/match/game/vyrazacka", async (c) => {
     return c.json({ ok: true, newValue });
   } catch (err: any) {
     console.error('update vyrazacka error', err);
+    return c.json({ error: 'failed' }, 500);
+  }
+});
+
+// golden vyrazacka API for match game
+app.post("/v1/match/game/golden-vyrazacka", async (c) => {
+  try {
+    const form = await c.req.formData();
+    const matchId = String(form.get("matchId") ?? '');
+    const index = Number(form.get("index") ?? 0);
+    const side = String(form.get("side") ?? '') as 'a' | 'b'; // 'a' or 'b'
+    const isChecked = String(form.get("isChecked") ?? 'false') === 'true';
+
+    if (!matchId) return c.json({ error: 'missing matchId' }, 400);
+    if (!side) return c.json({ error: 'missing side' }, 400);
+
+    const match = await getMatch(matchId);
+    if (!match) return c.json({ error: 'match not found' }, 404);
+
+    const scores = match.scores || [];
+    if (!scores[index]) return c.json({ error: 'invalid index' }, 400);
+
+    const s = scores[index];
+
+    if (isChecked) {
+      // Enable golden vyrážečka for this team
+      const winningScore = side === 'a' ? s.scoreA : s.scoreB;
+      const losingScore = side === 'a' ? s.scoreB : s.scoreA;
+      
+      // Calculate the difference from 10
+      const diff = 10 - winningScore;
+      
+      // Set winning team to 10
+      if (side === 'a') {
+        s.scoreA = 10;
+      } else {
+        s.scoreB = 10;
+      }
+      
+      // Keep losing team's score as-is
+      // Store golden vyrážečka data
+      s.goldenVyrazacka = { side, diff };
+    } else {
+      // Disable golden vyrážečka for this team
+      // Remove the golden vyrážečka flag
+      if (s.goldenVyrazacka?.side === side) {
+        delete s.goldenVyrazacka;
+      }
+    }
+
+    const updated = await updateGameScores(matchId, scores);
+    return c.json({ 
+      ok: true, 
+      scoreA: updated.scores?.[index]?.scoreA ?? 0,
+      scoreB: updated.scores?.[index]?.scoreB ?? 0,
+    });
+  } catch (err: any) {
+    console.error('update golden vyrazacka error', err);
     return c.json({ error: 'failed' }, 500);
   }
 });

@@ -184,6 +184,36 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
         </div>
 
         {/* ...small summary metrics (wins/loses/goals) ... */}
+        
+        <div className="mb-6">
+              <p className={`text-xl font-bold ${rank.colorKey} mb-2`}>{rank.name}</p>
+              <div className="relative group">
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-m text-neutral-300 cursor-help">{playerProfile.elo} ELO</p>
+                  <div className="w-5 h-5 rounded-full bg-neutral-700 text-neutral-300 flex items-center justify-center text-xs font-bold cursor-help group-hover:bg-neutral-600">
+                    i
+                  </div>
+                </div>
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-neutral-800 text-neutral-200 text-xs rounded p-2 w-84 border border-neutral-700 z-10">
+                  <p className="font-bold mb-1 text-blue-400">ELO Changes:</p>
+                  <p className="text-green-400">• Win: +20 ELO</p>
+                  <p className="text-red-400">• Lose: -20 ELO</p>
+                  <p className="text-green-400">• Ultimate Winner: 2 ELO from each opponent (total +6) </p>
+                  <p className="text-red-400">• Ultimate Loser: 1 ELO to each opponent (total -3)</p>
+                  <p>• ELO difference: (max ±10)</p>
+                  <p className="pl-4 text-neutral-300">• ±min(10, avg elo difference / 25)</p>
+                </div>
+              </div>
+
+              <div className="w-full bg-neutral-800 rounded-full h-2 mt-2 overflow-hidden">
+                <div className={`h-2 rounded-full bg-gradient-to-r ${rank.color}`} style={{ width: `${rank.progress}%` }} />
+              </div>
+
+              <div className="flex justify-between text-xs mt-1 text-neutral-400">
+                <span>{rank.min}</span>
+                <span>{rank.max}</span>
+              </div>
+            </div>
         <div className="w-11/12 mb-5 mt-5 mx-auto h-px bg-white/35 my-3 rounded" />
 
         <div className="space-y-2 text-sm">

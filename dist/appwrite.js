@@ -28320,9 +28320,9 @@ var rankTiers = [
   { name: "Diamond I", min: 800, max: 849, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
   { name: "Diamond II", min: 850, max: 899, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
   { name: "Diamond III", min: 900, max: 999, color: "from-indigo-900 to-indigo-500", textColor: "text-indigo-500" },
-  { name: "Master", min: 1000, max: 1049, color: "from-red-900 to-red-500", textColor: "text-red-500" },
-  { name: "Master F", min: 1050, max: 1099, color: "from-red-900 to-red-500", textColor: "text-red-500" },
-  { name: "Masters Blythe", min: 1100, max: 1199, color: "from-red-900 to-red-500", textColor: "text-red-500" },
+  { name: "Master", min: 1000, max: 1049, color: "from-purple-900 to-purple-500", textColor: "text-purple-500" },
+  { name: "Master F", min: 1050, max: 1099, color: "from-purple-900 to-purple-500", textColor: "text-purple-500" },
+  { name: "Masters Blythe", min: 1100, max: 1199, color: "from-purple-900 to-purple-500", textColor: "text-purple-500" },
   { name: "Grandmaster", min: 1200, max: 5000, color: "from-red-900 to-red-500", textColor: "text-red-500" }
 ];
 function getCumulativeThresholds() {
@@ -28567,61 +28567,98 @@ function PlayerProfilePanel({ playerProfile, players }) {
                       children: "Ranks"
                     }, undefined, false, undefined, this),
                     /* @__PURE__ */ jsxDEV("div", {
-                      className: `absolute -left-2 top-full mt-2 w-[1300px] bg-neutral-900/95 border border-neutral-700 rounded-lg p-4 z-50 shadow-lg text-sm\r
-                                  opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150`,
+                      className: `absolute -left-2 top-full mt-2 bg-neutral-900/95 border border-neutral-700 rounded-lg p-4 z-50 shadow-lg text-sm\r
+                                  opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 overflow-y-auto`,
+                      style: { width: "1400px", maxHeight: "85vh" },
                       children: /* @__PURE__ */ jsxDEV("div", {
-                        className: "grid grid-cols-6 gap-4",
-                        children: ["zElo", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Grandmaster"].map((rankName) => {
-                          const tiers = rankTiers.filter((t2) => t2.name.startsWith(rankName));
-                          const titleColor = tiers[0]?.textColor ?? "text-white";
-                          let playersInRank = players.filter((p) => getRankInfoFromElo(p.elo).name.split(" ")[0] === rankName);
-                          playersInRank = playersInRank.sort((a2, b) => b.elo - a2.elo);
-                          return /* @__PURE__ */ jsxDEV("div", {
-                            className: "flex flex-col gap-2",
-                            children: [
-                              /* @__PURE__ */ jsxDEV("div", {
-                                className: `font-semibold mb-1 ${titleColor}`,
-                                children: rankName
-                              }, undefined, false, undefined, this),
-                              tiers.map((tier) => /* @__PURE__ */ jsxDEV("div", {
-                                className: "flex items-center gap-2 bg-neutral-800/40 rounded px-2 py-1",
-                                children: [
-                                  /* @__PURE__ */ jsxDEV("div", {
-                                    className: `w-8 h-3 rounded-full bg-gradient-to-r ${tier.color}`
-                                  }, undefined, false, undefined, this),
-                                  /* @__PURE__ */ jsxDEV("div", {
-                                    className: `${tier.textColor} text-xs font-semibold`,
-                                    children: [
-                                      tier.name,
-                                      " (",
-                                      tier.min,
-                                      "-",
-                                      tier.max,
-                                      ")"
-                                    ]
-                                  }, undefined, true, undefined, this)
-                                ]
-                              }, tier.name, true, undefined, this)),
-                              /* @__PURE__ */ jsxDEV("div", {
-                                className: "mt-1 pl-4",
-                                children: playersInRank.length > 0 ? /* @__PURE__ */ jsxDEV("ul", {
-                                  className: "text-neutral-300 text-xs list-disc",
-                                  children: playersInRank.map((p) => /* @__PURE__ */ jsxDEV("li", {
-                                    children: [
-                                      p.username,
-                                      " \u2014 ",
-                                      p.elo,
-                                      " ELO"
-                                    ]
-                                  }, p.username, true, undefined, this))
-                                }, undefined, false, undefined, this) : /* @__PURE__ */ jsxDEV("div", {
-                                  className: "text-neutral-600 text-xs",
-                                  children: "No players"
+                        className: "flex flex-col gap-4",
+                        children: [
+                          ["zElo", "Bronze", "Silver", "Gold"],
+                          ["Platinum", "Diamond", "Master", "Grandmaster"]
+                        ].map((rankRow, rowIdx) => /* @__PURE__ */ jsxDEV("div", {
+                          className: "flex gap-4",
+                          children: rankRow.map((rankName) => {
+                            const tiers = rankTiers.filter((t2) => t2.name.startsWith(rankName));
+                            if (tiers.length === 0)
+                              return null;
+                            const firstTier = tiers[0];
+                            const rankColors = {
+                              zElo: "bg-gray-700/30",
+                              Bronze: "bg-amber-900/40",
+                              Silver: "bg-slate-600/40",
+                              Gold: "bg-yellow-700/40",
+                              Platinum: "bg-cyan-600/40",
+                              Diamond: "bg-blue-600/40",
+                              Master: "bg-purple-600/40",
+                              Grandmaster: "bg-red-600/40"
+                            };
+                            return /* @__PURE__ */ jsxDEV("div", {
+                              className: `flex-1 rounded-lg p-3 border-2 ${rankColors[rankName] || "bg-neutral-800/40"}`,
+                              style: {
+                                borderColor: firstTier.textColor.split(" ").pop()
+                              },
+                              children: [
+                                /* @__PURE__ */ jsxDEV("div", {
+                                  className: `text-lg font-bold text-center mb-3 ${firstTier.textColor}`,
+                                  children: rankName === "zElo" ? "\uD83E\uDD6C zElo" : rankName
+                                }, undefined, false, undefined, this),
+                                /* @__PURE__ */ jsxDEV("div", {
+                                  className: "grid grid-cols-2 gap-3",
+                                  children: tiers.map((tier) => {
+                                    const playersInTier = players.filter((p) => getRankInfoFromElo(p.elo).name === tier.name);
+                                    const sortedPlayers = playersInTier.sort((a2, b) => b.elo - a2.elo);
+                                    return /* @__PURE__ */ jsxDEV("div", {
+                                      className: "flex flex-col gap-2 bg-neutral-800/50 rounded p-2",
+                                      children: [
+                                        /* @__PURE__ */ jsxDEV("div", {
+                                          className: "flex items-center justify-between gap-1",
+                                          children: [
+                                            /* @__PURE__ */ jsxDEV("div", {
+                                              className: "flex items-center gap-1",
+                                              children: [
+                                                /* @__PURE__ */ jsxDEV("div", {
+                                                  className: `w-6 h-2 rounded-full bg-gradient-to-r ${tier.color}`
+                                                }, undefined, false, undefined, this),
+                                                /* @__PURE__ */ jsxDEV("div", {
+                                                  className: `${tier.textColor} text-xs font-bold`,
+                                                  children: tier.name.split(" ")[1]
+                                                }, undefined, false, undefined, this)
+                                              ]
+                                            }, undefined, true, undefined, this),
+                                            /* @__PURE__ */ jsxDEV("div", {
+                                              className: "text-neutral-400 text-xs",
+                                              children: [
+                                                "(",
+                                                tier.min,
+                                                "-",
+                                                tier.max,
+                                                ")"
+                                              ]
+                                            }, undefined, true, undefined, this)
+                                          ]
+                                        }, undefined, true, undefined, this),
+                                        sortedPlayers.length > 0 ? /* @__PURE__ */ jsxDEV("ul", {
+                                          className: "text-neutral-300 text-xs list-disc pl-3 max-h-32 overflow-y-auto",
+                                          children: sortedPlayers.map((p) => /* @__PURE__ */ jsxDEV("li", {
+                                            className: "truncate",
+                                            children: [
+                                              p.username,
+                                              " (",
+                                              p.elo,
+                                              ")"
+                                            ]
+                                          }, p.username, true, undefined, this))
+                                        }, undefined, false, undefined, this) : /* @__PURE__ */ jsxDEV("div", {
+                                          className: "text-neutral-600 text-xs italic"
+                                        }, undefined, false, undefined, this)
+                                      ]
+                                    }, tier.name, true, undefined, this);
+                                  })
                                 }, undefined, false, undefined, this)
-                              }, undefined, false, undefined, this)
-                            ]
-                          }, rankName, true, undefined, this);
-                        })
+                              ]
+                            }, rankName, true, undefined, this);
+                          })
+                        }, `row-${rowIdx}`, false, undefined, this))
                       }, undefined, false, undefined, this)
                     }, undefined, false, undefined, this)
                   ]
@@ -28940,21 +28977,6 @@ async function LobbyPage({ c, playerProfile, globalStats }) {
               href: "/v1/match-history",
               className: "px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold",
               children: "Match History"
-            }, undefined, false, undefined, this),
-            /* @__PURE__ */ jsxDEV("a", {
-              href: "/v1/f-bet",
-              className: "px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold",
-              children: "F Bet"
-            }, undefined, false, undefined, this),
-            /* @__PURE__ */ jsxDEV("a", {
-              href: "/v1/achievements",
-              className: "px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold",
-              children: "Achievements"
-            }, undefined, false, undefined, this),
-            /* @__PURE__ */ jsxDEV("a", {
-              href: "/v1/tournaments",
-              className: "px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold",
-              children: "Tournaments"
             }, undefined, false, undefined, this)
           ]
         }, undefined, true, undefined, this)
@@ -28967,7 +28989,7 @@ async function LobbyPage({ c, playerProfile, globalStats }) {
             players
           }, undefined, false, undefined, this),
           /* @__PURE__ */ jsxDEV("div", {
-            className: "lg:col-span-2 flex flex-col justify-center items-center gap-6",
+            className: "lg:col-span-2 flex flex-col justify-start items-center gap-6 pt-110",
             children: /* @__PURE__ */ jsxDEV("a", {
               href: "/v1/match/lobby",
               className: "w-full max-w-sm",
@@ -29854,7 +29876,8 @@ async function listAvailableMatches() {
     const res = await databases.listDocuments(databaseId2, collectionId2, [
       sdk3.Query.or([
         sdk3.Query.equal("state", "open"),
-        sdk3.Query.equal("state", "full")
+        sdk3.Query.equal("state", "full"),
+        sdk3.Query.equal("state", "playing")
       ]),
       sdk3.Query.limit(100)
     ]);
@@ -29898,7 +29921,7 @@ function MatchLobbyPage({ c, currentUser }) {
                   /* @__PURE__ */ jsxDEV("a", {
                     href: "/v1/lobby",
                     children: /* @__PURE__ */ jsxDEV("button", {
-                      className: "px-6 py-3 bg-neutral-700 hover:bg-neutral-600 text-white font-bold rounded-md transition-all",
+                      className: "px-6 py-3 bg-red-500 hover:bg-red-700 text-white font-bold rounded-md transition-all",
                       children: "\uD83C\uDFE0 Return to Lobby"
                     }, undefined, false, undefined, this)
                   }, undefined, false, undefined, this)
@@ -29947,6 +29970,7 @@ function MatchLobbyPage({ c, currentUser }) {
     matches.forEach((match) => {
       const players = match.players || [];
       const isFull = players.length >= match.maxPlayers;
+      const isPlaying = match.state === 'playing';
       const isPlayerInMatch = players.some(p => p.username === decodedUser || p.id === decodedUser);
       
       // Track which match the player is in
@@ -29955,12 +29979,13 @@ function MatchLobbyPage({ c, currentUser }) {
       }
       
       const matchDiv = document.createElement('div');
-      matchDiv.className = 'bg-neutral-900/60 border border-neutral-800 rounded-lg p-4 hover:border-green-500 transition-all';
+      matchDiv.className = 'bg-neutral-900/60 border ' + (isPlaying ? 'border-yellow-500' : 'border-neutral-800') + ' rounded-lg p-4 hover:border-green-500 transition-all';
       
       // Match header
       const header = document.createElement('div');
       header.className = 'flex justify-between items-center mb-4';
-      header.innerHTML = '<div><h3 class="text-lg font-bold text-white">Match</h3><p class="text-xs text-neutral-400 mt-1">ID: ' + match.$id.substring(0, 8) + '...</p></div><div class="text-right"><div class="text-sm font-semibold text-white">' + players.length + '/' + match.maxPlayers + '</div><div class="text-xs text-neutral-400">' + (isFull ? 'FULL' : 'OPEN') + '</div></div>';
+      const statusText = isPlaying ? '\uD83D\uDD34 PLAYING' : (isFull ? 'FULL' : 'OPEN');
+      header.innerHTML = '<div><h3 class="text-lg font-bold text-white">Match</h3><p class="text-xs text-neutral-400 mt-1">ID: ' + match.$id.substring(0, 8) + '...</p></div><div class="text-right"><div class="text-sm font-semibold text-white">' + players.length + '/' + match.maxPlayers + '</div><div class="text-xs ' + (isPlaying ? 'text-yellow-400' : 'text-neutral-400') + '">' + statusText + '</div></div>';
       
       // Players list
       const playersList = document.createElement('div');
@@ -29983,52 +30008,112 @@ function MatchLobbyPage({ c, currentUser }) {
         playersList.appendChild(slot);
       }
       
+      // Display scores if match is playing
+      if(isPlaying && match.scores && match.scores.length > 0){
+        const scoresDiv = document.createElement('div');
+        scoresDiv.className = 'bg-neutral-800/50 rounded p-3 mb-4 border border-neutral-700';
+        
+        const scoresTitle = document.createElement('div');
+        scoresTitle.className = 'text-xs font-bold text-yellow-400 mb-2';
+        scoresTitle.textContent = '\u2694\uFE0F CURRENT SCORES';
+        scoresDiv.appendChild(scoresTitle);
+        
+        match.scores.forEach((game, idx) => {
+          const gameScore = document.createElement('div');
+          gameScore.className = 'text-xs text-neutral-300 mb-1 flex justify-between';
+          
+          const teamANames = (game.a || []).map(id => {
+            const p = players.find(pl => pl.id === id);
+            return safeDecode(p?.username || id) || id;
+          }).join(' + ');
+          
+          const teamBNames = (game.b || []).map(id => {
+            const p = players.find(pl => pl.id === id);
+            return safeDecode(p?.username || id) || id;
+          }).join(' + ');
+          
+          gameScore.innerHTML = '<span>Game ' + (idx + 1) + ':</span><span>' + teamANames + ' <span class="font-bold text-green-400">' + game.scoreA + '</span> vs <span class="font-bold text-red-400">' + game.scoreB + '</span> ' + teamBNames + '</span>';
+          scoresDiv.appendChild(gameScore);
+        });
+        
+        playersList.appendChild(scoresDiv);
+      }
+      
       // Actions
       const actionsDiv = document.createElement('div');
       actionsDiv.className = 'flex gap-2';
       
       if(isPlayerInMatch){
-        // Player is in this match - show Start and Leave
-        const startForm = document.createElement('form');
-        startForm.action = '/v1/match/start';
-        startForm.method = 'post';
-        startForm.className = 'flex-1';
-        
-        const matchIdInput = document.createElement('input');
-        matchIdInput.type = 'hidden';
-        matchIdInput.name = 'matchId';
-        matchIdInput.value = match.$id;
-        startForm.appendChild(matchIdInput);
-        
-        const startBtn = document.createElement('button');
-        startBtn.type = 'submit';
-        startBtn.disabled = !isFull;
-        startBtn.className = isFull ? 'w-full py-2 bg-green-500 text-white rounded text-sm font-bold hover:bg-green-700 cursor-pointer transition-all' : 'w-full py-2 bg-neutral-700/40 text-neutral-400 rounded text-sm cursor-not-allowed';
-        startBtn.textContent = isFull ? '\uD83D\uDE80 START' : '\u23F3 WAITING (' + players.length + '/4)';
-        startForm.appendChild(startBtn);
-        
-        const leaveForm = document.createElement('form');
-        leaveForm.action = '/v1/match/leave';
-        leaveForm.method = 'post';
-        leaveForm.className = 'flex-1';
-        
-        const leaveMatchIdInput = document.createElement('input');
-        leaveMatchIdInput.type = 'hidden';
-        leaveMatchIdInput.name = 'matchId';
-        leaveMatchIdInput.value = match.$id;
-        leaveForm.appendChild(leaveMatchIdInput);
-        
-        const leaveBtn = document.createElement('button');
-        leaveBtn.type = 'submit';
-        leaveBtn.className = 'w-full py-2 bg-red-500 text-white rounded text-sm font-bold hover:bg-red-700 cursor-pointer transition-all';
-        leaveBtn.textContent = '\u274C LEAVE';
-        leaveForm.appendChild(leaveBtn);
-        
-        actionsDiv.appendChild(startForm);
-        actionsDiv.appendChild(leaveForm);
+        if(isPlaying){
+          // Player is in a playing match - show "Go to Match" button
+          const goForm = document.createElement('form');
+          goForm.action = '/v1/match/join-specific';
+          goForm.method = 'post';
+          goForm.className = 'w-full';
+          
+          const matchIdInput = document.createElement('input');
+          matchIdInput.type = 'hidden';
+          matchIdInput.name = 'matchId';
+          matchIdInput.value = match.$id;
+          goForm.appendChild(matchIdInput);
+          
+          const goBtnElement = document.createElement('button');
+          goBtnElement.type = 'submit';
+          goBtnElement.className = 'w-full py-2 bg-yellow-600 text-white rounded text-sm font-bold hover:bg-yellow-700 cursor-pointer transition-all';
+          goBtnElement.textContent = '\uD83C\uDFAE GO TO MATCH';
+          goForm.appendChild(goBtnElement);
+          
+          actionsDiv.appendChild(goForm);
+        } else {
+          // Player is in this match - show Start and Leave
+          const startForm = document.createElement('form');
+          startForm.action = '/v1/match/start';
+          startForm.method = 'post';
+          startForm.className = 'flex-1';
+          
+          const matchIdInput = document.createElement('input');
+          matchIdInput.type = 'hidden';
+          matchIdInput.name = 'matchId';
+          matchIdInput.value = match.$id;
+          startForm.appendChild(matchIdInput);
+          
+          const startBtn = document.createElement('button');
+          startBtn.type = 'submit';
+          startBtn.disabled = !isFull;
+          startBtn.className = isFull ? 'w-full py-2 bg-green-500 text-white rounded text-sm font-bold hover:bg-green-700 cursor-pointer transition-all' : 'w-full py-2 bg-neutral-700/40 text-neutral-400 rounded text-sm cursor-not-allowed';
+          startBtn.textContent = isFull ? '\uD83D\uDE80 START' : '\u23F3 WAITING (' + players.length + '/4)';
+          startForm.appendChild(startBtn);
+          
+          const leaveForm = document.createElement('form');
+          leaveForm.action = '/v1/match/leave';
+          leaveForm.method = 'post';
+          leaveForm.className = 'flex-1';
+          
+          const leaveMatchIdInput = document.createElement('input');
+          leaveMatchIdInput.type = 'hidden';
+          leaveMatchIdInput.name = 'matchId';
+          leaveMatchIdInput.value = match.$id;
+          leaveForm.appendChild(leaveMatchIdInput);
+          
+          const leaveBtn = document.createElement('button');
+          leaveBtn.type = 'submit';
+          leaveBtn.className = 'w-full py-2 bg-red-500 text-white rounded text-sm font-bold hover:bg-red-700 cursor-pointer transition-all';
+          leaveBtn.textContent = '\u274C LEAVE';
+          leaveForm.appendChild(leaveBtn);
+          
+          actionsDiv.appendChild(startForm);
+          actionsDiv.appendChild(leaveForm);
+        }
       } else {
         // Player is not in this match
-        if(isFull){
+        if(isPlaying){
+          // Playing match - can't join, just view
+          const viewBtn = document.createElement('button');
+          viewBtn.disabled = true;
+          viewBtn.className = 'w-full py-2 bg-neutral-700/40 text-neutral-400 rounded text-sm cursor-not-allowed';
+          viewBtn.textContent = '\uD83D\uDC41\uFE0F VIEWING';
+          actionsDiv.appendChild(viewBtn);
+        } else if(isFull){
           const disabledBtn = document.createElement('button');
           disabledBtn.disabled = true;
           disabledBtn.className = 'w-full py-2 bg-neutral-700/40 text-neutral-400 rounded text-sm cursor-not-allowed';
@@ -30155,6 +30240,43 @@ function MatchGamePage({ c, match: match2 }) {
             children: scores.map((s2, idx) => /* @__PURE__ */ jsxDEV("div", {
               className: "bg-neutral-900/50 rounded-lg p-4 border border-neutral-300",
               children: [
+                /* @__PURE__ */ jsxDEV("div", {
+                  className: "mb-4 p-3 bg-neutral-800/60 rounded border border-yellow-700/50 flex gap-6",
+                  children: [
+                    /* @__PURE__ */ jsxDEV("label", {
+                      className: "flex items-center gap-2 cursor-pointer text-neutral-300",
+                      children: [
+                        /* @__PURE__ */ jsxDEV("input", {
+                          type: "checkbox",
+                          "data-idx": idx,
+                          "data-side": "a",
+                          className: "w-4 h-4 cursor-pointer golden-vyrazacka-checkbox",
+                          checked: s2.goldenVyrazacka?.side === "a" || false
+                        }, undefined, false, undefined, this),
+                        /* @__PURE__ */ jsxDEV("span", {
+                          className: "text-sm font-semibold",
+                          children: "\uD83C\uDFC6 Golden Vyr\xE1\u017Ee\u010Dka Team A"
+                        }, undefined, false, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("label", {
+                      className: "flex items-center gap-2 cursor-pointer text-neutral-300",
+                      children: [
+                        /* @__PURE__ */ jsxDEV("input", {
+                          type: "checkbox",
+                          "data-idx": idx,
+                          "data-side": "b",
+                          className: "w-4 h-4 cursor-pointer golden-vyrazacka-checkbox",
+                          checked: s2.goldenVyrazacka?.side === "b" || false
+                        }, undefined, false, undefined, this),
+                        /* @__PURE__ */ jsxDEV("span", {
+                          className: "text-sm font-semibold",
+                          children: "\uD83C\uDFC6 Golden Vyr\xE1\u017Ee\u010Dka Team B"
+                        }, undefined, false, undefined, this)
+                      ]
+                    }, undefined, true, undefined, this)
+                  ]
+                }, undefined, true, undefined, this),
                 /* @__PURE__ */ jsxDEV("div", {
                   className: "flex items-center justify-between mb-4",
                   children: [
@@ -30495,6 +30617,28 @@ function MatchGamePage({ c, match: match2 }) {
     }catch(e){ console.error(e); }
   }
 
+  async function sendGoldenVyrazackaUpdate(idx, side, isChecked){
+    try{
+      const form = new FormData();
+      form.append('matchId', matchId);
+      form.append('index', String(idx));
+      form.append('side', side);
+      form.append('isChecked', String(isChecked));
+      const res = await fetch('/v1/match/game/golden-vyrazacka', { method: 'POST', body: form });
+      if(!res.ok) {
+        const txt = await res.text().catch(()=>null);
+        console.error('golden vyrazacka update failed', txt);
+        return;
+      }
+      const data = await res.json();
+      // update DOM scores with the new values
+      const scoreAEl = document.getElementById('scoreA-'+idx);
+      const scoreBEl = document.getElementById('scoreB-'+idx);
+      if(scoreAEl) scoreAEl.textContent = String(data.scoreA);
+      if(scoreBEl) scoreBEl.textContent = String(data.scoreB);
+    }catch(e){ console.error(e); }
+  }
+
   document.addEventListener('click', function(e){
     const el = e.target;
     if(!(el instanceof HTMLElement)) return;
@@ -30531,6 +30675,26 @@ function MatchGamePage({ c, match: match2 }) {
     }
   });
 
+  document.addEventListener('change', function(e){
+    const el = e.target;
+    if(!(el instanceof HTMLInputElement)) return;
+    
+    // Golden vyrazacka checkbox
+    if(el.classList.contains('golden-vyrazacka-checkbox')){
+      const idx = el.getAttribute('data-idx');
+      const side = el.getAttribute('data-side');
+      if(idx !== null && side){
+        // Uncheck the other side's checkbox
+        const otherSide = side === 'a' ? 'b' : 'a';
+        const otherCheckbox = document.querySelector(\`.golden-vyrazacka-checkbox[data-idx="\${idx}"][data-side="\${otherSide}"]\`);
+        if(otherCheckbox && el.checked){
+          otherCheckbox.checked = false;
+        }
+        sendGoldenVyrazackaUpdate(Number(idx), side, el.checked);
+      }
+    }
+  });
+
   // ---- ADD POLLING HERE ----
   async function pollState(){
     const res = await fetch('/v1/match/state?matchId=' + encodeURIComponent(matchId));
@@ -30563,6 +30727,14 @@ function MatchGamePage({ c, match: match2 }) {
             const el = document.getElementById('vyr-'+i+'-'+pid);
             if (el) el.textContent = String(s.vyrazacka[pid]);
           }
+        }
+
+        // golden vyrazacka checkbox state
+        if (s.goldenVyrazacka) {
+          const aCheckbox = document.querySelector(\`.golden-vyrazacka-checkbox[data-idx="\${i}"][data-side="a"]\`);
+          const bCheckbox = document.querySelector(\`.golden-vyrazacka-checkbox[data-idx="\${i}"][data-side="b"]\`);
+          if (aCheckbox) aCheckbox.checked = s.goldenVyrazacka.side === 'a';
+          if (bCheckbox) bCheckbox.checked = s.goldenVyrazacka.side === 'b';
         }
       });
     }
@@ -31251,6 +31423,18 @@ app.post("/v1/match/join-specific", async (c) => {
     const matchId = String(form3.get("matchId") ?? "");
     if (!matchId)
       return c.text("missing matchId", 400);
+    const matchCheck = await getMatch(matchId);
+    if (matchCheck && matchCheck.state === "playing") {
+      const profile2 = await getPlayerProfile(username);
+      const playerId = profile2 ? profile2.$id : username;
+      const isPlayerInMatch = matchCheck.players.some((p) => p.id === playerId);
+      if (isPlayerInMatch) {
+        c.res.headers.set("Set-Cookie", `match_id=${encodeURIComponent(matchId)}; Path=/; HttpOnly; SameSite=Lax`);
+        return c.redirect("/v1/match/game");
+      } else {
+        return c.text("Cannot join a match in progress", 400);
+      }
+    }
     const profile = await getPlayerProfile(username);
     const player = {
       id: profile ? profile.$id : username,
