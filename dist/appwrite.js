@@ -28754,6 +28754,86 @@ function PlayerProfilePanel({ playerProfile, players }) {
           ]
         }, undefined, true, undefined, this),
         /* @__PURE__ */ jsxDEV("div", {
+          className: "mb-6",
+          children: [
+            /* @__PURE__ */ jsxDEV("p", {
+              className: `text-xl font-bold ${rank.colorKey} mb-2`,
+              children: rank.name
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsxDEV("div", {
+              className: "relative group",
+              children: [
+                /* @__PURE__ */ jsxDEV("div", {
+                  className: "flex items-center gap-2 mb-3",
+                  children: [
+                    /* @__PURE__ */ jsxDEV("p", {
+                      className: "text-m text-neutral-300 cursor-help",
+                      children: [
+                        playerProfile.elo,
+                        " ELO"
+                      ]
+                    }, undefined, true, undefined, this),
+                    /* @__PURE__ */ jsxDEV("div", {
+                      className: "w-5 h-5 rounded-full bg-neutral-700 text-neutral-300 flex items-center justify-center text-xs font-bold cursor-help group-hover:bg-neutral-600",
+                      children: "i"
+                    }, undefined, false, undefined, this)
+                  ]
+                }, undefined, true, undefined, this),
+                /* @__PURE__ */ jsxDEV("div", {
+                  className: "absolute left-0 bottom-full mb-2 hidden group-hover:block bg-neutral-800 text-neutral-200 text-xs rounded p-2 w-84 border border-neutral-700 z-10",
+                  children: [
+                    /* @__PURE__ */ jsxDEV("p", {
+                      className: "font-bold mb-1 text-blue-400",
+                      children: "ELO Changes:"
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("p", {
+                      className: "text-green-400",
+                      children: "\u2022 Win: +20 ELO"
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("p", {
+                      className: "text-red-400",
+                      children: "\u2022 Lose: -20 ELO"
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("p", {
+                      className: "text-green-400",
+                      children: "\u2022 Ultimate Winner: 2 ELO from each opponent (total +6) "
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("p", {
+                      className: "text-red-400",
+                      children: "\u2022 Ultimate Loser: 1 ELO to each opponent (total -3)"
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("p", {
+                      children: "\u2022 ELO difference: (max \xB110)"
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsxDEV("p", {
+                      className: "pl-4 text-neutral-300",
+                      children: "\u2022 \xB1min(10, avg elo difference / 25)"
+                    }, undefined, false, undefined, this)
+                  ]
+                }, undefined, true, undefined, this)
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsxDEV("div", {
+              className: "w-full bg-neutral-800 rounded-full h-2 mt-2 overflow-hidden",
+              children: /* @__PURE__ */ jsxDEV("div", {
+                className: `h-2 rounded-full bg-gradient-to-r ${rank.color}`,
+                style: { width: `${rank.progress}%` }
+              }, undefined, false, undefined, this)
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsxDEV("div", {
+              className: "flex justify-between text-xs mt-1 text-neutral-400",
+              children: [
+                /* @__PURE__ */ jsxDEV("span", {
+                  children: rank.min
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsxDEV("span", {
+                  children: rank.max
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this)
+          ]
+        }, undefined, true, undefined, this),
+        /* @__PURE__ */ jsxDEV("div", {
           className: "w-11/12 mb-5 mt-5 mx-auto h-px bg-white/35 my-3 rounded"
         }, undefined, false, undefined, this),
         /* @__PURE__ */ jsxDEV("div", {
@@ -28907,22 +28987,11 @@ function PlayerProfilePanel({ playerProfile, players }) {
                 }, undefined, false, undefined, this),
                 /* @__PURE__ */ jsxDEV("span", {
                   className: "text-orange-400",
-                  children: playerProfile.vyrazecky
-                }, undefined, false, undefined, this)
-              ]
-            }, undefined, true, undefined, this),
-            /* @__PURE__ */ jsxDEV("div", {
-              className: "flex justify-between text-neutral-300",
-              children: [
-                /* @__PURE__ */ jsxDEV("span", {
-                  className: "text-orange-400",
-                  children: "Vyr\xE1\u017Ee\u010Dka %:"
-                }, undefined, false, undefined, this),
-                /* @__PURE__ */ jsxDEV("span", {
-                  className: "text-orange-400",
                   children: [
+                    playerProfile.vyrazecky,
+                    " (",
                     playerProfile.goals_scored + playerProfile.goals_conceded > 0 ? Math.round(playerProfile.vyrazecky / (playerProfile.goals_scored + playerProfile.goals_conceded) * 1e4) / 100 : 0,
-                    " %"
+                    " %)"
                   ]
                 }, undefined, true, undefined, this)
               ]
@@ -31182,7 +31251,7 @@ app.use(async (c, next) => {
   const user = getCookie(c, "user") ?? "";
   if (user) {
     const activeMatch = await findCurrentMatch(user);
-    const isApiRequest = c.req.header("Accept")?.includes("application/json") || c.req.path.startsWith("/v1/match/state") || c.req.path.startsWith("/v1/match/list") || c.req.path.startsWith("/v1/match/game/score") || c.req.path.startsWith("/v1/match/game/vyrazacka");
+    const isApiRequest = c.req.header("Accept")?.includes("application/json") || c.req.path.startsWith("/v1/match/state") || c.req.path.startsWith("/v1/match/list") || c.req.path.startsWith("/v1/match/game/score") || c.req.path.startsWith("/v1/match/game/vyrazacka") || c.req.path.startsWith("/v1/match/game/golden-vyrazacka");
   }
   if (!user && c.req.path.startsWith("/v1/")) {
     return c.redirect("/v1/auth/login");
@@ -31576,6 +31645,50 @@ app.post("/v1/match/game/vyrazacka", async (c) => {
     return c.json({ ok: true, newValue });
   } catch (err) {
     console.error("update vyrazacka error", err);
+    return c.json({ error: "failed" }, 500);
+  }
+});
+app.post("/v1/match/game/golden-vyrazacka", async (c) => {
+  try {
+    const form3 = await c.req.formData();
+    const matchId = String(form3.get("matchId") ?? "");
+    const index2 = Number(form3.get("index") ?? 0);
+    const side = String(form3.get("side") ?? "");
+    const isChecked = String(form3.get("isChecked") ?? "false") === "true";
+    if (!matchId)
+      return c.json({ error: "missing matchId" }, 400);
+    if (!side)
+      return c.json({ error: "missing side" }, 400);
+    const match2 = await getMatch(matchId);
+    if (!match2)
+      return c.json({ error: "match not found" }, 404);
+    const scores = match2.scores || [];
+    if (!scores[index2])
+      return c.json({ error: "invalid index" }, 400);
+    const s2 = scores[index2];
+    if (isChecked) {
+      const winningScore = side === "a" ? s2.scoreA : s2.scoreB;
+      const losingScore = side === "a" ? s2.scoreB : s2.scoreA;
+      const diff = 10 - winningScore;
+      if (side === "a") {
+        s2.scoreA = 10;
+      } else {
+        s2.scoreB = 10;
+      }
+      s2.goldenVyrazacka = { side, diff };
+    } else {
+      if (s2.goldenVyrazacka?.side === side) {
+        delete s2.goldenVyrazacka;
+      }
+    }
+    const updated = await updateGameScores(matchId, scores);
+    return c.json({
+      ok: true,
+      scoreA: updated.scores?.[index2]?.scoreA ?? 0,
+      scoreB: updated.scores?.[index2]?.scoreB ?? 0
+    });
+  } catch (err) {
+    console.error("update golden vyrazacka error", err);
     return c.json({ error: "failed" }, 500);
   }
 });

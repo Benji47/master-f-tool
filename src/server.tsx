@@ -928,7 +928,7 @@ app.post("/v1/match/game/finish", async (c) => {
           if (aScore === 10 && bScore === 0) {
             byId[id].xpGained += 50;
             byId[id].ten_zero_wins += 1;
-            totalSumPodlezani += 2;
+            totalSumPodlezani += 0.5;
           }
         });
         b.forEach((id:string) => {
@@ -939,6 +939,9 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].xpGained += 5;
           byId[id].newElo -= 20;
           byId[id].gamesAdded += 1;
+          if (aScore === 10 && bScore === 0) {
+            byId[id].ten_zero_loses += 1;
+          }
         });
         // elo adjust by relative strength
         if (avgA > avgB) {
@@ -962,7 +965,7 @@ app.post("/v1/match/game/finish", async (c) => {
           if (bScore === 10 && aScore === 0) {
             byId[id].xpGained += 50;
             byId[id].ten_zero_wins += 1;
-            totalSumPodlezani += 2;
+            totalSumPodlezani += 0.5;
           }
         });
         a.forEach((id:string) => {
@@ -973,6 +976,9 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].xpGained += 5;
           byId[id].newElo -= 20;
           byId[id].gamesAdded += 1;
+          if (bScore === 10 && aScore === 0) {
+            byId[id].ten_zero_loses += 1;
+          }
         });
         if (avgB > avgA) {
           b.forEach((id:string) => byId[id].newElo -= adj);

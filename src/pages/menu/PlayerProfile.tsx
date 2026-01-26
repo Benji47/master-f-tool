@@ -260,11 +260,7 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
           </div>
           <div className="flex justify-between text-neutral-300">
             <span className="text-orange-400">Vyrážečka Count:</span>
-            <span className="text-orange-400">{playerProfile.vyrazecky}</span>
-          </div>
-          <div className="flex justify-between text-neutral-300">
-            <span className="text-orange-400">Vyrážečka %:</span>
-            <span className="text-orange-400">{playerProfile.goals_scored + playerProfile.goals_conceded > 0 ? Math.round(playerProfile.vyrazecky / (playerProfile.goals_scored + playerProfile.goals_conceded) * 10000) / 100 : 0} %</span>
+            <span className="text-orange-400">{playerProfile.vyrazecky} ({playerProfile.goals_scored + playerProfile.goals_conceded > 0 ? Math.round(playerProfile.vyrazecky / (playerProfile.goals_scored + playerProfile.goals_conceded) * 10000) / 100 : 0} %)</span>
           </div>
         </div>
       </div>

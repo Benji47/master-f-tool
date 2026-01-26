@@ -27,12 +27,7 @@ export default function GlobalStatsPanel({ globalStats }: { globalStats: GlobalS
 
         <div className="flex justify-between text-neutral-300">
           <span className="text-purple-400">Vyrážečka:</span>
-          <span className="text-purple-400">{globalStats.totalVyrazecka}</span>
-        </div>
-
-        <div className="flex justify-between text-neutral-300">
-          <span className="text-purple-400">Vyrážečka %:</span>
-          <span className="text-purple-400">{vyrazPct} %</span>
+          <span className="text-purple-400">{globalStats.totalVyrazecka} ({vyrazPct} %)</span>
         </div>
       </div>
     </div>
