@@ -130,27 +130,53 @@ app.get("/v1/match-history/players/:username", async (c) => {
 
   const databases = new sdk.Databases(client);
 
-  const res = await databases.listDocuments(
-    process.env.APPWRITE_DATABASE_ID!,
-    'matches_history',
-    [
-      sdk.Query.orderDesc("$createdAt")
-    ]
-  );
+  // Fetch ALL documents with pagination
+  let allDocuments: any[] = [];
+  let offset = 0;
+  const limit = 100; // Fetch 100 at a time
+
+  while (true) {
+    const res = await databases.listDocuments(
+      process.env.APPWRITE_DATABASE_ID!,
+      'matches_history',
+      [
+        sdk.Query.orderDesc("$createdAt"),
+        sdk.Query.limit(limit),
+        sdk.Query.offset(offset)
+      ]
+    );
+
+    if (res.documents.length === 0) break;
+    
+    allDocuments = allDocuments.concat(res.documents);
+    offset += limit;
+    
+    // Safety check to prevent infinite loops
+    if (allDocuments.length > 10000) {
+      break;
+    }
+  }
 
   // parse each document similar to match docs
-  const matches = res.documents
+  const matches = allDocuments
   .filter((doc: any) => {
-    // Parse JSON if it's a string
-    const players = typeof doc.players_json === "string"
-      ? JSON.parse(doc.players_json)
-      : doc.players_json;
-
-    return Array.isArray(players) &&
-           players.some((p: any) => p.username === username);
+    try {
+      // Parse JSON if it's a string
+      let players = typeof doc.players_json === "string"
+        ? JSON.parse(doc.players_json)
+        : doc.players_json;
+      
+      if (!Array.isArray(players)) {
+        return false;
+      }
+      
+      const hasPlayer = players.some((p: any) => p.id === username);
+      return hasPlayer;
+    } catch (err: any) {
+      return false;
+    }
   })
   .map((doc: MatchDoc) => parseDoc(doc));
-
 
   return c.html(
     <MainLayout c={c}>

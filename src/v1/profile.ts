@@ -105,10 +105,34 @@ export async function getAllPlayerProfiles(): Promise<PlayerProfile[]> {
   const databases = new sdk.Databases(client);
 
   try {
-    const res = await databases.listDocuments(databaseId, collectionId);
+    // Fetch ALL documents with pagination
+    let allProfiles: PlayerProfile[] = [];
+    let offset = 0;
+    const limit = 100; // Fetch 100 at a time
+
+    while (true) {
+      const res = await databases.listDocuments(
+        databaseId,
+        collectionId,
+        [
+          sdk.Query.limit(limit),
+          sdk.Query.offset(offset)
+        ]
+      );
+
+      if (res.documents.length === 0) break;
+      
+      allProfiles = allProfiles.concat(res.documents as PlayerProfile[]);
+      offset += limit;
+      
+      // Safety check to prevent infinite loops
+      if (allProfiles.length > 10000) {
+        break;
+      }
+    }
 
     // Cast to strongly typed profiles
-    return res.documents as PlayerProfile[];
+    return allProfiles;
   } catch (err: any) {
     console.error("Profiles fetch error:", err);
     return [];
