@@ -3,25 +3,25 @@ import { serveStatic } from "hono/bun";
 import { getCookie } from "hono/cookie";
 import { Homepage } from "./pages/auth/homepage";
 import { MainLayout } from "./main";
-import { registerUser, loginUser } from "./v1/auth";
+import { registerUser, loginUser } from "./logic/auth";
 import { LoginPage } from "./pages/auth/login";
 import { RegisterPage } from "./pages/auth/register";
 import { LobbyPage } from "./pages/menu/lobby";
-import { LeaderboardPage } from "./v1/leaderboard";
-import { getGlobalStats, getLeaderboard, getPlayerProfile, updateGlobalStats, updatePlayerStats } from "./v1/profile";
-import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch, parseDoc, parseMatchHistoryDoc, MatchHistoryDoc, HistoryPlayers, createMatch, joinMatch, listAvailableMatches } from "./v1/match";
-import { MatchLobbyPage } from "./v1/matchLobby";
-import { updateGameScores } from "./v1/match";
-import { MatchGamePage } from "./v1/matchGame";
-import { MatchResultPage } from "./v1/matchResult";
-import { findCurrentMatch } from "./v1/match";
-import { MatchHistoryPage } from "./v1/matchHistory";
+import { LeaderboardPage } from "./pages/leaderboard";
+import { getGlobalStats, getLeaderboard, getPlayerProfile, updateGlobalStats, updatePlayerStats } from "./logic/profile";
+import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch, parseDoc, parseMatchHistoryDoc, MatchHistoryDoc, HistoryPlayers, createMatch, joinMatch, listAvailableMatches } from "./logic/match";
+import { MatchLobbyPage } from "./pages/matchLobby";
+import { updateGameScores } from "./logic/match";
+import { MatchGamePage } from "./pages/matchGame";
+import { MatchResultPage } from "./pages/matchResult";
+import { findCurrentMatch } from "./logic/match";
+import { MatchHistoryPage } from "./pages/matchHistory";
 import { readFileSync } from "node:fs";
 import { FBetPage } from "./pages/f-bet";
 import { AchievementsPage } from "./pages/achievements";
 import { TournamentsPage } from "./pages/tournaments";
 import { ChangesLogPage } from "./pages/changesLog";
-import { recordAchievement } from "./v1/dailyAchievements";
+import { recordAchievement } from "./logic/dailyAchievements";
 
 const sdk = require('node-appwrite');
 
@@ -557,9 +557,11 @@ app.get("/v1/match-history/:id", async (c) => {
   try {
     const result = await matchResults(id);
 
+    const user = getCookie(c, "user") ?? "";
+
     return c.html(
       <MainLayout c={c}>
-        <MatchResultPage c={c} result={result}/>
+        <MatchResultPage c={c} result={result} username={user}/>
       </MainLayout>
     );
 

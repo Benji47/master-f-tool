@@ -1,4 +1,4 @@
-import { GlobalStats } from "../../v1/profile";
+import { GlobalStats } from "../../logic/profile";
 
 export default function GlobalStatsPanel({ globalStats }: { globalStats: GlobalStats }) {
   const vyrazPct = globalStats.totalGoals > 0

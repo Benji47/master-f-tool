@@ -1,12 +1,12 @@
 import { Context } from "hono";
 import { getCookie } from "hono/cookie";
-import { getAllPlayerProfiles, GlobalStats, PlayerProfile } from "../../v1/profile";
+import { getAllPlayerProfiles, GlobalStats, PlayerProfile } from "../../logic/profile";
 import { useEffect, useState } from "hono/jsx";
 import { levelsXp, badges, rankTiers, PlayerData, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from '../../static/data'; // Import static data
 import GlobalStatsPanel from "./GlobalStats";
 import PlayerProfilePanel from "./PlayerProfile";
 import { DailyAchievementsPanel } from "./DailyAchievements";
-import { getDailyAchievements } from "../../v1/dailyAchievements";
+import { getDailyAchievements } from "../../logic/dailyAchievements";
 
 export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context; playerProfile: PlayerProfile | null; globalStats: GlobalStats | null}) {
   const players = await getAllPlayerProfiles();

@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { MatchDoc } from "./match";
+import { MatchDoc } from "../logic/match";
 
 export function MatchHistoryPage({ c, matches, username }: { c: Context; matches: MatchDoc[]; username: string | null}) {
   return (

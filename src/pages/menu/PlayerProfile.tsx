@@ -1,4 +1,4 @@
-import { PlayerProfile } from "../../v1/profile";
+import { PlayerProfile } from "../../logic/profile";
 import { badges, rankTiers, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 
 export default function PlayerProfilePanel({ playerProfile, players }: { playerProfile: PlayerProfile; players: PlayerProfile[] }) {

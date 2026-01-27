@@ -1,6 +1,6 @@
 import { Context } from "hono";
 
-export function MatchResultPage({ c, result }: { c: Context; result: any }) {
+export function MatchResultPage({ c, result, username }: { c: Context; result: any, username: string | null }) {
   const players = result.players || [];
   const scores = result.scores || [];
 
