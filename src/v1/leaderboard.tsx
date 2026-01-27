@@ -26,7 +26,7 @@ function PlayerLink({ username, children }: { username: string; children: any })
   );
 }
 
-export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
+export function LeaderboardPage({ players, currentPlayer }: { players: LeaderboardPlayer[]; currentPlayer?: string }) {
   function eloColor(elo: number) {
     if (elo >= 1000) return "text-red-500";
     if (elo >= 800) return "text-indigo-500";
@@ -34,6 +34,13 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
     if (elo >= 400) return "text-amber-500";
     if (elo >= 200) return "text-gray-400";
     return "text-yellow-800";
+  }
+
+  function getRowClass(isEven: boolean, isCurrentPlayer: boolean) {
+    if (isCurrentPlayer) {
+      return "bg-green-950/60 border-l-4 border-green-500";
+    }
+    return isEven ? "bg-neutral-900/40" : "bg-neutral-800/40";
   }
 
   const cumulativeLevelsXp = getCumulativeThresholds();
@@ -109,11 +116,12 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
             {sortedByElo.map((player, idx) => {
               const isEven = idx % 2 === 0;
               const lvl = computeLevel(player.xp).level;
+              const isCurrentPlayer = currentPlayer === player.username;
               return (
                 <div
                   key={player.$id}
                   className={`grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 transition-colors
-                    ${isEven ? "bg-neutral-900/40" : "bg-neutral-800/40"} 
+                    ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
@@ -140,12 +148,13 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
             {sortedByUltimateWins.map((player, idx) => {
               const isEven = idx % 2 === 0;
               const lvl = computeLevel(player.xp).level;
+              const isCurrentPlayer = currentPlayer === player.username;
               
               return (
                 <div
                   key={player.$id}
                   className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
-                    ${isEven ? "bg-neutral-900/40" : "bg-neutral-800/40"} 
+                    ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
@@ -171,12 +180,13 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
             {sortedByUltimateLoses.map((player, idx) => {
               const isEven = idx % 2 === 0;
               const lvl = computeLevel(player.xp).level;
+              const isCurrentPlayer = currentPlayer === player.username;
 
               return (
                 <div
                   key={player.$id}
                   className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
-                    ${isEven ? "bg-neutral-900/40" : "bg-neutral-800/40"} 
+                    ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
@@ -202,12 +212,17 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
             {sortedByVyrazacka.map((player, idx) => {
               const isEven = idx % 2 === 0;
               const lvl = computeLevel(player.xp).level;
+              const isCurrentPlayer = currentPlayer === player.username;
+              const goals_scored = player.goals_scored;
+              const vyrazeckyPercents = goals_scored > 0
+                ? Math.round((player.vyrazecky / goals_scored) * 10000) / 100
+                : 0;
 
               return (
                 <div
                   key={player.$id}
                   className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
-                    ${isEven ? "bg-neutral-900/40" : "bg-neutral-800/40"}
+                    ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
@@ -215,7 +230,7 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
                     <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
                   </div>
 
-                  <div className="text-orange-400 font-bold">{player.vyrazecky}</div>
+                  <div className="text-orange-400 font-bold">{player.vyrazecky} ({vyrazeckyPercents}%)</div>
                 </div>
               );
             })}
@@ -233,12 +248,13 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
             {sortedByTotalGames.map((player, idx) => {
               const isEven = idx % 2 === 0;
               const lvl = computeLevel(player.xp).level;
+              const isCurrentPlayer = currentPlayer === player.username;
 
               return (
                 <div
                   key={player.$id}
                   className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
-                    ${isEven ? "bg-neutral-900/40" : "bg-neutral-800/40"}
+                    ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
@@ -265,12 +281,13 @@ export function LeaderboardPage({ players }: { players: LeaderboardPlayer[] }) {
             {sortedLevels.map((player, idx) => {
               const isEven = idx % 2 === 0;
               const lvl = computeLevel(player.xp).level;
+              const isCurrentPlayer = currentPlayer === player.username;
 
               return (
                 <div
                   key={player.$id}
                   className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
-                    ${isEven ? "bg-neutral-900/40" : "bg-neutral-800/40"}
+                    ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>

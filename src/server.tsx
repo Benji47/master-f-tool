@@ -20,6 +20,8 @@ import { readFileSync } from "node:fs";
 import { FBetPage } from "./pages/f-bet";
 import { AchievementsPage } from "./pages/achievements";
 import { TournamentsPage } from "./pages/tournaments";
+import { ChangesLogPage } from "./pages/changesLog";
+import { recordAchievement } from "./v1/dailyAchievements";
 
 const sdk = require('node-appwrite');
 
@@ -92,6 +94,47 @@ app.use(async (c, next) => {
   }
 
   await next();
+});
+
+app.get("/v1/changes-log", async (c) => {
+  const changes = [
+    {
+      date: "26.01.2026",
+      updates: [
+        "[Feature] -> Added daily achievements panel to lobby sidebar. Only in testing phase now.",
+        "[Feature] -> Current players is highlighted in leaderboard now.",
+        "[Feature] -> Added % of vyrážečky to player profile and leaderboard.",
+        "[Fix] -> Fix 'golden vyrážečka' to work properly. Now you should type for example (score 3-9) and then click on 'golden vyrážečka' button.",
+        "[Fix] -> Now 0-10 loses are added to players stats automaticall.",
+        "[Fix] -> You can properly see full list of any player matches.",
+        "[Fix] -> Menu leaderbords for ranks now shows all players.",
+      ],
+    },
+    {
+      date: "12.08.2025",
+      updates: [
+        "[Feature] -> Added average goals per match column to elo leaderboard.",
+        "[Feature] -> Added W/L amd goals ratio as float number to leaderboard.",
+      ],
+    },
+    {
+      date: "12.05.2025",
+      updates: [
+        "[Feature] -> Added this feature :D",
+        "[Feature] -> You can see players match history from leaderboard! Click on a player's name to view their matches.",
+        "[Feature] -> Added how many % of goals are \"vyrážečky\" in global stats.",
+        "[Fix] -> Sorting of leaderboard by level now works correctly.",
+        "[Fix] -> There is no scroll in lobby anymore.",
+        "[Fix] -> Redirection to match history after finishing a match now works properly.",
+      ],
+    }
+  ];
+
+  return c.html(
+    <MainLayout c={c}>
+      <ChangesLogPage changes={changes} />
+    </MainLayout>
+  );
 });
 
 app.get("/v1/match-history", async (c) => {
@@ -241,9 +284,10 @@ app.get("/v1/lobby", async (c) => {
 app.get("/v1/leaderboard", async (c) => {
   try {
     const players = await getLeaderboard(100);
+    const username = getCookie(c, "user") ?? undefined;
     return c.html(
       <MainLayout c={c}>
-        <LeaderboardPage players={players} />
+        <LeaderboardPage players={players} currentPlayer={username} />
       </MainLayout>,
     );
   } catch (err: any) {
@@ -637,7 +681,7 @@ app.post("/v1/match/game/golden-vyrazacka", async (c) => {
       const losingScore = side === 'a' ? s.scoreB : s.scoreA;
       
       // Calculate the difference from 10
-      const diff = 10 - winningScore;
+      const diff = 10 - losingScore;
       
       // Set winning team to 10
       if (side === 'a') {
@@ -1082,8 +1126,11 @@ app.post("/v1/match/game/finish", async (c) => {
       try {
         const profile = await getPlayerProfile(id); // profile id or username may be used
         if (profile) {
+          const oldXp = profile.xp || 0;
+          const newXp = oldXp + xpGain;
+          
           await updatePlayerStats(profile.$id, {
-            xp: (profile.xp || 0) + xpGain,
+            xp: newXp,
             elo: (profile.elo || 0) + (newElo - oldElo),
             wins: (profile.wins || 0) + winsAdd,
             loses: (profile.loses || 0) + losesAdd,
@@ -1095,6 +1142,77 @@ app.post("/v1/match/game/finish", async (c) => {
             goals_scored: (profile.goals_scored || 0) + rec.goals_scored,
             goals_conceded: (profile.goals_conceded || 0) + rec.goals_conceded,
           });
+
+          // Record achievements
+          const timestamp = Date.now();
+          
+          // ELO rank changes
+          if (newElo > oldElo) {
+            await recordAchievement({
+              timestamp,
+              type: 'elo_rank_up',
+              playerId: id,
+              username: rec.username,
+              data: {
+                oldValue: oldElo,
+                newValue: newElo,
+                matchId,
+              },
+            });
+          } else if (newElo < oldElo) {
+            await recordAchievement({
+              timestamp,
+              type: 'elo_rank_down',
+              playerId: id,
+              username: rec.username,
+              data: {
+                oldValue: oldElo,
+                newValue: newElo,
+                matchId,
+              },
+            });
+          }
+
+          // 10-0 shutout wins
+          if (rec.ten_zero_wins > 0) {
+            await recordAchievement({
+              timestamp,
+              type: 'shutout_win',
+              playerId: id,
+              username: rec.username,
+              data: {
+                matchId,
+              },
+            });
+          }
+
+          // Vyrazecky achievements
+          if (rec.vyrazecky > 0) {
+            // Check if it's a "golden" vyrazecka (3+ in a match)
+            if (rec.vyrazecky >= 3) {
+              await recordAchievement({
+                timestamp,
+                type: 'golden_vyrazecka',
+                playerId: id,
+                username: rec.username,
+                data: {
+                  vyrazeckaCount: rec.vyrazecky,
+                  matchId,
+                },
+              });
+            } else {
+              await recordAchievement({
+                timestamp,
+                type: 'vyrazecka',
+                playerId: id,
+                username: rec.username,
+                data: {
+                  vyrazeckaCount: rec.vyrazecky,
+                  matchId,
+                },
+              });
+            }
+          }
         }
       } catch (e) {
         console.error('failed updating profile', id, e);

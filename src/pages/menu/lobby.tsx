@@ -5,9 +5,12 @@ import { useEffect, useState } from "hono/jsx";
 import { levelsXp, badges, rankTiers, PlayerData, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from '../../static/data'; // Import static data
 import GlobalStatsPanel from "./GlobalStats";
 import PlayerProfilePanel from "./PlayerProfile";
+import { DailyAchievementsPanel } from "./DailyAchievements";
+import { getDailyAchievements } from "../../v1/dailyAchievements";
 
 export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context; playerProfile: PlayerProfile | null; globalStats: GlobalStats | null}) {
   const players = await getAllPlayerProfiles();
+  const dailyAchievements = await getDailyAchievements(24);
 
   if (playerProfile === null || globalStats === null) {
     return (
@@ -32,11 +35,12 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
       {/* Top-center nav (buttons styled like main action, no rectangle background) */}
       <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
         <nav className="flex gap-2 items-center overflow-x-auto whitespace-nowrap">
-          <a href="/v1/leaderboard" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">Leaderboards</a>
-          <a href="/v1/match-history" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">Match History</a>
-          {/* <a href="/v1/f-bet" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">F Bet</a>
+          <a href="/v1/leaderboard" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🪜 Leaderboards</a>
+          <a href="/v1/match-history" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">📜 Match History</a>
+          <a href="/v1/changes-log" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🛠️ Changes & Fixes</a>
+          <a href="/v1/f-bet" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">F Bet</a>
           <a href="/v1/achievements" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">Achievements</a>
-          <a href="/v1/tournaments" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">Tournaments</a> */}
+          <a href="/v1/tournaments" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">Tournaments</a>
         </nav>
       </div>
 
@@ -55,7 +59,10 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
         </div>
 
         {/* Right Sidebar */}
-        <div className="lg:col-span-1" />
+        <div className="lg:col-span-1 flex flex-col gap-4 mt-auto">
+          <DailyAchievementsPanel achievements={dailyAchievements} />
+          <GlobalStatsPanel globalStats={globalStats} />
+        </div>
 
       </div>
 
@@ -68,8 +75,6 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
           Logout
         </button>
       </form>
-
-      <GlobalStatsPanel globalStats={globalStats} />
     </div>
   );
 }
