@@ -22,6 +22,7 @@ import { AchievementsPage } from "./pages/achievements";
 import { TournamentsPage } from "./pages/tournaments";
 import { ChangesLogPage } from "./pages/changesLog";
 import { recordAchievement } from "./logic/dailyAchievements";
+import { computeLevel, getRankInfoFromElo } from "./static/data";
 
 const sdk = require('node-appwrite');
 
@@ -99,6 +100,12 @@ app.use(async (c, next) => {
 app.get("/v1/changes-log", async (c) => {
   const changes = [
     {
+      date: "01.02.2026",
+      updates: [
+        "[Fix] -> Daily achievements panel now shows correct data. (Hopefully :D)",
+      ],
+    },
+    {
       date: "26.01.2026",
       updates: [
         "[Feature] -> Added daily achievements panel to lobby sidebar. Only in testing phase now.",
@@ -111,14 +118,14 @@ app.get("/v1/changes-log", async (c) => {
       ],
     },
     {
-      date: "12.08.2025",
+      date: "08.12.2025",
       updates: [
         "[Feature] -> Added average goals per match column to elo leaderboard.",
         "[Feature] -> Added W/L amd goals ratio as float number to leaderboard.",
       ],
     },
     {
-      date: "12.05.2025",
+      date: "05.12.2025",
       updates: [
         "[Feature] -> Added this feature :D",
         "[Feature] -> You can see players match history from leaderboard! Click on a player's name to view their matches.",
@@ -1130,6 +1137,8 @@ app.post("/v1/match/game/finish", async (c) => {
         if (profile) {
           const oldXp = profile.xp || 0;
           const newXp = oldXp + xpGain;
+          const oldLevel = computeLevel(oldXp).level;
+          const newLevel = computeLevel(newXp).level;
           
           await updatePlayerStats(profile.$id, {
             xp: newXp,
@@ -1147,32 +1156,42 @@ app.post("/v1/match/game/finish", async (c) => {
 
           // Record achievements
           const timestamp = Date.now();
+
+          // Level up achievement (only if level actually increased)
+          if (newLevel > oldLevel) {
+            await recordAchievement({
+              timestamp,
+              type: 'level_up',
+              playerId: id,
+              username: rec.username,
+              data: {
+                oldValue: oldLevel,
+                newValue: newLevel,
+                matchId,
+              },
+            });
+          }
           
-          // ELO rank changes
-          if (newElo > oldElo) {
-            await recordAchievement({
-              timestamp,
-              type: 'elo_rank_up',
-              playerId: id,
-              username: rec.username,
-              data: {
-                oldValue: oldElo,
-                newValue: newElo,
-                matchId,
-              },
-            });
-          } else if (newElo < oldElo) {
-            await recordAchievement({
-              timestamp,
-              type: 'elo_rank_down',
-              playerId: id,
-              username: rec.username,
-              data: {
-                oldValue: oldElo,
-                newValue: newElo,
-                matchId,
-              },
-            });
+          // ELO rank changes — only record when rank tier/name actually changes
+          if (newElo !== oldElo) {
+            const oldRank = getRankInfoFromElo(oldElo || 0);
+            const newRank = getRankInfoFromElo(newElo || 0);
+            const rankChanged = oldRank.name !== newRank.name;
+
+            if (rankChanged) {
+              const type = newElo > oldElo ? 'elo_rank_up' : 'elo_rank_down';
+              await recordAchievement({
+                timestamp,
+                type,
+                playerId: id,
+                username: rec.username,
+                data: {
+                  oldValue: oldElo,
+                  newValue: newElo,
+                  matchId,
+                },
+              });
+            }
           }
 
           // 10-0 shutout wins

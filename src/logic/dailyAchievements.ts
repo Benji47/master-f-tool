@@ -38,7 +38,10 @@ export async function recordAchievement(achievement: Omit<DailyAchievement, '$id
       databaseId,
       collectionId,
       sdk.ID.unique(),
-      achievement as any
+      {
+        ...achievement,
+        data: JSON.stringify(achievement.data)
+      }
     );
     return doc;
   } catch (error) {
@@ -64,7 +67,10 @@ export async function getDailyAchievements(hoursBack: number = 24) {
       ]
     );
 
-    return res.documents as unknown as DailyAchievement[];
+    return res.documents.map(doc => ({
+      ...doc,
+      data: typeof doc.data === 'string' ? JSON.parse(doc.data) : doc.data
+    })) as unknown as DailyAchievement[];
   } catch (error) {
     console.error("Error fetching daily achievements:", error);
     return [];

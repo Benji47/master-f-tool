@@ -1,3 +1,5 @@
+import { getRankInfoFromElo } from '../../static/data';
+
 interface Achievement {
   $id?: string;
   timestamp: number;
@@ -47,10 +49,24 @@ function getAchievementText(achievement: Achievement): string {
   const { type, username, data } = achievement;
 
   switch (type) {
-    case 'elo_rank_up':
-      return `${username} ranked up! (${data.oldValue} → ${data.newValue} ELO)`;
-    case 'elo_rank_down':
-      return `${username} ranked down (${data.oldValue} → ${data.newValue} ELO)`;
+    case 'elo_rank_up': {
+      const oldRank = getRankInfoFromElo(data.oldValue || 0);
+      const newRank = getRankInfoFromElo(data.newValue || 0);
+      const rankChanged = oldRank.name !== newRank.name;
+      
+      if (rankChanged) {
+        return `${username} ranked up! ${oldRank.name} (${data.oldValue}) → ${newRank.name} (${data.newValue})`;
+      }
+    }
+    case 'elo_rank_down': {
+      const oldRank = getRankInfoFromElo(data.oldValue || 0);
+      const newRank = getRankInfoFromElo(data.newValue || 0);
+      const rankChanged = oldRank.name !== newRank.name;
+      
+      if (rankChanged) {
+        return `${username} ranked down ${oldRank.name} (${data.oldValue}) → ${newRank.name} (${data.newValue})`;
+      }
+    }
     case 'level_up':
       return `${username} leveled up to Level ${data.newValue}!`;
     case 'shutout_win':
