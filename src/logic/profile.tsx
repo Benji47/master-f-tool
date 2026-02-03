@@ -62,7 +62,7 @@ export async function createPlayerProfile(userId: string, username: string): Pro
         goals_conceded: 0,
         ten_zero_wins: 0,
         ten_zero_loses: 0,
-        coins: 0,
+        coins: 100,
       }
     );
     
@@ -235,5 +235,38 @@ export async function getLeaderboard(limit: number = 50): Promise<PlayerProfile[
   } catch (err: any) {
     console.error('Leaderboard fetch error:', err);
     throw new Error(err?.message || 'Failed to fetch leaderboard');
+  }
+}
+
+export async function getBetsForPlayer(playerId: string): Promise<any[]> {
+  if (!projectId || !apiKey) {
+    throw new Error('Appwrite credentials not configured');
+  }
+
+  const client = new sdk.Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
+
+  const databases = new sdk.Databases(client);
+
+  try {
+    const result = await databases.listDocuments(
+      databaseId,
+      'bets',
+      [
+        sdk.Query.equal('playerId', playerId),
+        sdk.Query.orderDesc('$createdAt'),
+      ]
+    );
+
+    return (result.documents || []).map((doc: any) => ({
+      $id: doc.$id,
+      ...doc,
+      predictions: typeof doc.predictions === 'string' ? JSON.parse(doc.predictions) : doc.predictions,
+    }));
+  } catch (err: any) {
+    console.error('Get player bets error:', err);
+    return [];
   }
 }

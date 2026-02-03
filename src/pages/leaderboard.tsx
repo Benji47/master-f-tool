@@ -64,6 +64,7 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
   const sortedLevels = [...players].sort((a, b) => b.xp - a.xp);
   const sortedTenZeroLoses = [...players].sort((a, b) => b.ten_zero_loses - a.ten_zero_loses);
   const sortedTenZeroWins = [...players].sort((a, b) => b.ten_zero_wins - a.ten_zero_wins);
+  const sortedCoins = [...players].sort((a, b) => b.coins - a.coins);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
@@ -83,6 +84,7 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
           <button data-tab="level" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Level</button>
           <button data-tab="ten_zero_loses" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Loses</button>
           <button data-tab="ten_zero_wins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Wins</button>
+          <button data-tab="coins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Coins</button>
           
           <div className="">
             <a href="/v1/lobby">
@@ -349,6 +351,36 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
                     <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
                   </div>
                   <div className="text-yellow-400 font-bold">{player.ten_zero_wins}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Coins Leaderboard */}
+        <div id="coins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+            <div>Rank</div>
+            <div>Player</div>
+            <div>Coins</div>
+          </div>
+          <div className="divide-y divide-neutral-800">
+            {sortedCoins.map((player, idx) => {
+              const isEven = idx % 2 === 0;
+              const lvl = computeLevel(player.xp).level;
+              const isCurrentPlayer = currentPlayer === player.username;
+              return (
+                <div
+                  key={player.$id}
+                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                    ${getRowClass(isEven, isCurrentPlayer)}
+                    hover:bg-neutral-700/40`}
+                >
+                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                  </div>
+                  <div className="text-yellow-400 font-bold">{player.coins}</div>
                 </div>
               );
             })}

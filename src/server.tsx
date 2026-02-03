@@ -23,6 +23,7 @@ import { TournamentsPage } from "./pages/tournaments";
 import { ChangesLogPage } from "./pages/changesLog";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
+import { placeBet, getBetsForMatch, resolveBets, MULTIPLIERS, getBetsForPlayer } from "./logic/betting";
 
 const sdk = require('node-appwrite');
 
@@ -107,6 +108,8 @@ app.get("/v1/changes-log", async (c) => {
         "[Feature] -> Added 10:0 wins leaderboard.",
         "[Feature] -> Added season timer to lobby.",
         "[Feature] -> Improve match history. Mainly player's matches view.",
+        "[Feature] -> Added leaderboard for coins",
+        "[Feature - EXPERIMENTAL] -> Added bet feature (F Bet). Place bets on matches and win coins!",
       ],
     },
     {
@@ -1303,9 +1306,15 @@ app.post("/v1/match/game/finish", async (c) => {
       console.error('failed to write match history', e);
     }
 
+    // After history is saved, resolve bets
+    try {
+      await resolveBets(matchId, scores);
+    } catch (e) {
+      console.error('failed to resolve bets', e);
+    }
+
     // Delete the match from database after finishing
     try {
-      //finishMatch(matchId); 
       await deleteMatch(matchId);
     } catch (e) {
       console.error('failed to delete match after finish', e);
@@ -1318,13 +1327,95 @@ app.post("/v1/match/game/finish", async (c) => {
   return c.redirect(`/v1/match-history`);
 });
 
-// New simple pages
-app.get("/v1/f-bet", (c) => {
-  return c.html(
-    <MainLayout c={c}>
-      <FBetPage c={c} />
-    </MainLayout>
-  );
+// Place a bet endpoint
+app.post("/v1/bet/place", async (c) => {
+  try {
+    const form = await c.req.formData();
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.redirect("/v1/auth/login");
+
+    const matchId = String(form.get("matchId") ?? "");
+    const betAmount = Number(form.get("betAmount") ?? 0);
+    const numMatches = Number(form.get("numMatches") ?? 1);
+    const match1 = String(form.get("match1") ?? "");
+    const match2 = String(form.get("match2") ?? "");
+    const match3 = String(form.get("match3") ?? "");
+
+    if (!matchId || betAmount < 1 || ![1,2,3].includes(numMatches)) {
+      return c.text("Invalid bet parameters", 400);
+    }
+
+    const predictions: any = {};
+    let predictionCount = 0;
+    if (match1) { predictions.match1 = match1; predictionCount++; }
+    if (match2) { predictions.match2 = match2; predictionCount++; }
+    if (match3) { predictions.match3 = match3; predictionCount++; }
+
+    if (predictionCount !== numMatches) {
+      return c.text(`Please select ${numMatches} predictions`, 400);
+    }
+
+    const profile = await getPlayerProfile(username);
+    if (!profile || (profile.coins || 0) < betAmount) {
+      return c.text("Insufficient coins", 400);
+    }
+
+    // Deduct coins
+    await updatePlayerStats(profile.$id, { coins: (profile.coins || 0) - betAmount });
+
+    // Create bet
+    await placeBet({
+      playerId: profile.$id,
+      username,
+      matchId,
+      predictions,
+      betAmount,
+      numMatches,
+    });
+
+    return c.redirect("/v1/f-bet");
+  } catch (err: any) {
+    console.error("place bet error:", err);
+    return c.text("Failed to place bet", 500);
+  }
+});
+
+// GET /v1/f-bet route (replace previous minimal implementation) - include per-match bets
+app.get("/v1/f-bet", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    const profile = username ? await getPlayerProfile(username) : null;
+
+    const allMatches = await listAvailableMatches();
+    // enrich with bets for each match and only keep 'playing' matches
+    const playingMatches: any[] = [];
+    for (const m of allMatches) {
+      const bets = await getBetsForMatch(m.$id);
+      const enriched = { ...m, bets };
+      if (m.state === 'playing') playingMatches.push(enriched);
+    }
+
+    const playerBets = profile ? await getBetsForPlayer(profile.$id) : [];
+
+    return c.html(
+      <MainLayout c={c}>
+        <FBetPage
+          c={c}
+          currentUser={username}
+          currentUserProfile={profile}
+          availableMatches={playingMatches}
+          playerBets={playerBets}
+        />
+      </MainLayout>
+    );
+  } catch (err: any) {
+    console.error("f-bet page error:", err);
+    return c.html(
+      <MainLayout c={c}>
+        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} />
+      </MainLayout>
+    );
+  }
 });
 
 app.get("/v1/achievements", (c) => {
