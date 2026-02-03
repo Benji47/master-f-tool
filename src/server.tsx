@@ -1125,7 +1125,7 @@ app.post("/v1/match/game/finish", async (c) => {
       const rec = byId[id];
       // compute final changes
       const oldElo = rec.oldElo;
-      const newElo = Math.max(0, Math.round(rec.newElo));
+      const newElo = Math.round(rec.newElo);
       const xpGain = Math.max(0, Math.round(rec.xpGained));
       const coinsGain = Math.max(0, Math.round(rec.coinsGained));
       const winsAdd = rec.winsAdded || 0;
