@@ -21,6 +21,7 @@ export interface PlayerProfile {
   goals_conceded: number;
   ten_zero_wins: number;
   ten_zero_loses: number;
+  coins: number;
 }
 
 export interface GlobalStats {
@@ -61,6 +62,7 @@ export async function createPlayerProfile(userId: string, username: string): Pro
         goals_conceded: 0,
         ten_zero_wins: 0,
         ten_zero_loses: 0,
+        coins: 0,
       }
     );
     

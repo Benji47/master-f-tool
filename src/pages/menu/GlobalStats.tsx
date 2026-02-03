@@ -6,7 +6,7 @@ export default function GlobalStatsPanel({ globalStats }: { globalStats: GlobalS
     : 0;
 
   return (
-    <div className="fixed bottom-4 right-4 bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 w-64 shadow-lg">
+    <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4">
       <h3 className="text-lg font-bold text-white mb-3">Global Stats</h3>
 
       <div className="space-y-2 text-sm">

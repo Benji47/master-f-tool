@@ -74,6 +74,9 @@ function getAchievementText(achievement: Achievement): string {
     case 'golden_vyrazecka':
       return `${username} got a golden vyrážečka!`;
     case 'vyrazecka':
+      if (data.vyrazeckaCount == 1) {
+        return `${username} scored 1 vyrážečka!`;
+      }
       return `${username} scored ${data.vyrazeckaCount} vyrážečky!`;
     default:
       return `${username} achieved something!`;
@@ -103,15 +106,15 @@ export function DailyAchievementsPanel({ achievements }: { achievements: Achieve
   if (!achievements || achievements.length === 0) {
     return (
       <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4">
-        <h2 className="text-lg font-bold text-white mb-3">🏆 Daily Achievements</h2>
-        <p className="text-neutral-400 text-sm">No achievements in the last 24 hours</p>
+        <h2 className="text-lg font-bold text-white mb-3">🏆 Daily Log</h2>
+        <p className="text-neutral-400 text-sm">No logs in the last 24 hours</p>
       </div>
     );
   }
 
   return (
     <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4">
-      <h2 className="text-lg font-bold text-white mb-3">🏆 Daily Achievements</h2>
+      <h2 className="text-lg font-bold text-white mb-3">🏆 Daily Log</h2>
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {achievements.map((achievement) => (
           <div

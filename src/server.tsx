@@ -100,6 +100,16 @@ app.use(async (c, next) => {
 app.get("/v1/changes-log", async (c) => {
   const changes = [
     {
+      date: "02.02.2026",
+      updates: [
+        "[Feature] -> Added coins.",
+        "[Feature] -> Added 10:0 loses leaderboard.",
+        "[Feature] -> Added 10:0 wins leaderboard.",
+        "[Feature] -> Added season timer to lobby.",
+        "[Feature] -> Improve match history. Mainly player's matches view.",
+      ],
+    },
+    {
       date: "01.02.2026",
       updates: [
         "[Fix] -> Daily achievements panel now shows correct data. (Hopefully :D)",
@@ -158,14 +168,14 @@ app.get("/v1/match-history", async (c) => {
     [sdk.Query.orderDesc("$createdAt")]
   );
 
-  // parse each document similar to match docs
-  const matches = res.documents.map((doc: MatchDoc) => (parseDoc(doc)));
+  // parse each document as match history (includes elo deltas / xp gains)
+  const matches = res.documents.map((doc: any) => (parseMatchHistoryDoc(doc)));
 
-  const user = getCookie(c, "user") ?? "";
+  const user = getCookie(c, "user") ?? null;
 
   return c.html(
     <MainLayout c={c}>
-      <MatchHistoryPage c={c} matches={matches} username={user} />
+      <MatchHistoryPage c={c} matches={matches} currentUser={user} filterUsername={null} />
     </MainLayout>
   );
 });
@@ -226,11 +236,11 @@ app.get("/v1/match-history/players/:username", async (c) => {
       return false;
     }
   })
-  .map((doc: MatchDoc) => parseDoc(doc));
+  .map((doc: any) => parseMatchHistoryDoc(doc));
 
   return c.html(
     <MainLayout c={c}>
-      <MatchHistoryPage c={c} matches={matches} username={null} />
+      <MatchHistoryPage c={c} matches={matches} currentUser={null} filterUsername={username} />
     </MainLayout>
   );
 });
@@ -670,11 +680,10 @@ app.post("/v1/match/game/golden-vyrazacka", async (c) => {
     const form = await c.req.formData();
     const matchId = String(form.get("matchId") ?? '');
     const index = Number(form.get("index") ?? 0);
-    const side = String(form.get("side") ?? '') as 'a' | 'b'; // 'a' or 'b'
-    const isChecked = String(form.get("isChecked") ?? 'false') === 'true';
+    const playerId = String(form.get("playerId") ?? ''); // player ID or empty
+    const points = Number(form.get("points") ?? 0); // points value (0-10)
 
     if (!matchId) return c.json({ error: 'missing matchId' }, 400);
-    if (!side) return c.json({ error: 'missing side' }, 400);
 
     const match = await getMatch(matchId);
     if (!match) return c.json({ error: 'match not found' }, 404);
@@ -684,30 +693,12 @@ app.post("/v1/match/game/golden-vyrazacka", async (c) => {
 
     const s = scores[index];
 
-    if (isChecked) {
-      // Enable golden vyrážečka for this team
-      const winningScore = side === 'a' ? s.scoreA : s.scoreB;
-      const losingScore = side === 'a' ? s.scoreB : s.scoreA;
-      
-      // Calculate the difference from 10
-      const diff = 10 - losingScore;
-      
-      // Set winning team to 10
-      if (side === 'a') {
-        s.scoreA = 10;
-      } else {
-        s.scoreB = 10;
-      }
-      
-      // Keep losing team's score as-is
-      // Store golden vyrážečka data
-      s.goldenVyrazacka = { side, diff };
+    if (playerId) {
+      // Enable golden vyrážečka for this player
+      s.goldenVyrazacka = { playerId, points: Math.max(0, Math.min(10, points)) };
     } else {
-      // Disable golden vyrážečka for this team
-      // Remove the golden vyrážečka flag
-      if (s.goldenVyrazacka?.side === side) {
-        delete s.goldenVyrazacka;
-      }
+      // Disable golden vyrážečka
+      delete s.goldenVyrazacka;
     }
 
     const updated = await updateGameScores(matchId, scores);
@@ -900,6 +891,7 @@ export async function matchResults(matchId: string) {
         oldElo: byId[id].oldElo,
         newElo: byId[id].newElo,
         xpGained: byId[id].xpGained,
+        coinsGained: byId[id].coinsGained,
         winsAdded: byId[id].winsAdded,
         losesAdded: byId[id].losesAdded,
         gamesAdded: byId[id].gamesAdded,
@@ -958,6 +950,7 @@ app.post("/v1/match/game/finish", async (c) => {
         oldElo: p.elo,
         newElo: p.elo,
         xpGained: 0,
+        coinsGained: 0,
         winsAdded: 0,
         losesAdded: 0,
         gamesAdded: 0,
@@ -1000,6 +993,8 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].winsAdded += 1;
           byId[id].xpGained += 15;
           byId[id].newElo += 20;
+          byId[id].coinsGained += 100; // +100 coins for winning
+          byId[id].coinsGained += aScore * 2; // +2 coins per goal scored
           byId[id].gamesAdded += 1;
           byId[id].goals_conceded += bScore;
           byId[id].xpGained += aScore;
@@ -1014,6 +1009,7 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].goals_conceded += aScore;
           byId[id].goals_scored += bScore;
           byId[id].xpGained += bScore;
+          byId[id].coinsGained += bScore * 2; // +2 coins per goal scored (even if lost)
           byId[id].losesAdded += 1;
           byId[id].xpGained += 5;
           byId[id].newElo -= 20;
@@ -1037,6 +1033,8 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].winsAdded += 1;
           byId[id].xpGained += 15;
           byId[id].newElo += 20;
+          byId[id].coinsGained += 100; // +100 coins for winning
+          byId[id].coinsGained += bScore * 2; // +2 coins per goal scored
           byId[id].gamesAdded += 1;
           byId[id].xpGained += bScore;
           byId[id].goals_conceded += aScore;
@@ -1051,6 +1049,7 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].goals_conceded += bScore;
           byId[id].goals_scored += aScore;
           byId[id].xpGained += aScore;
+          byId[id].coinsGained += aScore * 2; // +2 coins per goal scored (even if lost)
           byId[id].losesAdded += 1;
           byId[id].xpGained += 5;
           byId[id].newElo -= 20;
@@ -1125,6 +1124,7 @@ app.post("/v1/match/game/finish", async (c) => {
       const oldElo = rec.oldElo;
       const newElo = Math.max(0, Math.round(rec.newElo));
       const xpGain = Math.max(0, Math.round(rec.xpGained));
+      const coinsGain = Math.max(0, Math.round(rec.coinsGained));
       const winsAdd = rec.winsAdded || 0;
       const losesAdd = rec.losesAdded || 0;
       const ultimateWinInc = (ultimateWinnerId === id) ? 1 : 0;
@@ -1152,6 +1152,7 @@ app.post("/v1/match/game/finish", async (c) => {
             ten_zero_loses: (profile.ten_zero_loses || 0) + rec.ten_zero_loses,
             goals_scored: (profile.goals_scored || 0) + rec.goals_scored,
             goals_conceded: (profile.goals_conceded || 0) + rec.goals_conceded,
+            coins: (profile.coins || 0) + coinsGain,
           });
 
           // Record achievements

@@ -1,8 +1,16 @@
 import { Context } from "hono";
 
-export function MatchGamePage({ c, match }: { c: Context; match: any }) {
-  const players = match.players || [];
+export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: any; currentUserId?: string }) {
+  const allPlayers = match.players || [];
   const scores = match.scores || [];
+  
+  // Get current logged-in user
+  const currentUser = currentUserId ?? null;
+  
+  // Reorder players: logged-in player first
+  const players = currentUser
+    ? [...allPlayers].sort((a: any) => a.id === currentUser ? -1 : 1)
+    : allPlayers;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
@@ -27,28 +35,33 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
         <div id="pairings" className="space-y-4">
           {scores.map((s: any, idx: number) => (
             <div key={idx} className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-300">
-              {/* Golden Vyrážečka checkboxes */}
-              <div className="mb-4 p-3 bg-neutral-800/60 rounded border border-yellow-700/50 flex gap-6">
-                <label className="flex items-center gap-2 cursor-pointer text-neutral-300">
-                  <input 
-                    type="checkbox" 
+              {/* Golden Vyrážečka selection */}
+              <div className="mb-4 p-3 bg-neutral-800/60 rounded border border-yellow-700/50">
+                <div className="text-sm font-semibold text-neutral-300 mb-3">🏆 Golden Vyrážečka</div>
+                <div className="flex items-center gap-4">
+                  <select 
                     data-idx={idx} 
-                    data-side="a" 
-                    className="w-4 h-4 cursor-pointer golden-vyrazacka-checkbox"
-                    checked={s.goldenVyrazacka?.side === 'a' || false}
-                  />
-                  <span className="text-sm font-semibold">🏆 Golden Vyrážečka Team A</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer text-neutral-300">
-                  <input 
-                    type="checkbox" 
-                    data-idx={idx} 
-                    data-side="b" 
-                    className="w-4 h-4 cursor-pointer golden-vyrazacka-checkbox"
-                    checked={s.goldenVyrazacka?.side === 'b' || false}
-                  />
-                  <span className="text-sm font-semibold">🏆 Golden Vyrážečka Team B</span>
-                </label>
+                    className="px-3 py-2 rounded bg-neutral-700 text-white text-sm cursor-pointer golden-vyrazacka-player"
+                  >
+                    <option value="">— No Golden Vyrážečka —</option>
+                    {[...s.a, ...s.b].map((id: string) => {
+                      const p = players.find((x: any) => x.id === id);
+                      return <option key={id} value={id}>{p ? p.username : id}</option>;
+                    })}
+                  </select>
+                  
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-neutral-300">Points:</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max="10" 
+                      defaultValue="0"
+                      data-idx={idx}
+                      className="w-16 px-2 py-1 rounded bg-neutral-700 text-white text-sm golden-vyrazacka-points"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between mb-4">
@@ -106,38 +119,44 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
                 <div className="grid grid-cols-2 gap-4">
                   {/* Left team vyrazacka */}
                   <div className="space-y-2">
-                    {s.a.map((id: string) => {
-                      const p = players.find((x: any) => x.id === id);
-                      const vyr = s.vyrazacka?.[id] ?? 0;
-                      return (
-                        <div key={id} className="flex items-center gap-2 bg-neutral-800/40 p-2 rounded">
-                          <span className="text-sm text-neutral-300 flex-1">{p ? p.username : id}</span>
-                          <div className="flex gap-2 items-center">
-                            <button className="px-2 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="-1">-1</button>
-                            <span id={`vyr-${idx}-${id}`} className="text-white font-bold min-w-[2rem] text-center">{vyr}</span>
-                            <button className="px-2 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="1">+1</button>
+                    {(() => {
+                      const sortedA = [...s.a].sort((id) => id === currentUser ? -1 : 1);
+                      return sortedA.map((id: string) => {
+                        const p = players.find((x: any) => x.id === id);
+                        const vyr = s.vyrazacka?.[id] ?? 0;
+                        return (
+                          <div key={id} className="flex items-center gap-2 bg-neutral-800/40 p-2 rounded">
+                            <span className="text-sm text-neutral-300 flex-1">{p ? p.username : id}</span>
+                            <div className="flex gap-2 items-center">
+                              <button className="px-2 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="-1">-1</button>
+                              <span id={`vyr-${idx}-${id}`} className="text-white font-bold min-w-[2rem] text-center">{vyr}</span>
+                              <button className="px-2 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="1">+1</button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      });
+                    })()}
                   </div>
 
                   {/* Right team vyrazacka */}
                   <div className="space-y-2">
-                    {s.b.map((id: string) => {
-                      const p = players.find((x: any) => x.id === id);
-                      const vyr = s.vyrazacka?.[id] ?? 0;
-                      return (
-                        <div key={id} className="flex items-center gap-2 bg-neutral-800/40 p-2 rounded">
-                          <span className="text-sm text-neutral-300 flex-1">{p ? p.username : id}</span>
-                          <div className="flex gap-2 items-center">
-                            <button className="px-2 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="-1">-1</button>
-                            <span id={`vyr-${idx}-${id}`} className="text-white font-bold min-w-[2rem] text-center">{vyr}</span>
-                            <button className="px-2 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="1">+1</button>
+                    {(() => {
+                      const sortedB = [...s.b].sort((id) => id === currentUser ? -1 : 1);
+                      return sortedB.map((id: string) => {
+                        const p = players.find((x: any) => x.id === id);
+                        const vyr = s.vyrazacka?.[id] ?? 0;
+                        return (
+                          <div key={id} className="flex items-center gap-2 bg-neutral-800/40 p-2 rounded">
+                            <span className="text-sm text-neutral-300 flex-1">{p ? p.username : id}</span>
+                            <div className="flex gap-2 items-center">
+                              <button className="px-2 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="-1">-1</button>
+                              <span id={`vyr-${idx}-${id}`} className="text-white font-bold min-w-[2rem] text-center">{vyr}</span>
+                              <button className="px-2 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="1">+1</button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               </div>
@@ -207,13 +226,13 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
     }catch(e){ console.error(e); }
   }
 
-  async function sendGoldenVyrazackaUpdate(idx, side, isChecked){
+  async function sendGoldenVyrazackaUpdate(idx, playerId, points){
     try{
       const form = new FormData();
       form.append('matchId', matchId);
       form.append('index', String(idx));
-      form.append('side', side);
-      form.append('isChecked', String(isChecked));
+      form.append('playerId', playerId);
+      form.append('points', String(points));
       const res = await fetch('/v1/match/game/golden-vyrazacka', { method: 'POST', body: form });
       if(!res.ok) {
         const txt = await res.text().catch(()=>null);
@@ -267,20 +286,27 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
 
   document.addEventListener('change', function(e){
     const el = e.target;
-    if(!(el instanceof HTMLInputElement)) return;
+    if(!(el instanceof HTMLElement)) return;
     
-    // Golden vyrazacka checkbox
-    if(el.classList.contains('golden-vyrazacka-checkbox')){
+    // Golden vyrazacka player selection
+    if(el.classList.contains('golden-vyrazacka-player')){
       const idx = el.getAttribute('data-idx');
-      const side = el.getAttribute('data-side');
-      if(idx !== null && side){
-        // Uncheck the other side's checkbox
-        const otherSide = side === 'a' ? 'b' : 'a';
-        const otherCheckbox = document.querySelector(\`.golden-vyrazacka-checkbox[data-idx="\${idx}"][data-side="\${otherSide}"]\`);
-        if(otherCheckbox && el.checked){
-          otherCheckbox.checked = false;
-        }
-        sendGoldenVyrazackaUpdate(Number(idx), side, el.checked);
+      const playerId = (el as HTMLSelectElement).value;
+      if(idx !== null){
+        const pointsEl = document.querySelector(\`.golden-vyrazacka-points[data-idx="\${idx}"]\`) as HTMLInputElement;
+        const points = pointsEl ? Number(pointsEl.value) : 0;
+        sendGoldenVyrazackaUpdate(Number(idx), playerId, points);
+      }
+    }
+    
+    // Golden vyrazacka points change
+    if(el.classList.contains('golden-vyrazacka-points')){
+      const idx = el.getAttribute('data-idx');
+      if(idx !== null){
+        const playerEl = document.querySelector(\`.golden-vyrazacka-player[data-idx="\${idx}"]\`) as HTMLSelectElement;
+        const playerId = playerEl ? playerEl.value : '';
+        const points = Number((el as HTMLInputElement).value);
+        sendGoldenVyrazackaUpdate(Number(idx), playerId, points);
       }
     }
   });
@@ -319,12 +345,17 @@ export function MatchGamePage({ c, match }: { c: Context; match: any }) {
           }
         }
 
-        // golden vyrazacka checkbox state
+        // golden vyrazacka select state
         if (s.goldenVyrazacka) {
-          const aCheckbox = document.querySelector(\`.golden-vyrazacka-checkbox[data-idx="\${i}"][data-side="a"]\`);
-          const bCheckbox = document.querySelector(\`.golden-vyrazacka-checkbox[data-idx="\${i}"][data-side="b"]\`);
-          if (aCheckbox) aCheckbox.checked = s.goldenVyrazacka.side === 'a';
-          if (bCheckbox) bCheckbox.checked = s.goldenVyrazacka.side === 'b';
+          const playerSelect = document.querySelector(\`.golden-vyrazacka-player[data-idx="\${i}"]\`) as HTMLSelectElement;
+          const pointsInput = document.querySelector(\`.golden-vyrazacka-points[data-idx="\${i}"]\`) as HTMLInputElement;
+          if (playerSelect) playerSelect.value = s.goldenVyrazacka.playerId || '';
+          if (pointsInput) pointsInput.value = String(s.goldenVyrazacka.points || 0);
+        } else {
+          const playerSelect = document.querySelector(\`.golden-vyrazacka-player[data-idx="\${i}"]\`) as HTMLSelectElement;
+          const pointsInput = document.querySelector(\`.golden-vyrazacka-points[data-idx="\${i}"]\`) as HTMLInputElement;
+          if (playerSelect) playerSelect.value = '';
+          if (pointsInput) pointsInput.value = '0';
         }
       });
     }

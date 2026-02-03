@@ -40,6 +40,7 @@ export function MatchResultPage({ c, result, username }: { c: Context; result: a
                   <div className="text-right">
                     <div className="text-sm text-neutral-300">ELO: <span className="font-bold text-yellow-400">{p.oldElo}</span> → <span className={p.newElo - p.oldElo >= 0 ? 'text-green-400' : 'text-red-400'}>{p.newElo}</span> ({p.newElo - p.oldElo >= 0 ? '+' : ''}{p.newElo - p.oldElo})</div>
                     <div className="text-sm text-neutral-300">XP: <span className="font-bold text-green-400">+{p.xpGained}</span></div>
+                    <div className="text-sm text-neutral-300">💰 Coins: <span className="font-bold text-yellow-300">+{p.coinsGained || 0}</span></div>
                   </div>
                 </div>
 

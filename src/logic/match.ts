@@ -34,8 +34,9 @@ export type HistoryPlayers = ({
 export type MatchHistoryDoc = {
   $id: string;
   players: HistoryPlayers[];
-  scores?: { a: string[]; b: string[]; scoreA: number; scoreB: number; vyrazacka?: Record<string, number>; goldenVyrazacka?: { side: 'a' | 'b'; diff: number } }[];
-  matchId: string
+  scores?: { a: string[]; b: string[]; scoreA: number; scoreB: number; vyrazacka?: Record<string, number>; goldenVyrazacka?: { playerId: string; points: number } }[];
+  matchId: string;
+  createdAt?: string;
 }
 
 export type MatchDoc = {
@@ -44,7 +45,7 @@ export type MatchDoc = {
   players: MatchPlayer[]; // parsed from players_json
   maxPlayers: number;
   createdAt?: string;
-  scores?: { a: string[]; b: string[]; scoreA: number; scoreB: number; vyrazacka?: Record<string, number>; goldenVyrazacka?: { side: 'a' | 'b'; diff: number } }[]; // parsed from scores_json
+  scores?: { a: string[]; b: string[]; scoreA: number; scoreB: number; vyrazacka?: Record<string, number>; goldenVyrazacka?: { playerId: string; points: number } }[]; // parsed from scores_json
   // raw players_json / scores_json exist in DB but not required by callers
 };
 
@@ -87,6 +88,7 @@ export function parseMatchHistoryDoc(raw: any): MatchHistoryDoc {
     players: players,
     scores: scores,
     matchId: raw.matchId ?? '',
+    createdAt: raw.$createdAt ?? raw.createdAt,
   };
 }
 

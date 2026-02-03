@@ -263,6 +263,15 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
             <span className="text-orange-400">{playerProfile.vyrazecky} ({playerProfile.goals_scored > 0 ? Math.round(playerProfile.vyrazecky / playerProfile.goals_scored * 10000) / 100 : 0} %)</span>
           </div>
         </div>
+
+        <div className="w-11/12 mb-5 mt-5 mx-auto h-px bg-white/35 my-3 rounded" />
+
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between text-neutral-300">
+            <span className="text-yellow-400">💰 Coins:</span>
+            <span className="text-yellow-400 font-bold text-lg">{playerProfile.coins}</span>
+          </div>
+        </div>
       </div>
     </div>
   );

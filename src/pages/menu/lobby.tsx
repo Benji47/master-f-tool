@@ -8,6 +8,51 @@ import PlayerProfilePanel from "./PlayerProfile";
 import { DailyAchievementsPanel } from "./DailyAchievements";
 import { getDailyAchievements } from "../../logic/dailyAchievements";
 
+// Season timer component
+function SeasonTimerPanel() {
+  // Calculate season end date (21 days from a fixed season start)
+  const SEASON_START_DATE = new Date('2026-02-03'); // Adjust this date to control season timing
+  const SEASON_DURATION_DAYS = 21;
+  
+  const seasonEndDate = new Date(SEASON_START_DATE);
+  seasonEndDate.setDate(seasonEndDate.getDate() + SEASON_DURATION_DAYS);
+
+  return (
+    <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4">
+      <div className="text-center mb-3">
+        <h3 className="text-lg font-bold text-white font-[Orbitron] mb-2">⏱️ Season Timer</h3>
+        <div id="season-timer-content" className="space-y-2">
+          <div className="text-sm text-neutral-400">Season ends in:</div>
+          <div className="grid grid-cols-4 gap-2">
+            <div className="bg-neutral-800/60 rounded p-2">
+              <div id="timer-days" className="text-2xl font-bold text-green-400">0</div>
+              <div className="text-xs text-neutral-400">DAYS</div>
+            </div>
+            <div className="bg-neutral-800/60 rounded p-2">
+              <div id="timer-hours" className="text-2xl font-bold text-green-400">00</div>
+              <div className="text-xs text-neutral-400">HOURS</div>
+            </div>
+            <div className="bg-neutral-800/60 rounded p-2">
+              <div id="timer-minutes" className="text-2xl font-bold text-green-400">00</div>
+              <div className="text-xs text-neutral-400">MINS</div>
+            </div>
+            <div className="bg-neutral-800/60 rounded p-2">
+              <div id="timer-seconds" className="text-2xl font-bold text-green-400">00</div>
+              <div className="text-xs text-neutral-400">SECS</div>
+            </div>
+          </div>
+          <div className="text-xs text-neutral-300 mt-2">
+            Next season starts: {new Date(seasonEndDate.getTime() + 1000).toLocaleDateString()} (3 months duration)
+          </div>
+        </div>
+        <div id="season-ended" className="hidden text-yellow-400 font-bold">
+          ✨ New season started! 3 month season in progress.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context; playerProfile: PlayerProfile | null; globalStats: GlobalStats | null}) {
   const players = await getAllPlayerProfiles();
   const dailyAchievements = await getDailyAchievements(24);
@@ -58,12 +103,6 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
           </a>
         </div>
 
-        {/* Right Sidebar */}
-        <div className="lg:col-span-1 flex flex-col gap-4 mt-auto">
-          <DailyAchievementsPanel achievements={dailyAchievements} />
-          <GlobalStatsPanel globalStats={globalStats} />
-        </div>
-
       </div>
 
       {/* Top-right logout button */}
@@ -75,6 +114,52 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
           Logout
         </button>
       </form>
+
+      {/* Right Sidebar - Fixed Position */}
+      <div className="fixed top-18 right-4 w-120 flex flex-col gap-4 z-40">
+        <SeasonTimerPanel />
+        <DailyAchievementsPanel achievements={dailyAchievements} />
+        <GlobalStatsPanel globalStats={globalStats} />
+      </div>
+
+      {/* Season Timer Script */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+(function() {
+  const SEASON_START = new Date('2026-02-03').getTime();
+  const SEASON_DURATION_DAYS = 21;
+  const SEASON_END = SEASON_START + (SEASON_DURATION_DAYS * 24 * 60 * 60 * 1000);
+
+  function updateTimer() {
+    const now = new Date().getTime();
+    const difference = SEASON_END - now;
+
+    if (difference <= 0) {
+      document.getElementById('season-timer-content').classList.add('hidden');
+      document.getElementById('season-ended').classList.remove('hidden');
+    } else {
+      document.getElementById('season-timer-content').classList.remove('hidden');
+      document.getElementById('season-ended').classList.add('hidden');
+
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((difference / 1000 / 60) % 60);
+      const seconds = Math.floor((difference / 1000) % 60);
+
+      document.getElementById('timer-days').textContent = days;
+      document.getElementById('timer-hours').textContent = String(hours).padStart(2, '0');
+      document.getElementById('timer-minutes').textContent = String(minutes).padStart(2, '0');
+      document.getElementById('timer-seconds').textContent = String(seconds).padStart(2, '0');
+    }
+  }
+
+  updateTimer();
+  setInterval(updateTimer, 1000);
+})();
+          `,
+        }}
+      />
     </div>
   );
 }

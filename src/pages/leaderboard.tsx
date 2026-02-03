@@ -1,19 +1,6 @@
+import { PlayerProfile } from "../logic/profile";
 import { badges, getLevelBadgeColor } from "../static/data";
 import { levelsXp, getCumulativeThresholds } from "../static/data";
-
-interface LeaderboardPlayer {
-  $id: string;
-  username: string;
-  elo: number;
-  wins: number;
-  loses: number;
-  ultimate_wins: number;
-  ultimate_loses: number;
-  xp: number;
-  vyrazecky: number;
-  goals_scored: number;
-  goals_conceded: number;
-}
 
 function PlayerLink({ username, children }: { username: string; children: any }) {
   return (
@@ -26,7 +13,7 @@ function PlayerLink({ username, children }: { username: string; children: any })
   );
 }
 
-export function LeaderboardPage({ players, currentPlayer }: { players: LeaderboardPlayer[]; currentPlayer?: string }) {
+export function LeaderboardPage({ players, currentPlayer }: { players: PlayerProfile[]; currentPlayer?: string }) {
   function eloColor(elo: number) {
     if (elo >= 1000) return "text-red-500";
     if (elo >= 800) return "text-indigo-500";
@@ -75,6 +62,8 @@ export function LeaderboardPage({ players, currentPlayer }: { players: Leaderboa
   const sortedByVyrazacka = [...players].sort((a, b) => b.vyrazecky - a.vyrazecky);
   const sortedByTotalGames = [...players].sort((a, b) => (b.wins + b.loses) - (a.wins + a.loses));
   const sortedLevels = [...players].sort((a, b) => b.xp - a.xp);
+  const sortedTenZeroLoses = [...players].sort((a, b) => b.ten_zero_loses - a.ten_zero_loses);
+  const sortedTenZeroWins = [...players].sort((a, b) => b.ten_zero_wins - a.ten_zero_wins);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
@@ -92,6 +81,9 @@ export function LeaderboardPage({ players, currentPlayer }: { players: Leaderboa
           <button data-tab="vyrazacka" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Vyrážečky</button>
           <button data-tab="total_games" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Total Games</button>
           <button data-tab="level" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Level</button>
+          <button data-tab="ten_zero_loses" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Loses</button>
+          <button data-tab="ten_zero_wins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Wins</button>
+          
           <div className="">
             <a href="/v1/lobby">
               <button className="px-4 py-2 w-full bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
@@ -296,6 +288,67 @@ export function LeaderboardPage({ players, currentPlayer }: { players: Leaderboa
                   </div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{computeLevel(player.xp).level}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{player.xp}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Ten Zero Loses Leaderboard */}
+        <div id="ten_zero_loses" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+            <div>Rank</div>
+            <div>Player</div>
+            <div>10:0 Loses</div>
+          </div>
+          <div className="divide-y divide-neutral-800">
+            {sortedTenZeroLoses.map((player, idx) => {
+              const isEven = idx % 2 === 0;
+              const lvl = computeLevel(player.xp).level;
+              const isCurrentPlayer = currentPlayer === player.username;
+
+              return (
+                <div
+                  key={player.$id}
+                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                    ${getRowClass(isEven, isCurrentPlayer)}
+                    hover:bg-neutral-700/40`}
+                >
+                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                  </div>
+                  <div className="text-yellow-400 font-bold">{player.ten_zero_loses}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Ten Zero Wins Leaderboard */}
+        <div id="ten_zero_wins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+            <div>Rank</div>
+            <div>Player</div>
+            <div>10:0 Wins</div>
+          </div>
+          <div className="divide-y divide-neutral-800">
+            {sortedTenZeroWins.map((player, idx) => {
+              const isEven = idx % 2 === 0;
+              const lvl = computeLevel(player.xp).level;
+              const isCurrentPlayer = currentPlayer === player.username;
+              return (
+                <div
+                  key={player.$id}
+                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                    ${getRowClass(isEven, isCurrentPlayer)}
+                    hover:bg-neutral-700/40`}
+                >
+                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                  </div>
+                  <div className="text-yellow-400 font-bold">{player.ten_zero_wins}</div>
                 </div>
               );
             })}
