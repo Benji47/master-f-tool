@@ -285,13 +285,14 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
   });
 
   
+
 document.addEventListener('change', function (e) {
   const el = e.target;
   if (!(el instanceof HTMLElement)) return;
 
   // Golden vyrazacka player selection
   if (el.classList.contains('golden-vyrazacka-player')) {
-    // Ensure it's the <select> before reading .value
+    // ensure it is the <select>
     if (el instanceof HTMLSelectElement) {
       const idx = el.getAttribute('data-idx');
       const playerId = el.value; // <-- fixed (was target.value)
@@ -329,8 +330,6 @@ document.addEventListener('change', function (e) {
     }
   }
 });
-
-
 
   // ---- ADD POLLING HERE ----
   async function pollState(){
