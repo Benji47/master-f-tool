@@ -226,27 +226,6 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
     }catch(e){ console.error(e); }
   }
 
-  async function sendGoldenVyrazackaUpdate(idx, playerId, points){
-    try{
-      const form = new FormData();
-      form.append('matchId', matchId);
-      form.append('index', String(idx));
-      form.append('playerId', playerId);
-      form.append('points', String(points));
-      const res = await fetch('/v1/match/game/golden-vyrazacka', { method: 'POST', body: form });
-      if(!res.ok) {
-        const txt = await res.text().catch(()=>null);
-        console.error('golden vyrazacka update failed', txt);
-        return;
-      }
-      const data = await res.json();
-      // update DOM scores with the new values
-      const scoreAEl = document.getElementById('scoreA-'+idx);
-      const scoreBEl = document.getElementById('scoreB-'+idx);
-      if(scoreAEl) scoreAEl.textContent = String(data.scoreA);
-      if(scoreBEl) scoreBEl.textContent = String(data.scoreB);
-    }catch(e){ console.error(e); }
-  }
 
   document.addEventListener('click', function(e){
     const el = e.target;
@@ -284,52 +263,7 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
     }
   });
 
-  
 
-document.addEventListener('change', function (e) {
-  const el = e.target;
-  if (!(el instanceof HTMLElement)) return;
-
-  // Golden vyrazacka player selection
-  if (el.classList.contains('golden-vyrazacka-player')) {
-    // ensure it is the <select>
-    if (el instanceof HTMLSelectElement) {
-      const idx = el.getAttribute('data-idx');
-      const playerId = el.value; // <-- fixed (was target.value)
-
-      if (idx !== null) {
-        const pointsEl = document.querySelector(
-          `.golden-vyrazacka-points[data-idx="${idx}"]`
-        );
-
-        let points = 0;
-        if (pointsEl instanceof HTMLInputElement) {
-          points = Number(pointsEl.value) || 0;
-        }
-
-        sendGoldenVyrazackaUpdate(Number(idx), playerId, points);
-      }
-    }
-  }
-
-  // Golden vyrazacka points change
-  if (el.classList.contains('golden-vyrazacka-points')) {
-    const idx = el.getAttribute('data-idx');
-    if (idx !== null) {
-      const playerEl = document.querySelector(
-        `.golden-vyrazacka-player[data-idx="${idx}"]`
-      );
-
-      const playerId =
-        playerEl instanceof HTMLSelectElement ? playerEl.value : '';
-
-      const points =
-        el instanceof HTMLInputElement ? Number(el.value) || 0 : 0;
-
-      sendGoldenVyrazackaUpdate(Number(idx), playerId, points);
-    }
-  }
-});
 
   // ---- ADD POLLING HERE ----
   async function pollState(){
@@ -365,18 +299,7 @@ document.addEventListener('change', function (e) {
           }
         }
 
-        // golden vyrazacka select state
-        if (s.goldenVyrazacka) {
-          const playerSelect = document.querySelector(\`.golden-vyrazacka-player[data-idx="\${i}"]\`) as HTMLSelectElement;
-          const pointsInput = document.querySelector(\`.golden-vyrazacka-points[data-idx="\${i}"]\`) as HTMLInputElement;
-          if (playerSelect) playerSelect.value = s.goldenVyrazacka.playerId || '';
-          if (pointsInput) pointsInput.value = String(s.goldenVyrazacka.points || 0);
-        } else {
-          const playerSelect = document.querySelector(\`.golden-vyrazacka-player[data-idx="\${i}"]\`) as HTMLSelectElement;
-          const pointsInput = document.querySelector(\`.golden-vyrazacka-points[data-idx="\${i}"]\`) as HTMLInputElement;
-          if (playerSelect) playerSelect.value = '';
-          if (pointsInput) pointsInput.value = '0';
-        }
+        
       });
     }
   }
