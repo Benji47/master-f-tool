@@ -291,12 +291,18 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
     // Golden vyrazacka player selection
     if(el.classList.contains('golden-vyrazacka-player')){
       const idx = el.getAttribute('data-idx');
-      if (el instanceof HTMLSelectElement) {
-        const playerId = (el as HTMLSelectElement).value;
-        
-        if(idx !== null){
-          const pointsEl = document.querySelector(\`.golden-vyrazacka-points[data-idx="\${idx}"]\`) as HTMLInputElement;
-          const points = pointsEl ? Number(pointsEl.value) : 0;
+      
+      const playerId = target.value;
+        if (idx !== null) {
+          const pointsEl = document.querySelector(
+            `.golden-vyrazacka-points[data-idx="${idx}"]`
+          );
+  
+          let points = 0;
+          if (pointsEl instanceof HTMLInputElement) {
+            points = Number(pointsEl.value) || 0;
+          }
+  
           sendGoldenVyrazackaUpdate(Number(idx), playerId, points);
         }
       }
