@@ -285,7 +285,7 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
   });
 
   
-ocument.addEventListener('change', function (e) {
+document.addEventListener('change', function (e) {
   const el = e.target;
   if (!(el instanceof HTMLElement)) return;
 
