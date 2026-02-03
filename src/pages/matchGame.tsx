@@ -291,9 +291,10 @@ document.addEventListener('change', function (e) {
 
   // Golden vyrazacka player selection
   if (el.classList.contains('golden-vyrazacka-player')) {
+    // Ensure it's the <select> before reading .value
     if (el instanceof HTMLSelectElement) {
       const idx = el.getAttribute('data-idx');
-      const playerId = el.value;
+      const playerId = el.value; // <-- fixed (was target.value)
 
       if (idx !== null) {
         const pointsEl = document.querySelector(
@@ -328,6 +329,7 @@ document.addEventListener('change', function (e) {
     }
   }
 });
+
 
 
   // ---- ADD POLLING HERE ----
