@@ -284,41 +284,51 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
     }
   });
 
-  document.addEventListener('change', function(e){
-    const el = e.target;
-    if(!(el instanceof HTMLElement)) return;
-    
-    // Golden vyrazacka player selection
-    if(el.classList.contains('golden-vyrazacka-player')){
+  
+ocument.addEventListener('change', function (e) {
+  const el = e.target;
+  if (!(el instanceof HTMLElement)) return;
+
+  // Golden vyrazacka player selection
+  if (el.classList.contains('golden-vyrazacka-player')) {
+    if (el instanceof HTMLSelectElement) {
       const idx = el.getAttribute('data-idx');
-      
-      const playerId = target.value;
-        if (idx !== null) {
-          const pointsEl = document.querySelector(
-            `.golden-vyrazacka-points[data-idx="${idx}"]`
-          );
-  
-          let points = 0;
-          if (pointsEl instanceof HTMLInputElement) {
-            points = Number(pointsEl.value) || 0;
-          }
-  
-          sendGoldenVyrazackaUpdate(Number(idx), playerId, points);
+      const playerId = el.value;
+
+      if (idx !== null) {
+        const pointsEl = document.querySelector(
+          `.golden-vyrazacka-points[data-idx="${idx}"]`
+        );
+
+        let points = 0;
+        if (pointsEl instanceof HTMLInputElement) {
+          points = Number(pointsEl.value) || 0;
         }
-      }
-    }
-    
-    // Golden vyrazacka points change
-    if(el.classList.contains('golden-vyrazacka-points')){
-      const idx = el.getAttribute('data-idx');
-      if(idx !== null){
-        const playerEl = document.querySelector(\`.golden-vyrazacka-player[data-idx="\${idx}"]\`) as HTMLSelectElement;
-        const playerId = playerEl ? playerEl.value : '';
-        const points = Number((el as HTMLInputElement).value);
+
         sendGoldenVyrazackaUpdate(Number(idx), playerId, points);
       }
     }
-  });
+  }
+
+  // Golden vyrazacka points change
+  if (el.classList.contains('golden-vyrazacka-points')) {
+    const idx = el.getAttribute('data-idx');
+    if (idx !== null) {
+      const playerEl = document.querySelector(
+        `.golden-vyrazacka-player[data-idx="${idx}"]`
+      );
+
+      const playerId =
+        playerEl instanceof HTMLSelectElement ? playerEl.value : '';
+
+      const points =
+        el instanceof HTMLInputElement ? Number(el.value) || 0 : 0;
+
+      sendGoldenVyrazackaUpdate(Number(idx), playerId, points);
+    }
+  }
+});
+
 
   // ---- ADD POLLING HERE ----
   async function pollState(){
