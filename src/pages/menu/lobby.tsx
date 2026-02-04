@@ -83,9 +83,9 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
           <a href="/v1/leaderboard" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🪜 Leaderboards</a>
           <a href="/v1/match-history" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">📜 Match History</a>
           <a href="/v1/changes-log" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🛠️ Changes & Fixes</a>
-          <a href="/v1/f-bet" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">F Bet</a>
-          <a href="/v1/achievements" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">Achievements</a>
-          <a href="/v1/tournaments" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">Tournaments</a>
+          <a href="/v1/f-bet" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🎲 F Bet</a>
+          <a href="/v1/achievements" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🎯 Achievements</a>
+          <a href="/v1/tournaments" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🏆 Tournaments</a>
         </nav>
       </div>
 
