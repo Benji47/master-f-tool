@@ -760,7 +760,7 @@ export async function matchResults(matchId: string) {
         losesAdded: 0,
         gamesAdded: 0,
         ten_zero_wins: 0,
-        coins_gained: 0,
+        coinsGained: 0,
         vyrazecky: 0,
         ten_zero_loses: 0,
         goals_scored: 0,
