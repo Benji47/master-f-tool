@@ -760,6 +760,7 @@ export async function matchResults(matchId: string) {
         losesAdded: 0,
         gamesAdded: 0,
         ten_zero_wins: 0,
+        coins_gained: 0,
         vyrazecky: 0,
         ten_zero_loses: 0,
         goals_scored: 0,
@@ -800,6 +801,8 @@ export async function matchResults(matchId: string) {
           byId[id].gamesAdded += 1;
           byId[id].goals_conceded += bScore;
           byId[id].xpGained += aScore;
+          byId[id].coinsGained += 100; // +100 coins for winning
+          byId[id].coinsGained += aScore * 2; // +2 coins per goal scored
           byId[id].goals_scored += aScore;
           if (aScore === 10 && bScore === 0) {
             byId[id].xpGained += 50;
@@ -811,6 +814,7 @@ export async function matchResults(matchId: string) {
           byId[id].goals_conceded += aScore;
           byId[id].goals_scored += bScore;
           byId[id].xpGained += bScore;
+          byId[id].coinsGained += bScore * 2; // +2 coins per goal scored
           byId[id].losesAdded += 1;
           byId[id].xpGained += 5;
           byId[id].gamesAdded += 1;
@@ -822,6 +826,8 @@ export async function matchResults(matchId: string) {
           byId[id].xpGained += 15;
           byId[id].gamesAdded += 1;
           byId[id].xpGained += bScore;
+          byId[id].coinsGained += 100; // +100 coins for winning
+          byId[id].coinsGained += bScore * 2; // +2 coins per goal scored
           byId[id].goals_conceded += aScore;
           byId[id].goals_scored += bScore;
           if (bScore === 10 && aScore === 0) {
@@ -834,6 +840,7 @@ export async function matchResults(matchId: string) {
           byId[id].goals_conceded += bScore;
           byId[id].goals_scored += aScore;
           byId[id].xpGained += aScore;
+          byId[id].coinsGained += aScore * 2; // +2 coins per goal scored
           byId[id].losesAdded += 1;
           byId[id].xpGained += 5;
           byId[id].gamesAdded += 1;
