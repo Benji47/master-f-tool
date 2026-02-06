@@ -1,23 +1,15 @@
 import { PlayerProfile } from "../../logic/profile";
 import { badges, rankTiers, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 
-const ROOK_ICON_URL =
-  "https://raw.githubusercontent.com/Benji47/master-f-tool/refs/heads/main/public/obrázek.png";
+function renderBadgeName(name: string, iconUrl?: string) {
+  if (!iconUrl) return <span>{name}</span>;
 
-// Renders the badge name; if it ends with a rook (♖), replace that with your image.
-function renderBadgeNameWithIcon(name: string) {
-  const hasTrailingRook = /\s*♖$/.test(name);
-  if (!hasTrailingRook) {
-    return <span>{name}</span>;
-  }
-
-  const textWithoutRook = name.replace(/\s*♖$/, "");
   return (
     <span className="inline-flex items-center gap-2">
-      <span>{textWithoutRook}</span>
+      <span>{name}</span>
       <img
-        src={ROOK_ICON_URL}
-        alt="Rookie icon"
+        src={iconUrl}
+        alt={`${name} icon`}
         className="w-5 h-5 object-contain drop-shadow-sm align-text-bottom"
         loading="lazy"
         decoding="async"
@@ -71,7 +63,7 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
                         <span
                           className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-26 text-left inline-flex items-center gap-2`}
                         >
-                          {renderBadgeNameWithIcon(b.name)}
+                          {renderBadgeName(b.name, (b as any).iconUrl)}
                         </span>
                   
                         <div className="text-neutral-200 text-sm">
