@@ -2,7 +2,7 @@ import { PlayerProfile } from "../../logic/profile";
 import { badges, rankTiers, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 
 const ROOK_ICON_URL =
-  "https://raw.githubusercontent.com/Benji47/master-f-tool/refs/heads/main/public/icon.jpg";
+  "https://raw.githubusercontent.com/Benji47/master-f-tool/refs/heads/main/public/obrázek.png";
 
 // Renders the badge name; if it ends with a rook (♖), replace that with your image.
 function renderBadgeNameWithIcon(name: string) {
