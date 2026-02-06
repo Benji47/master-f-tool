@@ -1,6 +1,31 @@
 import { PlayerProfile } from "../../logic/profile";
 import { badges, rankTiers, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 
+const ROOK_ICON_URL =
+  "https://raw.githubusercontent.com/Benji47/master-f-tool/refs/heads/main/public/icon.jpg";
+
+// Renders the badge name; if it ends with a rook (♖), replace that with your image.
+function renderBadgeNameWithIcon(name: string) {
+  const hasTrailingRook = /\s*♖$/.test(name);
+  if (!hasTrailingRook) {
+    return <span>{name}</span>;
+  }
+
+  const textWithoutRook = name.replace(/\s*♖$/, "");
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span>{textWithoutRook}</span>
+      <img
+        src={ROOK_ICON_URL}
+        alt="Rookie icon"
+        className="w-5 h-5 object-contain drop-shadow-sm align-text-bottom"
+        loading="lazy"
+        decoding="async"
+      />
+    </span>
+  );
+}
+
 export default function PlayerProfilePanel({ playerProfile, players }: { playerProfile: PlayerProfile; players: PlayerProfile[] }) {
   const lvl = computeLevel(playerProfile.xp);
   const rank = getRankInfoFromElo(playerProfile.elo);
@@ -38,11 +63,17 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
 
                 <div className="space-y-2">
                   {badges.map((b, idx) => (
-                    <div key={b.name} className="flex items-center justify-between bg-neutral-800/40 rounded px-2 py-1">
+                    <div
+                      key={b.name}
+                      className="flex items-center justify-between bg-neutral-800/40 rounded px-2 py-1"
+                    >
                       <div className="flex items-center gap-2">
-                        <span className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-26 text-left`}>
-                          {b.name}
+                        <span
+                          className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-26 text-left inline-flex items-center gap-2`}
+                        >
+                          {renderBadgeNameWithIcon(b.name)}
                         </span>
+                  
                         <div className="text-neutral-200 text-sm">
                           Level {idx + 1} ({b.minLevel} - {b.maxLevel})
                         </div>
