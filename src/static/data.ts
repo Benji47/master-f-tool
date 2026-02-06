@@ -25,7 +25,7 @@ export const badges = [
   { name: "Tryhard", minLevel: 1650, maxLevel: 2300, bg: "bg-blue-600", text: "text-blue-100" },
   { name: "Fotograf 📷", minLevel: 2300, maxLevel: 3100, bg: "bg-indigo-600", text: "text-indigo-100" },
   { name: "▄︻デ══━一💥", minLevel: 3100, maxLevel: 4100, bg: "bg-purple-600", text: "text-purple-100" },
-  { name: "Vyrážeč ➜]", minLevel: 4100, maxLevel: 5500, bg: "bg-black", text: "text-neutral-100" },
+  { name: "Vyrážeč ➜] ", minLevel: 4100, maxLevel: 5500, bg: "bg-black", text: "text-neutral-100" },
   {
       name: "Zmrd",
       iconUrl:
