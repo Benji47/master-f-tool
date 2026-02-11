@@ -1,5 +1,5 @@
 import { PlayerProfile } from "../logic/profile";
-import { badges, getLevelBadgeColor } from "../static/data";
+import { badges, getLevelBadgeColor, getRankInfoFromElo } from "../static/data";
 import { levelsXp, getCumulativeThresholds } from "../static/data";
 
 function PlayerLink({ username, children }: { username: string; children: any }) {
