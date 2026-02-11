@@ -111,7 +111,7 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
               const isEven = idx % 2 === 0;
               const lvl = computeLevel(player.xp).level;
               const isCurrentPlayer = currentPlayer === player.username;
-              const eloRank = getRankInfoFromElo(player.elo);
+              const eloRank = getRankInfoFromElo(player.elo).name;
               return (
                 <div
                   key={player.$id}
@@ -121,7 +121,7 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}> <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink></div>
-                  <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo + " " + eloRank}</div>
+                  <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo} {eloRank}</div>
                   <div className="text-blue-400">LVL {computeLevel(player.xp).level} ({player.xp}xp)</div>
                   <div className="text-neutral-400">{player.wins}:{player.loses} ({Math.round(player.wins / player.loses * 100) / 100})</div>
                   <div className="text-neutral-400">{player.goals_scored}:{player.goals_conceded} ({Math.round(player.goals_scored / player.goals_conceded * 100) / 100})</div>
