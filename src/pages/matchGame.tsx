@@ -35,35 +35,6 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
         <div id="pairings" className="space-y-4">
           {scores.map((s: any, idx: number) => (
             <div key={idx} className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-300">
-              {/* Golden Vyrážečka selection */}
-              <div className="mb-4 p-3 bg-neutral-800/60 rounded border border-yellow-700/50">
-                <div className="text-sm font-semibold text-neutral-300 mb-3">🏆 Golden Vyrážečka</div>
-                <div className="flex items-center gap-4">
-                  <select 
-                    data-idx={idx} 
-                    className="px-3 py-2 rounded bg-neutral-700 text-white text-sm cursor-pointer golden-vyrazacka-player"
-                  >
-                    <option value="">— No Golden Vyrážečka —</option>
-                    {[...s.a, ...s.b].map((id: string) => {
-                      const p = players.find((x: any) => x.id === id);
-                      return <option key={id} value={id}>{p ? p.username : id}</option>;
-                    })}
-                  </select>
-                  
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-neutral-300">Points:</label>
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max="10" 
-                      defaultValue="0"
-                      data-idx={idx}
-                      className="w-16 px-2 py-1 rounded bg-neutral-700 text-white text-sm golden-vyrazacka-points"
-                    />
-                  </div>
-                </div>
-              </div>
-
               <div className="flex items-center justify-between mb-4">
                 {/* Left team */}
                 <div className="flex flex-col items-start gap-2 w-1/3">
