@@ -3,7 +3,8 @@
   "scripts": {
     "dev": "bun run --hot src/server.tsx",
     "bundle": "bun build --entrypoints src/appwrite.tsx --outdir=dist --target=bun",
-    "css": "tailwindcss -i src/styles/Homepage.css -o dist/styles.css --watch"
+    "css": "tailwindcss -i src/styles/Homepage.css -o dist/styles.css --watch",
+    "start": "bun run --hot src/server.tsx"
   },
   "dependencies": {
     "hono": "^4.10.6",
