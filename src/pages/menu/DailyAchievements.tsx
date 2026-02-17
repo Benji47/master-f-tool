@@ -40,6 +40,8 @@ function getAchievementIcon(type: string): string {
       return '✨';
     case 'vyrazecka':
       return '⚡';
+    case 'podlézání':
+      return '🐍';
     default:
       return '🎯';
   }
@@ -78,6 +80,8 @@ function getAchievementText(achievement: Achievement): string {
         return `${username} scored 1 vyrážečka!`;
       }
       return `${username} scored ${data.vyrazeckaCount} vyrážečky!`;
+    case 'podlézání':
+      return `${username} engaged in some sneaky behavior!`;
     default:
       return `${username} achieved something!`;
   }
@@ -97,6 +101,8 @@ function getAchievementColor(type: string): string {
       return 'border-purple-500 bg-purple-950/30';
     case 'vyrazecka':
       return 'border-blue-500 bg-blue-950/30';
+    case 'podlézání':
+      return 'border-gray-500 bg-gray-950/30';  
     default:
       return 'border-neutral-500 bg-neutral-950/30';
   }

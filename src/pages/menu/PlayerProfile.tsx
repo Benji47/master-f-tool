@@ -25,6 +25,7 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
   const winrate = playerProfile.wins + playerProfile.loses > 0
     ? Math.round((playerProfile.wins / (playerProfile.wins + playerProfile.loses)) * 100)
     : 0;
+  const transferTargets = players.filter((p) => p.username !== playerProfile.username);
 
   return (
     <div className="lg:col-span-1 bg-neutral-900/50 rounded-lg border border-neutral-800 p-6 flex flex-col justify-between relative">
@@ -294,6 +295,40 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
             <span className="text-yellow-400">💰 Coins:</span>
             <span className="text-yellow-400 font-bold text-lg">{playerProfile.coins}</span>
           </div>
+          <form action="/v1/coins/send" method="post" className="mt-3 flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-neutral-400" htmlFor="profile-coin-recipient">Send to</label>
+              <select
+                id="profile-coin-recipient"
+                name="recipient"
+                className="bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-2 py-1"
+                required
+              >
+                <option value="">Select player</option>
+                {transferTargets.map((p) => (
+                  <option key={p.$id} value={p.username}>{p.username}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="profile-coin-amount"
+                name="amount"
+                type="number"
+                min="1"
+                step="1"
+                className="flex-1 bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-2 py-1"
+                placeholder="Amount"
+                required
+              />
+              <button
+                type="submit"
+                className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-md transition-colors"
+              >
+                Send
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

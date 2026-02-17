@@ -101,6 +101,15 @@ app.use(async (c, next) => {
 app.get("/v1/changes-log", async (c) => {
   const changes = [
     {
+      date: "16.02.2026",
+      updates: [
+        "[Feature] -> Added 'podlézání to daily log!' ",
+        "[Feature] -> Added 'DUO ANALYZER in leaderboards.' ",
+        "[Feature] -> You can now send coins.' ",
+        "[Feature] -> You can see betting history for each match in match history view.' ",
+      ],
+    },
+    {
       date: "02.02.2026",
       updates: [
         "[Feature] -> Added coins.",
@@ -305,9 +314,56 @@ app.get("/v1/leaderboard", async (c) => {
   try {
     const players = await getLeaderboard(100);
     const username = getCookie(c, "user") ?? undefined;
+    const client = new sdk.Client()
+      .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
+      .setProject(process.env.APPWRITE_PROJECT)
+      .setKey(process.env.APPWRITE_KEY);
+    const databases = new sdk.Databases(client);
+
+    let allDocuments: any[] = [];
+    let offset = 0;
+    const limit = 100;
+
+    while (true) {
+      const res = await databases.listDocuments(
+        process.env.APPWRITE_DATABASE_ID,
+        'matches_history',
+        [
+          sdk.Query.orderDesc("$createdAt"),
+          sdk.Query.limit(limit),
+          sdk.Query.offset(offset),
+        ]
+      );
+
+      if (res.documents.length === 0) break;
+
+      allDocuments = allDocuments.concat(res.documents);
+      offset += limit;
+
+      if (allDocuments.length > 10000) {
+        break;
+      }
+    }
+
+    const duoMatches = allDocuments
+      .map((doc: any) => parseMatchHistoryDoc(doc))
+      .map((match: MatchHistoryDoc) => ({
+        $id: match.$id,
+        createdAt: match.createdAt,
+        players: (match.players || []).map((p: HistoryPlayers) => ({
+          id: p.id,
+          username: p.username,
+        })),
+        scores: (match.scores || []).map((s: any) => ({
+          a: s.a,
+          b: s.b,
+          scoreA: s.scoreA,
+          scoreB: s.scoreB,
+        })),
+      }));
     return c.html(
       <MainLayout c={c}>
-        <LeaderboardPage players={players} currentPlayer={username} />
+        <LeaderboardPage players={players} currentPlayer={username} duoMatches={duoMatches} />
       </MainLayout>,
     );
   } catch (err: any) {
@@ -380,6 +436,37 @@ app.post("/v1/auth/logout", (c) => {
   c.res.headers.set("Set-Cookie", "user=; Path=/; Max-Age=0; HttpOnly");
   c.res.headers.set("HX-Redirect", "/");
   return c.redirect("/");
+});
+
+// send coins to another player
+app.post("/v1/coins/send", async (c) => {
+  try {
+    const senderUsername = getCookie(c, "user") ?? null;
+    if (!senderUsername) return c.redirect("/v1/auth/login");
+
+    const form = await c.req.formData();
+    const recipientUsername = String(form.get("recipient") ?? "").trim();
+    const amountRaw = Number(form.get("amount") ?? 0);
+    const amount = Math.floor(amountRaw);
+
+    if (!recipientUsername) return c.text("Recipient is required", 400);
+    if (!Number.isFinite(amount) || amount <= 0) return c.text("Invalid amount", 400);
+    if (recipientUsername === senderUsername) return c.text("Cannot send coins to yourself", 400);
+
+    const senderProfile = await getPlayerProfile(senderUsername);
+    const recipientProfile = await getPlayerProfile(recipientUsername);
+
+    if (!senderProfile || !recipientProfile) return c.text("Player not found", 404);
+    if ((senderProfile.coins || 0) < amount) return c.text("Insufficient coins", 400);
+
+    await updatePlayerStats(senderProfile.$id, { coins: (senderProfile.coins || 0) - amount });
+    await updatePlayerStats(recipientProfile.$id, { coins: (recipientProfile.coins || 0) + amount });
+
+    return c.redirect("/v1/lobby");
+  } catch (err: any) {
+    console.error("send coins error:", err);
+    return c.text("Failed to send coins", 500);
+  }
 });
 
 // Join match (create or join existing) and redirect to match lobby
@@ -576,12 +663,13 @@ app.get("/v1/match-history/:id", async (c) => {
 
   try {
     const result = await matchResults(id);
-
+    if (!result) return c.text("Match history not found", 404);
+    const bets = await getBetsForMatch(result.matchId);
     const user = getCookie(c, "user") ?? "";
 
     return c.html(
       <MainLayout c={c}>
-        <MatchResultPage c={c} result={result} username={user}/>
+        <MatchResultPage c={c} result={result} username={user} bets={bets} />
       </MainLayout>
     );
 
@@ -893,8 +981,9 @@ export async function matchResults(matchId: string) {
       }
     });
 
+    const originalMatchId = match.matchId || matchId;
     const result = {
-      matchId,
+      matchId: originalMatchId,
       players: ids.map(id=>({
         id,
         username: byId[id].username,
@@ -1218,32 +1307,31 @@ app.post("/v1/match/game/finish", async (c) => {
             });
           }
 
+          // 0-10 losses (podlezani)
+          if (rec.ten_zero_loses > 0) {
+            await recordAchievement({
+              timestamp,
+              type: 'podlézání',
+              playerId: id,
+              username: rec.username,
+              data: {
+                matchId,
+              },
+            });
+          }
+
           // Vyrazecky achievements
           if (rec.vyrazecky > 0) {
-            // Check if it's a "golden" vyrazecka (3+ in a match)
-            if (rec.vyrazecky >= 3) {
-              await recordAchievement({
-                timestamp,
-                type: 'golden_vyrazecka',
-                playerId: id,
-                username: rec.username,
-                data: {
-                  vyrazeckaCount: rec.vyrazecky,
-                  matchId,
-                },
-              });
-            } else {
-              await recordAchievement({
-                timestamp,
-                type: 'vyrazecka',
-                playerId: id,
-                username: rec.username,
-                data: {
-                  vyrazeckaCount: rec.vyrazecky,
-                  matchId,
-                },
-              });
-            }
+            await recordAchievement({
+              timestamp,
+              type: 'vyrazecka',
+              playerId: id,
+              username: rec.username,
+              data: {
+                vyrazeckaCount: rec.vyrazecky,
+                matchId,
+              },
+            });
           }
         }
       } catch (e) {

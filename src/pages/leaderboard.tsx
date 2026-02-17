@@ -2,6 +2,13 @@ import { PlayerProfile } from "../logic/profile";
 import { badges, getLevelBadgeColor, getRankInfoFromElo } from "../static/data";
 import { levelsXp, getCumulativeThresholds } from "../static/data";
 
+type DuoMatch = {
+  $id: string;
+  createdAt?: string;
+  players: { id: string; username: string }[];
+  scores?: { a: string[]; b: string[]; scoreA: number; scoreB: number }[];
+};
+
 function PlayerLink({ username, children }: { username: string; children: any }) {
   return (
     <a 
@@ -13,7 +20,7 @@ function PlayerLink({ username, children }: { username: string; children: any })
   );
 }
 
-export function LeaderboardPage({ players, currentPlayer }: { players: PlayerProfile[]; currentPlayer?: string }) {
+export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { players: PlayerProfile[]; currentPlayer?: string; duoMatches?: DuoMatch[] }) {
   function eloColor(elo: number) {
     if (elo >= 1000) return "text-red-500";
     if (elo >= 800) return "text-indigo-500";
@@ -55,6 +62,10 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
     return { level, currentLevelXp, nextLevelXp, xpInCurrentLevel, xpNeededForNext, missing, progress };
   }
 
+  function safeJson(value: unknown) {
+    return JSON.stringify(value).replace(/</g, "\\u003c");
+  }
+
   // Sort functions for different leaderboards
   const sortedByElo = [...players].sort((a, b) => b.elo - a.elo);
   const sortedByUltimateWins = [...players].sort((a, b) => b.ultimate_wins - a.ultimate_wins);
@@ -65,6 +76,7 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
   const sortedTenZeroLoses = [...players].sort((a, b) => b.ten_zero_loses - a.ten_zero_loses);
   const sortedTenZeroWins = [...players].sort((a, b) => b.ten_zero_wins - a.ten_zero_wins);
   const sortedCoins = [...players].sort((a, b) => b.coins - a.coins);
+  const duoPlayers = players.map((p) => ({ id: p.$id, username: p.username }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
@@ -85,6 +97,7 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
           <button data-tab="ten_zero_loses" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Loses</button>
           <button data-tab="ten_zero_wins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Wins</button>
           <button data-tab="coins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Coins</button>
+          <button data-tab="duo" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duo Analyzer</button>
           
           <div className="">
             <a href="/v1/lobby">
@@ -121,7 +134,7 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}> <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink></div>
-                  <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo} -> {eloRank}</div>
+                  <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo} {'->'} {eloRank}</div>
                   <div className="text-blue-400">LVL {computeLevel(player.xp).level} ({player.xp}xp)</div>
                   <div className="text-neutral-400">{player.wins}:{player.loses} ({Math.round(player.wins / player.loses * 100) / 100})</div>
                   <div className="text-neutral-400">{player.goals_scored}:{player.goals_conceded} ({Math.round(player.goals_scored / player.goals_conceded * 100) / 100})</div>
@@ -387,6 +400,97 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
             })}
           </div>
         </div>
+
+        {/* Duo Analyzer */}
+        <div id="duo" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+          <div className="px-6 py-6">
+            <h2 className="text-2xl font-bold text-white mb-2">Duo Analyzer</h2>
+            <p className="text-neutral-400 mb-6">Pick two players to see their matches together and how they perform against each opponent duo.</p>
+
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              <div className="flex flex-col gap-2">
+                <label className="text-neutral-300 text-sm" htmlFor="duo-player-a">Player A</label>
+                <select id="duo-player-a" className="bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-3 py-2">
+                  <option value="">Select player</option>
+                  {duoPlayers.map((p) => (
+                    <option key={p.id} value={p.id}>{p.username}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-neutral-300 text-sm" htmlFor="duo-player-b">Player B</label>
+                <select id="duo-player-b" className="bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-3 py-2">
+                  <option value="">Select player</option>
+                  {duoPlayers.map((p) => (
+                    <option key={p.id} value={p.id}>{p.username}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button id="duo-clear" className="px-4 py-2 w-full bg-neutral-700 hover:bg-neutral-600 text-white rounded-md font-semibold transition-colors">
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div id="duo-empty" className="text-neutral-400">Select two different players to see results.</div>
+
+            <div id="duo-results" className="hidden">
+              <div className="grid md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-neutral-900/70 border border-neutral-800 rounded-lg p-4">
+                  <div className="text-xs text-neutral-400">Together Record</div>
+                  <div id="duo-record" className="text-white text-xl font-bold">-</div>
+                </div>
+                <div className="bg-neutral-900/70 border border-neutral-800 rounded-lg p-4">
+                  <div className="text-xs text-neutral-400">Win Rate</div>
+                  <div id="duo-winrate" className="text-white text-xl font-bold">-</div>
+                </div>
+                <div className="bg-neutral-900/70 border border-neutral-800 rounded-lg p-4">
+                  <div className="text-xs text-neutral-400">Goals</div>
+                  <div id="duo-goals" className="text-white text-xl font-bold">-</div>
+                </div>
+                <div className="bg-neutral-900/70 border border-neutral-800 rounded-lg p-4">
+                  <div className="text-xs text-neutral-400">Matches Together</div>
+                  <div id="duo-matches-count" className="text-white text-xl font-bold">-</div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4 mb-6">
+                <div className="bg-neutral-900/70 border border-neutral-800 rounded-lg p-4">
+                  <div className="text-xs text-neutral-400 mb-1">Best Matchup</div>
+                  <div id="duo-best" className="text-white text-sm">-</div>
+                </div>
+                <div className="bg-neutral-900/70 border border-neutral-800 rounded-lg p-4">
+                  <div className="text-xs text-neutral-400 mb-1">Worst Matchup</div>
+                  <div id="duo-worst" className="text-white text-sm">-</div>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="text-neutral-200 font-semibold mb-2">Opponent Duos (ordered by best stats)</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border border-neutral-800 rounded-lg overflow-hidden">
+                    <thead className="bg-neutral-800 text-neutral-200">
+                      <tr>
+                        <th className="text-left px-3 py-2">Opponent Duo</th>
+                        <th className="text-left px-3 py-2">W-L</th>
+                        <th className="text-left px-3 py-2">Win Rate</th>
+                        <th className="text-left px-3 py-2">Goals</th>
+                        <th className="text-left px-3 py-2">Games</th>
+                      </tr>
+                    </thead>
+                    <tbody id="duo-opponents-body" className="divide-y divide-neutral-800"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-neutral-200 font-semibold mb-2">Matches Together</div>
+                <div id="duo-matches" className="flex flex-col gap-3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <script
@@ -424,6 +528,235 @@ export function LeaderboardPage({ players, currentPlayer }: { players: PlayerPro
       this.classList.add('bg-green-600');
     });
   });
+
+  const duoMatches = ${safeJson(duoMatches)};
+  const duoPlayers = ${safeJson(duoPlayers)};
+  const playerASelect = document.getElementById('duo-player-a');
+  const playerBSelect = document.getElementById('duo-player-b');
+  const clearButton = document.getElementById('duo-clear');
+
+  if (playerASelect && playerBSelect) {
+    const byIdToName = new Map();
+    duoPlayers.forEach((p) => byIdToName.set(p.id, p.username));
+
+    const emptyEl = document.getElementById('duo-empty');
+    const resultsEl = document.getElementById('duo-results');
+    const recordEl = document.getElementById('duo-record');
+    const winrateEl = document.getElementById('duo-winrate');
+    const goalsEl = document.getElementById('duo-goals');
+    const matchesCountEl = document.getElementById('duo-matches-count');
+    const bestEl = document.getElementById('duo-best');
+    const worstEl = document.getElementById('duo-worst');
+    const opponentsBody = document.getElementById('duo-opponents-body');
+    const matchesWrap = document.getElementById('duo-matches');
+
+    const escapeHtml = (value) => {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+
+    const toName = (id) => byIdToName.get(id) || id;
+    const winRate = (row) => {
+      const denom = row.wins + row.losses;
+      return denom > 0 ? row.wins / denom : 0;
+    };
+
+    const renderDuo = () => {
+      const playerA = playerASelect.value;
+      const playerB = playerBSelect.value;
+
+      if (!playerA || !playerB || playerA === playerB) {
+        if (emptyEl) emptyEl.textContent = playerA && playerB && playerA === playerB
+          ? 'Select two different players to see results.'
+          : 'Select two different players to see results.';
+        if (resultsEl) resultsEl.classList.add('hidden');
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        if (opponentsBody) opponentsBody.innerHTML = '';
+        if (matchesWrap) matchesWrap.innerHTML = '';
+        return;
+      }
+
+      const opponentStats = new Map();
+      const matchSummary = new Map();
+      let totalWins = 0;
+      let totalLosses = 0;
+      let totalGoalsFor = 0;
+      let totalGoalsAgainst = 0;
+
+      duoMatches.forEach((m) => {
+        const rounds = Array.isArray(m.scores) ? m.scores : [];
+
+        rounds.forEach((s) => {
+          const a = Array.isArray(s.a) ? s.a : [];
+          const b = Array.isArray(s.b) ? s.b : [];
+          const duoInA = a.includes(playerA) && a.includes(playerB);
+          const duoInB = b.includes(playerA) && b.includes(playerB);
+
+          if (!duoInA && !duoInB) return;
+
+          const opponentIds = duoInA ? b : a;
+          if (opponentIds.length < 2) return;
+
+          const opponentKey = opponentIds.slice().sort().join('|');
+          const opponentName = opponentIds.slice().sort().map(toName).join(' & ');
+          const scoreA = Number(s.scoreA || 0);
+          const scoreB = Number(s.scoreB || 0);
+          const goalsFor = duoInA ? scoreA : scoreB;
+          const goalsAgainst = duoInA ? scoreB : scoreA;
+
+          const row = opponentStats.get(opponentKey) || {
+            opponentKey,
+            opponentName,
+            wins: 0,
+            losses: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            games: 0,
+          };
+
+          row.goalsFor += goalsFor;
+          row.goalsAgainst += goalsAgainst;
+          row.games += 1;
+
+          if ((duoInA && scoreA > scoreB) || (duoInB && scoreB > scoreA)) {
+            row.wins += 1;
+            totalWins += 1;
+          } else {
+            row.losses += 1;
+            totalLosses += 1;
+          }
+
+          totalGoalsFor += goalsFor;
+          totalGoalsAgainst += goalsAgainst;
+
+          opponentStats.set(opponentKey, row);
+
+          const matchId = m.$id;
+          const matchRow = matchSummary.get(matchId) || {
+            matchId,
+            createdAt: m.createdAt,
+            wins: 0,
+            losses: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            opponentNames: new Set(),
+          };
+
+          matchRow.goalsFor += goalsFor;
+          matchRow.goalsAgainst += goalsAgainst;
+          matchRow.opponentNames.add(opponentName);
+
+          if ((duoInA && scoreA > scoreB) || (duoInB && scoreB > scoreA)) matchRow.wins += 1;
+          else matchRow.losses += 1;
+
+          matchSummary.set(matchId, matchRow);
+        });
+      });
+
+      const opponentRows = Array.from(opponentStats.values()).map((row) => ({
+        ...row,
+        winRate: winRate(row),
+        goalDiff: row.goalsFor - row.goalsAgainst,
+      }));
+
+      opponentRows.sort((a, b) => {
+        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return b.goalDiff - a.goalDiff;
+      });
+
+      const bestRow = opponentRows[0];
+      const worstRow = opponentRows.length ? opponentRows[opponentRows.length - 1] : null;
+      const matchesTogether = matchSummary.size;
+      const totalWinRate = (totalWins + totalLosses) > 0
+        ? Math.round((totalWins / (totalWins + totalLosses)) * 1000) / 10
+        : 0;
+
+      if (recordEl) recordEl.textContent = totalWins + '-' + totalLosses;
+      if (winrateEl) winrateEl.textContent = totalWinRate + '%';
+      if (goalsEl) goalsEl.textContent = totalGoalsFor + ':' + totalGoalsAgainst;
+      if (matchesCountEl) matchesCountEl.textContent = String(matchesTogether);
+
+      if (bestEl) {
+        bestEl.textContent = bestRow
+          ? bestRow.opponentName + ' (' + bestRow.wins + '-' + bestRow.losses + ', ' + (Math.round(bestRow.winRate * 1000) / 10) + '%)'
+          : 'No matches together yet.';
+      }
+
+      if (worstEl) {
+        worstEl.textContent = worstRow
+          ? worstRow.opponentName + ' (' + worstRow.wins + '-' + worstRow.losses + ', ' + (Math.round(worstRow.winRate * 1000) / 10) + '%)'
+          : 'No matches together yet.';
+      }
+
+      if (opponentsBody) {
+        if (opponentRows.length === 0) {
+          opponentsBody.innerHTML = '<tr><td class="px-3 py-2 text-neutral-400" colspan="5">No matches together yet.</td></tr>';
+        } else {
+          opponentsBody.innerHTML = opponentRows.map((row) => {
+            const rowWinRate = Math.round(row.winRate * 1000) / 10;
+            const goals = row.goalsFor + ':' + row.goalsAgainst;
+            return (
+              '<tr class="text-neutral-200">' +
+                '<td class="px-3 py-2">' + escapeHtml(row.opponentName) + '</td>' +
+                '<td class="px-3 py-2">' + row.wins + '-' + row.losses + '</td>' +
+                '<td class="px-3 py-2">' + rowWinRate + '%</td>' +
+                '<td class="px-3 py-2">' + goals + '</td>' +
+                '<td class="px-3 py-2">' + row.games + '</td>' +
+              '</tr>'
+            );
+          }).join('');
+        }
+      }
+
+      if (matchesWrap) {
+        if (matchesTogether === 0) {
+          matchesWrap.innerHTML = '<div class="text-neutral-400">No matches together yet.</div>';
+        } else {
+          const matchRows = Array.from(matchSummary.values()).sort((a, b) => {
+            const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return bTime - aTime;
+          });
+
+          matchesWrap.innerHTML = matchRows.map((row) => {
+            const opponentNames = Array.from(row.opponentNames).join(', ');
+            const dateLabel = row.createdAt ? new Date(row.createdAt).toLocaleString() : 'N/A';
+            const record = row.wins + '-' + row.losses;
+            const cardClass = row.wins > row.losses
+              ? 'bg-green-900/70 border-green-700'
+              : (row.wins < row.losses ? 'bg-red-900/70 border-red-700' : 'bg-neutral-900/70 border-neutral-800');
+            return (
+              '<div class="' + cardClass + ' border rounded-lg p-3">' +
+                '<div class="text-neutral-200 font-semibold">' + escapeHtml(opponentNames) + '</div>' +
+                '<div class="text-xs text-neutral-400">' + escapeHtml(dateLabel) + '</div>' +
+                '<div class="text-sm text-neutral-200">Goals: ' + row.goalsFor + ':' + row.goalsAgainst + '</div>' +
+              '</div>'
+            );
+          }).join('');
+        }
+      }
+
+      if (resultsEl) resultsEl.classList.remove('hidden');
+      if (emptyEl) emptyEl.classList.add('hidden');
+    };
+
+    playerASelect.addEventListener('change', renderDuo);
+    playerBSelect.addEventListener('change', renderDuo);
+    if (clearButton) {
+      clearButton.addEventListener('click', () => {
+        playerASelect.value = '';
+        playerBSelect.value = '';
+        renderDuo();
+      });
+    }
+
+    renderDuo();
+  }
 })();
           `,
         }}

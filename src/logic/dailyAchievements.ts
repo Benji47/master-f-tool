@@ -9,7 +9,7 @@ const collectionId = 'daily-achievements';
 interface DailyAchievement {
   $id?: string;
   timestamp: number;
-  type: 'elo_rank_up' | 'elo_rank_down' | 'level_up' | 'shutout_win' | 'vyrazecka' | 'golden_vyrazecka';
+  type: 'elo_rank_up' | 'elo_rank_down' | 'level_up' | 'shutout_win' | 'vyrazecka' | 'golden_vyrazecka' | 'podlézání';
   playerId: string;
   username: string;
   data: {

@@ -1,8 +1,15 @@
 import { Context } from "hono";
 
-export function MatchResultPage({ c, result, username }: { c: Context; result: any, username: string | null }) {
+export function MatchResultPage({ c, result, username, bets = [] }: { c: Context; result: any, username: string | null; bets?: any[] }) {
   const players = result.players || [];
   const scores = result.scores || [];
+  const formatPrediction = (predictions: any) => {
+    const parts = [];
+    if (predictions?.match1) parts.push(`M1:${predictions.match1.toUpperCase()}`);
+    if (predictions?.match2) parts.push(`M2:${predictions.match2.toUpperCase()}`);
+    if (predictions?.match3) parts.push(`M3:${predictions.match3.toUpperCase()}`);
+    return parts.join(" ");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
@@ -92,6 +99,46 @@ export function MatchResultPage({ c, result, username }: { c: Context; result: a
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-800">
+          <h3 className="text-lg text-white mb-2">Bets for this match</h3>
+          {bets.length === 0 ? (
+            <p className="text-neutral-400">No bets placed.</p>
+          ) : (
+            <div className="space-y-2">
+              {bets.map((bet: any) => {
+                const status = String(bet.status || 'pending').toLowerCase();
+                const cardClass = status === 'won'
+                  ? 'bg-green-900/40 border-green-700'
+                  : status === 'lost'
+                    ? 'bg-red-900/40 border-red-700'
+                    : 'bg-neutral-800/30 border-neutral-700';
+                const statusClass = status === 'won'
+                  ? 'text-green-400'
+                  : status === 'lost'
+                    ? 'text-red-400'
+                    : 'text-yellow-400';
+                return (
+                  <div key={bet.$id} className={`p-3 ${cardClass} rounded border flex items-center justify-between gap-4`}>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-white font-semibold">{bet.username}</span>
+                        <span className={statusClass}>{status.toUpperCase()}</span>
+                      </div>
+                      <div className="text-xs text-neutral-300">Bet: {Number(bet.betAmount || 0).toLocaleString()} coins • Matches: {bet.numMatches}</div>
+                      <div className="text-xs text-neutral-400">Prediction: {formatPrediction(bet.predictions) || '—'}</div>
+                      <div className="text-xs text-neutral-400">Correct: {bet.correctPredictions || 0}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-neutral-400">Winnings</div>
+                      <div className="text-2xl font-bold text-yellow-300">{Number(bet.winnings || 0).toLocaleString()}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

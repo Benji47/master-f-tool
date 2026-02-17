@@ -13,7 +13,7 @@ export interface PlayerData {
   ten_zero_loses: number;
 }
 
-export const levelsXp = [75, 150, 225, 300, 400, 500, 650, 800, 1000, 1400];
+export const levelsXp = [75, 150, 225, 300, 400, 500, 650, 800, 1000, 1400, 2000];
 
 export const badges = [
   { name: "Rookie ♖", minLevel: 0, maxLevel: 75, bg: "bg-red-600", text: "text-red-100" },
