@@ -1,6 +1,6 @@
-import { PlayerProfile } from "../logic/profile";
-import { badges, getLevelBadgeColor, getRankInfoFromElo } from "../static/data";
-import { levelsXp, getCumulativeThresholds } from "../static/data";
+import { PlayerProfile } from "../../logic/profile";
+import { badges, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
+import { levelsXp, getCumulativeThresholds } from "../../static/data";
 
 type DuoMatch = {
   $id: string;
@@ -97,6 +97,7 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
           <button data-tab="ten_zero_loses" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Loses</button>
           <button data-tab="ten_zero_wins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Wins</button>
           <button data-tab="coins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Coins</button>
+          <button data-tab="duos" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duos</button>
           <button data-tab="duo" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duo Analyzer</button>
           
           <div className="">
@@ -401,6 +402,21 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
           </div>
         </div>
 
+        {/* Duos Leaderboard */}
+        <div id="duos" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+          <div className="grid grid-cols-7 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+            <div>Rank</div>
+            <div className="col-span-2">Duo</div>
+            <div>Matches</div>
+            <div>W-L</div>
+            <div>Win Rate</div>
+            <div>Goals</div>
+          </div>
+          <div id="duos-leaderboard-body" className="divide-y divide-neutral-800">
+            {/* Populated by script */}
+          </div>
+        </div>
+
         {/* Duo Analyzer */}
         <div id="duo" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
           <div className="px-6 py-6">
@@ -500,6 +516,114 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
   const tabButtons = document.querySelectorAll('.tab-btn');
   const tabs = document.querySelectorAll('.leaderboard-tab');
 
+  // Calculate and populate Duos Leaderboard
+  const duoMatches = ${safeJson(duoMatches)};
+  const duoPlayers = ${safeJson(duoPlayers)};
+  const byIdToName = new Map();
+  duoPlayers.forEach((p) => byIdToName.set(p.id, p.username));
+
+  const duoStats = new Map();
+
+  duoMatches.forEach((m) => {
+    const rounds = Array.isArray(m.scores) ? m.scores : [];
+
+    rounds.forEach((s) => {
+      const a = Array.isArray(s.a) ? s.a : [];
+      const b = Array.isArray(s.b) ? s.b : [];
+      const scoreA = Number(s.scoreA || 0);
+      const scoreB = Number(s.scoreB || 0);
+
+      // Process team A duo
+      if (a.length === 2) {
+        const duoKey = a.slice().sort().join('|');
+        const duoNames = a.slice().sort().map(id => byIdToName.get(id) || id).join(' & ');
+        const row = duoStats.get(duoKey) || {
+          duoKey,
+          duoNames,
+          player1: a[0],
+          player2: a[1],
+          wins: 0,
+          losses: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          matches: 0
+        };
+
+        row.goalsFor += scoreA;
+        row.goalsAgainst += scoreB;
+        row.matches += 1;
+
+        if (scoreA > scoreB) row.wins += 1;
+        else if (scoreA < scoreB) row.losses += 1;
+
+        duoStats.set(duoKey, row);
+      }
+
+      // Process team B duo
+      if (b.length === 2) {
+        const duoKey = b.slice().sort().join('|');
+        const duoNames = b.slice().sort().map(id => byIdToName.get(id) || id).join(' & ');
+        const row = duoStats.get(duoKey) || {
+          duoKey,
+          duoNames,
+          player1: b[0],
+          player2: b[1],
+          wins: 0,
+          losses: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          matches: 0
+        };
+
+        row.goalsFor += scoreB;
+        row.goalsAgainst += scoreA;
+        row.matches += 1;
+
+        if (scoreB > scoreA) row.wins += 1;
+        else if (scoreB < scoreA) row.losses += 1;
+
+        duoStats.set(duoKey, row);
+      }
+    });
+  });
+
+  // Filter duos with at least 5 matches and calculate winrate
+  const duoRows = Array.from(duoStats.values())
+    .filter(row => row.matches >= 5)
+    .map(row => ({
+      ...row,
+      winRate: row.wins + row.losses > 0 ? row.wins / (row.wins + row.losses) : 0,
+      winRatePercent: row.wins + row.losses > 0 ? Math.round((row.wins / (row.wins + row.losses)) * 1000) / 10 : 0
+    }))
+    .sort((a, b) => {
+      if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return b.matches - a.matches;
+    });
+
+  const duosLeaderboardBody = document.getElementById('duos-leaderboard-body');
+  if (duosLeaderboardBody) {
+    if (duoRows.length === 0) {
+      duosLeaderboardBody.innerHTML = '<div class="px-6 py-4 text-neutral-400">No duos with 5+ matches found.</div>';
+    } else {
+      duosLeaderboardBody.innerHTML = duoRows.map((row, idx) => {
+        const isEven = idx % 2 === 0;
+        const rowClass = isEven ? 'bg-neutral-900/40' : 'bg-neutral-800/40';
+        const winRateColor = row.winRatePercent >= 70 ? 'text-green-400' : (row.winRatePercent >= 50 ? 'text-blue-400' : 'text-red-400');
+        return (
+          '<div class="grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 ' + rowClass + ' hover:bg-neutral-700/40 transition-colors">' +
+            '<div class="font-bold text-lg">#' + (idx + 1) + '</div>' +
+            '<div class="col-span-2 font-semibold text-white">' + row.duoNames + '</div>' +
+            '<div class="text-purple-400 font-bold">' + row.matches + '</div>' +
+            '<div class="text-neutral-400">' + row.wins + '-' + row.losses + '</div>' +
+            '<div class="font-bold ' + winRateColor + '">' + row.winRatePercent + '%</div>' +
+            '<div class="text-neutral-400">' + row.goalsFor + ':' + row.goalsAgainst + '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+  }
+
   tabButtons.forEach(btn => {
     btn.addEventListener('click', function() {
       const tabName = this.getAttribute('data-tab');
@@ -529,8 +653,6 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
     });
   });
 
-  const duoMatches = ${safeJson(duoMatches)};
-  const duoPlayers = ${safeJson(duoPlayers)};
   const playerASelect = document.getElementById('duo-player-a');
   const playerBSelect = document.getElementById('duo-player-b');
   const clearButton = document.getElementById('duo-clear');

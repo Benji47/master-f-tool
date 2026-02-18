@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { MatchDoc } from "../logic/match";
+import { MatchDoc } from "../../logic/match";
 
 export interface FBetPageProps {
   c: Context;

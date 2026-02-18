@@ -1,0 +1,368 @@
+{
+  "database": {
+    "name": "Mars Empire Tournament System",
+    "collections": [
+      {
+        "name": "tournaments",
+        "collectionId": "tournaments",
+        "description": "Main tournament documents",
+        "attributes": [
+          {
+            "key": "name",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "description",
+            "type": "string",
+            "size": 1000,
+            "required": false,
+            "default": "",
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "status",
+            "type": "string",
+            "size": 50,
+            "required": true,
+            "default": "setup",
+            "encrypted": false,
+            "array": false,
+            "note": "Values: setup, registration, started, finished"
+          },
+          {
+            "key": "creatorId",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "maxTeams",
+            "type": "integer",
+            "required": true,
+            "default": 16,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "rewards",
+            "type": "object",
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "JSON: {first: number, second: number, third: number, fourth: number}"
+          },
+          {
+            "key": "startedAt",
+            "type": "datetime",
+            "required": false,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "finishedAt",
+            "type": "datetime",
+            "required": false,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          }
+        ],
+        "indexes": [
+          {
+            "key": "status",
+            "type": "key",
+            "name": "status_index"
+          },
+          {
+            "key": "creatorId",
+            "type": "key",
+            "name": "creatorId_index"
+          }
+        ]
+      },
+      {
+        "name": "tournament-teams",
+        "collectionId": "tournament-teams",
+        "description": "Teams/couples for tournaments (2 players per team)",
+        "attributes": [
+          {
+            "key": "tournamentId",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "player1",
+            "type": "object",
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "JSON: {id: string, username: string, elo: number}"
+          },
+          {
+            "key": "player2",
+            "type": "object",
+            "required": false,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "JSON: {id: string, username: string, elo: number}"
+          },
+          {
+            "key": "status",
+            "type": "string",
+            "size": 50,
+            "required": true,
+            "default": "looking",
+            "encrypted": false,
+            "array": false,
+            "note": "Values: looking, locked, disqualified"
+          },
+          {
+            "key": "lockedAt",
+            "type": "datetime",
+            "required": false,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          }
+        ],
+        "indexes": [
+          {
+            "key": "tournamentId",
+            "type": "key",
+            "name": "tournamentId_index"
+          },
+          {
+            "key": "status",
+            "type": "key",
+            "name": "status_index"
+          }
+        ]
+      },
+      {
+        "name": "F",
+        "collectionId": "tournament-matches",
+        "description": "Individual bracket matches in tournaments",
+        "attributes": [
+          {
+            "key": "tournamentId",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "team1Id",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "team2Id",
+            "type": "string",
+            "size": 256,
+            "required": false,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Null for bye matches"
+          },
+          {
+            "key": "bracket",
+            "type": "string",
+            "size": 50,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Values: winners, losers, final"
+          },
+          {
+            "key": "round",
+            "type": "integer",
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "position",
+            "type": "integer",
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Position within the round (for ordering)"
+          },
+          {
+            "key": "isBye",
+            "type": "boolean",
+            "required": true,
+            "default": false,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "isFinal",
+            "type": "boolean",
+            "required": true,
+            "default": false,
+            "encrypted": false,
+            "array": false,
+            "note": "True for grand final match"
+          },
+          {
+            "key": "state",
+            "type": "string",
+            "size": 50,
+            "required": true,
+            "default": "waiting",
+            "encrypted": false,
+            "array": false,
+            "note": "Values: waiting, playing, finished"
+          },
+          {
+            "key": "winner",
+            "type": "string",
+            "size": 256,
+            "required": false,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Team ID of winning team"
+          },
+          {
+            "key": "scores",
+            "type": "object",
+            "required": false,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "JSON: {team1Score: number, team2Score: number}"
+          }
+        ],
+        "indexes": [
+          {
+            "key": "tournamentId",
+            "type": "key",
+            "name": "tournamentId_index"
+          },
+          {
+            "key": "bracket",
+            "type": "key",
+            "name": "bracket_index"
+          },
+          {
+            "key": "state",
+            "type": "key",
+            "name": "state_index"
+          }
+        ]
+      },
+      {
+        "name": "tournament-results",
+        "collectionId": "tournament-results",
+        "description": "Final standings and reward information",
+        "attributes": [
+          {
+            "key": "tournamentId",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "rank",
+            "type": "integer",
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Values: 1, 2, 3, 4"
+          },
+          {
+            "key": "teamId",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "player1Id",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "player2Id",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "coinsAwarded",
+            "type": "integer",
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Coins per player (team gets 2x)"
+          },
+          {
+            "key": "medalType",
+            "type": "string",
+            "size": 50,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Values: gold, silver, bronze"
+          }
+        ],
+        "indexes": [
+          {
+            "key": "tournamentId",
+            "type": "key",
+            "name": "tournamentId_index"
+          },
+          {
+            "key": "rank",
+            "type": "key",
+            "name": "rank_index"
+          }
+        ]
+      }
+    ]
+  }
+}

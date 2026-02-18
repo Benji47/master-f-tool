@@ -33,53 +33,62 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
 
         {/* Pairings */}
         <div id="pairings" className="space-y-4">
-          {scores.map((s: any, idx: number) => (
+          {scores.map((s: any, idx: number) => {
+            // Check which team the current user is on
+            const userTeamSide = currentUser && s.a.includes(currentUser) ? 'a' : 'b';
+            const userTeam = userTeamSide === 'a' ? s.a : s.b;
+            const opponentTeam = userTeamSide === 'a' ? s.b : s.a;
+            const userScore = userTeamSide === 'a' ? s.scoreA : s.scoreB;
+            const opponentScore = userTeamSide === 'a' ? s.scoreB : s.scoreA;
+            
+            return (
             <div key={idx} className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-300">
               <div className="flex items-center justify-between mb-4">
-                {/* Left team */}
+                {/* Left team (always current user's team) */}
                 <div className="flex flex-col items-start gap-2 w-1/3">
                   <div className="font-semibold text-white text-sm">
-                    {s.a.map((id:string,i:number)=> {
+                    {userTeam.map((id:string,i:number)=> {
                       const p = players.find((x:any)=>x.id===id);
-                      return <span key={i}>{p ? p.username : id}{i < s.a.length-1 ? ' / ' : ''}</span>;
+                      const highlight = id === currentUser ? ' text-purple-400' : '';
+                      return <span key={i} className={highlight}>{p ? p.username : id}{i < userTeam.length-1 ? ' / ' : ''}</span>;
                     })}
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <button className="px-3 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="10">+10</button>
-                    <button className="px-3 py-1 bg-green-500 hover:bg-green-600 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="5">+5</button>
-                    <button className="px-3 py-1 bg-green-400 hover:bg-green-500 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="1">+1</button>
+                    <button className="px-3 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide} data-delta="10">+10</button>
+                    <button className="px-3 py-1 bg-green-500 hover:bg-green-600 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide} data-delta="5">+5</button>
+                    <button className="px-3 py-1 bg-green-400 hover:bg-green-500 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide} data-delta="1">+1</button>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <button className="px-3 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="-10">-10</button>
-                    <button className="px-3 py-1 bg-red-500 hover:bg-red-600 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="-5">-5</button>
-                    <button className="px-3 py-1 bg-red-400 hover:bg-red-500 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="-1">-1</button>
+                    <button className="px-3 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide} data-delta="-10">-10</button>
+                    <button className="px-3 py-1 bg-red-500 hover:bg-red-600 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide} data-delta="-5">-5</button>
+                    <button className="px-3 py-1 bg-red-400 hover:bg-red-500 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide} data-delta="-1">-1</button>
                   </div>
                 </div>
 
                 {/* Score center */}
                 <div className="text-3xl font-bold text-white text-center">
-                  <span id={`scoreA-${idx}`}>{s.scoreA}</span>
+                  <span id={`scoreA-${idx}`}>{userScore}</span>
                   <span className="mx-4 text-neutral-400">:</span>
-                  <span id={`scoreB-${idx}`}>{s.scoreB}</span>
+                  <span id={`scoreB-${idx}`}>{opponentScore}</span>
                 </div>
 
-                {/* Right team */}
+                {/* Right team (opponent) */}
                 <div className="flex flex-col items-end gap-2 w-1/3">
                   <div className="font-semibold text-white text-sm">
-                    {s.b.map((id:string,i:number)=> {
+                    {opponentTeam.map((id:string,i:number)=> {
                       const p = players.find((x:any)=>x.id===id);
-                      return <span key={i}>{p ? p.username : id}{i < s.b.length-1 ? ' / ' : ''}</span>;
+                      return <span key={i}>{p ? p.username : id}{i < opponentTeam.length-1 ? ' / ' : ''}</span>;
                     })}
                   </div>
                   <div className="flex gap-2 flex-wrap justify-end">
-                    <button className="px-3 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="10">+10</button>
-                    <button className="px-3 py-1 bg-green-500 hover:bg-green-600 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="5">+5</button>
-                    <button className="px-3 py-1 bg-green-400 hover:bg-green-500 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="1">+1</button>
+                    <button className="px-3 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide === 'a' ? 'b' : 'a'} data-delta="10">+10</button>
+                    <button className="px-3 py-1 bg-green-500 hover:bg-green-600 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide === 'a' ? 'b' : 'a'} data-delta="5">+5</button>
+                    <button className="px-3 py-1 bg-green-400 hover:bg-green-500 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide === 'a' ? 'b' : 'a'} data-delta="1">+1</button>
                   </div>
                   <div className="flex gap-2 flex-wrap justify-end">
-                    <button className="px-3 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="-10">-10</button>
-                    <button className="px-3 py-1 bg-red-500 hover:bg-red-600 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="-5">-5</button>
-                    <button className="px-3 py-1 bg-red-400 hover:bg-red-500 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="-1">-1</button>
+                    <button className="px-3 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide === 'a' ? 'b' : 'a'} data-delta="-10">-10</button>
+                    <button className="px-3 py-1 bg-red-500 hover:bg-red-600 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide === 'a' ? 'b' : 'a'} data-delta="-5">-5</button>
+                    <button className="px-3 py-1 bg-red-400 hover:bg-red-500 cursor-pointer rounded text-sm" data-idx={idx} data-side={userTeamSide === 'a' ? 'b' : 'a'} data-delta="-1">-1</button>
                   </div>
                 </div>
               </div>
@@ -91,8 +100,8 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
                   {/* Left team vyrazacka */}
                   <div className="space-y-2">
                     {(() => {
-                      const sortedA = [...s.a].sort((id) => id === currentUser ? -1 : 1);
-                      return sortedA.map((id: string) => {
+                      const sortedTeam = [...userTeam].sort((id) => id === currentUser ? -1 : 1);
+                      return sortedTeam.map((id: string) => {
                         const p = players.find((x: any) => x.id === id);
                         const vyr = s.vyrazacka?.[id] ?? 0;
                         return (
@@ -112,8 +121,8 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
                   {/* Right team vyrazacka */}
                   <div className="space-y-2">
                     {(() => {
-                      const sortedB = [...s.b].sort((id) => id === currentUser ? -1 : 1);
-                      return sortedB.map((id: string) => {
+                      const sortedTeam = [...opponentTeam].sort((id) => id === currentUser ? -1 : 1);
+                      return sortedTeam.map((id: string) => {
                         const p = players.find((x: any) => x.id === id);
                         const vyr = s.vyrazacka?.[id] ?? 0;
                         return (
@@ -132,7 +141,8 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-6 flex gap-3">

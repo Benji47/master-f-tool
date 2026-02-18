@@ -7,23 +7,48 @@ import { registerUser, loginUser } from "./logic/auth";
 import { LoginPage } from "./pages/auth/login";
 import { RegisterPage } from "./pages/auth/register";
 import { LobbyPage } from "./pages/menu/lobby";
-import { LeaderboardPage } from "./pages/leaderboard";
+import { LeaderboardPage } from "./pages/menu/leaderboard";
+import { GraphsPage } from "./pages/menu/graphs";
 import { getGlobalStats, getLeaderboard, getPlayerProfile, updateGlobalStats, updatePlayerStats } from "./logic/profile";
+import { getAllPlayersEloHistory } from "./logic/graphs";
 import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch, parseDoc, parseMatchHistoryDoc, MatchHistoryDoc, HistoryPlayers, createMatch, joinMatch, listAvailableMatches } from "./logic/match";
-import { MatchLobbyPage } from "./pages/matchLobby";
+import { MatchLobbyPage } from "./pages/match/matchLobby";
 import { updateGameScores } from "./logic/match";
-import { MatchGamePage } from "./pages/matchGame";
-import { MatchResultPage } from "./pages/matchResult";
+import { MatchGamePage } from "./pages/match/matchGame";
+import { MatchResultPage } from "./pages/match/matchResult";
 import { findCurrentMatch } from "./logic/match";
-import { MatchHistoryPage } from "./pages/matchHistory";
+import { MatchHistoryPage } from "./pages/menu/matchHistory";
 import { readFileSync } from "node:fs";
-import { FBetPage } from "./pages/f-bet";
-import { AchievementsPage } from "./pages/achievements";
-import { TournamentsPage } from "./pages/tournaments";
-import { ChangesLogPage } from "./pages/changesLog";
+import { FBetPage } from "./pages/menu/f-bet";
+import { AchievementsPage } from "./pages/menu/achievements";
+import { TournamentsPage } from "./pages/tournaments/tournaments";
+import { CreateTournamentPage } from "./pages/tournaments/create";
+import { TournamentDetailPage } from "./pages/tournaments/detail";
+import { TournamentBracketPage } from "./pages/tournaments/bracket";
+import { TournamentMatchPage } from "./pages/tournaments/match";
+import { TournamentResultsPage } from "./pages/tournaments/results";
+import { CreateTeamPage } from "./pages/tournaments/createTeam";
+import { JoinTeamPage } from "./pages/tournaments/joinTeam";
+import { ChangesLogPage } from "./pages/menu/changesLog";
 import { recordAchievement } from "./logic/dailyAchievements";
+import { unlockAchievement, getPlayerAchievements } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
 import { placeBet, getBetsForMatch, resolveBets, MULTIPLIERS, getBetsForPlayer } from "./logic/betting";
+import { 
+  createTournament, 
+  getTournament, 
+  updateTournamentStatus, 
+  createTeam, 
+  joinTeam, 
+  getTournamentTeams, 
+  generateDoubleEliminationBracket, 
+  createBracketMatches, 
+  getTournamentMatches, 
+  getMatch as getTournamentMatch,
+  updateMatchState,
+  createTournamentResult,
+  getTournamentResults
+} from "./logic/tournament";
 
 const sdk = require('node-appwrite');
 
@@ -100,6 +125,16 @@ app.use(async (c, next) => {
 
 app.get("/v1/changes-log", async (c) => {
   const changes = [
+    {
+      date: "17.02.2026",
+      updates: [
+        "[Feature] -> Added tournaments!",
+        "[Feature] -> Added graph analyzer with one graph for now :)",
+        "[Feature] -> Added achievements with 10 achievements to unlock for now. Generated randomly by AI, for testing purposes.",
+        "[Feature] -> Added duos leaderboard by winrate and at least 5 games together.",
+        "[Feature] -> Added logic that players see their team on the left in game page for all 3 matches.",
+      ],
+    },
     {
       date: "16.02.2026",
       updates: [
@@ -369,6 +404,22 @@ app.get("/v1/leaderboard", async (c) => {
   } catch (err: any) {
     console.error("Leaderboard error:", err);
     return c.text("Failed to load leaderboard", 500);
+  }
+});
+
+// Graphs page - show Elo history over time
+app.get("/v1/graphs", async (c) => {
+  try {
+    const eloHistories = await getAllPlayersEloHistory();
+    
+    return c.html(
+      <MainLayout c={c}>
+        <GraphsPage c={c} eloHistories={eloHistories} />
+      </MainLayout>
+    );
+  } catch (err: any) {
+    console.error("Graphs error:", err);
+    return c.text("Failed to load graphs", 500);
   }
 });
 
@@ -1513,10 +1564,11 @@ app.get("/v1/f-bet", async (c) => {
   }
 });
 
-app.get("/v1/achievements", (c) => {
+app.get("/v1/achievements", async (c) => {
+  const playerParam = c.req.query('player');
   return c.html(
     <MainLayout c={c}>
-      <AchievementsPage c={c} />
+      <AchievementsPage c={c} viewingPlayerId={playerParam} />
     </MainLayout>
   );
 });
@@ -1527,6 +1579,213 @@ app.get("/v1/tournaments", (c) => {
       <TournamentsPage c={c} />
     </MainLayout>
   );
+});
+
+// Tournament creation
+app.get("/v1/tournaments/create", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <CreateTournamentPage c={c} />
+    </MainLayout>
+  );
+});
+
+// Tournament detail page
+app.get("/v1/tournaments/:id", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <TournamentDetailPage c={c} />
+    </MainLayout>
+  );
+});
+
+// Tournament bracket view
+app.get("/v1/tournaments/:id/bracket", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <TournamentBracketPage c={c} />
+    </MainLayout>
+  );
+});
+
+// Tournament match page
+app.get("/v1/tournaments/:id/match/:matchId", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <TournamentMatchPage c={c} />
+    </MainLayout>
+  );
+});
+
+// Tournament results/standings
+app.get("/v1/tournaments/:id/results", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <TournamentResultsPage c={c} />
+    </MainLayout>
+  );
+});
+
+// Create team page
+app.get("/v1/tournaments/:id/teams/create", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <CreateTeamPage c={c} />
+    </MainLayout>
+  );
+});
+
+// Join team page
+app.get("/v1/tournaments/:id/teams/join", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <JoinTeamPage c={c} />
+    </MainLayout>
+  );
+});
+
+// ============ API Routes ============
+
+// Create tournament
+app.post("/v1/api/tournaments/create", async (c) => {
+  try {
+    const userId = getCookie(c, "user");
+    if (!userId) return c.redirect("/v1/auth/login");
+    
+    const body = await c.req.formData();
+    const name = body.get("name") as string;
+    const description = body.get("description") as string;
+    const maxTeams = parseInt(body.get("maxTeams") as string) || 16;
+
+    const profile = await getPlayerProfile(userId);
+    if (!profile) {
+      return c.json({ error: "Player profile not found" }, 400);
+    }
+
+    const tournament = await createTournament(userId, name, maxTeams, description);
+    return c.redirect(`/v1/tournaments/${tournament.$id}`);
+  } catch (error: any) {
+    console.error("Create tournament error:", error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Create team
+app.post("/v1/api/tournaments/:id/teams/create", async (c) => {
+  try {
+    const tournamentId = c.req.param("id");
+    const userId = getCookie(c, "user");
+    if (!userId) return c.redirect("/v1/auth/login");
+
+    const profile = await getPlayerProfile(userId);
+    if (!profile) {
+      return c.json({ error: "Player profile not found" }, 400);
+    }
+
+    const team = await createTeam(tournamentId, userId, profile.username, profile.elo);
+    return c.redirect(`/v1/tournaments/${tournamentId}`);
+  } catch (error: any) {
+    console.error("Create team error:", error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Join team
+app.post("/v1/api/tournaments/:tourId/teams/:teamId/join", async (c) => {
+  try {
+    const tournamentId = c.req.param("tourId");
+    const teamId = c.req.param("teamId");
+    const userId = getCookie(c, "user");
+    if (!userId) return c.redirect("/v1/auth/login");
+
+    const profile = await getPlayerProfile(userId);
+    if (!profile) {
+      return c.json({ error: "Player profile not found" }, 400);
+    }
+
+    const team = await joinTeam(teamId, userId, profile.username, profile.elo);
+    return c.redirect(`/v1/tournaments/${tournamentId}`);
+  } catch (error: any) {
+    console.error("Join team error:", error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Start tournament
+app.post("/v1/api/tournaments/:id/start", async (c) => {
+  try {
+    const tournamentId = c.req.param("id");
+    const userId = getCookie(c, "user");
+
+    const tournament = await getTournament(tournamentId);
+    if (!tournament) {
+      return c.json({ error: "Tournament not found" }, 404);
+    }
+
+    if (tournament.creatorId !== userId) {
+      return c.json({ error: "Only tournament creator can start" }, 403);
+    }
+
+    const teams = await getTournamentTeams(tournamentId);
+    const lockedTeams = teams.filter((t) => t.status === "locked");
+
+    if (lockedTeams.length < 2) {
+      return c.json({ error: "Need at least 2 teams to start" }, 400);
+    }
+
+    // Update tournament status
+    await updateTournamentStatus(tournamentId, "started");
+
+    // Generate bracket
+    const bracketMatches = generateDoubleEliminationBracket(lockedTeams);
+
+    // Create bracket matches in database
+    await createBracketMatches(tournamentId, bracketMatches);
+
+    return c.redirect(`/v1/tournaments/${tournamentId}/bracket`);
+  } catch (error: any) {
+    console.error("Start tournament error:", error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Start a match
+app.post("/v1/api/tournaments/:tourId/match/:matchId/start", async (c) => {
+  try {
+    const matchId = c.req.param("matchId");
+
+    await updateMatchState(matchId, "playing");
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error("Start match error:", error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Finish a match
+app.post("/v1/api/tournaments/:tourId/match/:matchId/finish", async (c) => {
+  try {
+    const matchId = c.req.param("matchId");
+    const body = await c.req.formData();
+
+    const team1Score = parseInt(body.get("team1Score") as string) || 0;
+    const team2Score = parseInt(body.get("team2Score") as string) || 0;
+
+    const match = await getTournamentMatch(matchId);
+    if (!match) {
+      return c.json({ error: "Match not found" }, 404);
+    }
+
+    // Determine winner
+    let winnerId = team1Score > team2Score ? match.team1Id : match.team2Id;
+
+    await updateMatchState(matchId, "finished", team1Score, team2Score, winnerId);
+
+    return c.redirect(`/v1/tournaments/${match.tournamentId}/bracket`);
+  } catch (error: any) {
+    console.error("Finish match error:", error);
+    return c.json({ error: error.message }, 500);
+  }
 });
 
 // helper functions for detailed breakdowns
@@ -1680,5 +1939,47 @@ function computeXpBreakdown(playerId: string, rec: any, scores: any[], players: 
 
   return { breakdown, total };
 }
+
+// ============ ACHIEVEMENTS API ============
+
+app.post("/v1/api/achievements/unlock", async (c) => {
+  try {
+    const form = await c.req.formData();
+    const playerId = String(form.get("playerId") ?? '');
+    const username = String(form.get("username") ?? '');
+    const achievementId = String(form.get("achievementId") ?? '');
+    const data = form.get("data") ? JSON.parse(String(form.get("data"))) : undefined;
+
+    if (!playerId || !achievementId) {
+      return c.json({ error: 'missing required fields' }, 400);
+    }
+
+    const result = await unlockAchievement(playerId, username, achievementId, data);
+    
+    if (!result) {
+      return c.json({ alreadyUnlocked: true }, 200);
+    }
+
+    return c.json({ ok: true, achievement: result }, 201);
+  } catch (err: any) {
+    console.error('unlock achievement error', err);
+    return c.json({ error: 'failed to unlock achievement' }, 500);
+  }
+});
+
+app.get("/v1/api/achievements/player/:playerId", async (c) => {
+  try {
+    const playerId = c.req.param('playerId');
+    if (!playerId) {
+      return c.json({ error: 'playerId required' }, 400);
+    }
+
+    const achievements = await getPlayerAchievements(playerId);
+    return c.json({ achievements }, 200);
+  } catch (err: any) {
+    console.error('get achievements error', err);
+    return c.json({ error: 'failed to fetch achievements' }, 500);
+  }
+});
 
 export default app;
