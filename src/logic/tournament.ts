@@ -62,12 +62,7 @@ export type Tournament = {
   createdAt?: string;
   startedAt?: string;
   finishedAt?: string;
-  rewards: {
-    first: number; // coins for 1st place
-    second: number;
-    third: number;
-    fourth: number;
-  };
+  rewards: string;
 };
 
 export type TournamentResult = {
