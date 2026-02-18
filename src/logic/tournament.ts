@@ -110,12 +110,13 @@ export async function createTournament(
         status: 'setup',
         creatorId,
         maxTeams,
-        rewards: {
-          first: 500000,
-          second: 300000,
-          third: 200000,
-          fourth: 50000,
-        },
+        rewards: 
+        JSON.stringify({
+            first: 500000,
+            second: 300000,
+            third: 200000,
+            fourth: 50000,
+        }),
       }
     );
 
