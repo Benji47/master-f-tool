@@ -1,5 +1,6 @@
 import { Context } from "hono";
 import { MatchDoc } from "../../logic/match";
+import { formatCoins } from "../../logic/format";
 
 export interface FBetPageProps {
   c: Context;
@@ -26,11 +27,11 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-gradient-to-br from-yellow-900 to-yellow-800 p-4 rounded-lg border border-yellow-600">
           <div className="text-neutral-300 text-sm">Your Coins</div>
-          <div className="text-3xl font-bold text-yellow-300">{userCoins.toLocaleString()}</div>
+          <div className="text-3xl font-bold text-yellow-300">{formatCoins(userCoins)}</div>
         </div>
         <div className="bg-gradient-to-br from-green-900 to-green-800 p-4 rounded-lg border border-green-600">
           <div className="text-neutral-300 text-sm">Total Winnings</div>
-          <div className="text-3xl font-bold text-green-300">{totalWinnings.toLocaleString()}</div>
+          <div className="text-3xl font-bold text-green-300">{formatCoins(totalWinnings)}</div>
         </div>
         <div className="bg-gradient-to-br from-blue-900 to-blue-800 p-4 rounded-lg border border-blue-600">
           <div className="text-neutral-300 text-sm">Active Bets</div>
@@ -112,7 +113,12 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                         <div className="text-xs text-neutral-400 mb-2">Betting window ends in:</div>
                         <div id={`countdown-${match.$id}`} data-end={bettingEnd} className="mb-3 font-mono text-lg">--:--</div>
 
-                        <form method="post" action="/v1/bet/place" className="mt-2 p-3 bg-neutral-900 rounded-lg border border-neutral-700">
+                        <form
+                          method="post"
+                          action="/v1/bet/place"
+                          className="bet-form mt-2 p-3 bg-neutral-900 rounded-lg border border-neutral-700"
+                          data-vyrazacka-odds={JSON.stringify(match.vyrazackaOdds || {})}
+                        >
                           <input type="hidden" name="matchId" value={match.$id} />
 
                           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -121,12 +127,12 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                                 <label className="block text-xs text-neutral-400 mb-1">Match {n}</label>
                                 <div className="flex gap-1 items-center">
                                   <label className={`flex-1 px-2 py-2 rounded text-xs ${isPlayerInMatch ? 'opacity-50 pointer-events-none' : 'bg-neutral-700 hover:bg-neutral-600'}`}>
-                                    <input type="radio" name={`match${n}`} value="a" className="mr-2" disabled={isPlayerInMatch} />
-                                    A
+                                    <input type="radio" name={`match${n}`} value="a" className="mr-2" data-odds={match.bettingOdds?.[n-1]?.a ?? ''} disabled={isPlayerInMatch} />
+                                    A {match.bettingOdds?.[n-1]?.a ? `(x${match.bettingOdds[n-1].a})` : ''}
                                   </label>
                                   <label className={`flex-1 px-2 py-2 rounded text-xs ${isPlayerInMatch ? 'opacity-50 pointer-events-none' : 'bg-neutral-700 hover:bg-neutral-600'}`}>
-                                    <input type="radio" name={`match${n}`} value="b" className="mr-2" disabled={isPlayerInMatch} />
-                                    B
+                                    <input type="radio" name={`match${n}`} value="b" className="mr-2" data-odds={match.bettingOdds?.[n-1]?.b ?? ''} disabled={isPlayerInMatch} />
+                                    B {match.bettingOdds?.[n-1]?.b ? `(x${match.bettingOdds[n-1].b})` : ''}
                                   </label>
                                 </div>
                                 <div className="text-xs text-neutral-400 mt-1">Team A: {(match.scores?.[n-1]?.a || []).map((id:string)=>playerName(id)).join(', ') || '-'}</div>
@@ -141,13 +147,45 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                               <input type="number" name="betAmount" min="1" max={userCoins} defaultValue="100" className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded text-white text-sm" required disabled={isPlayerInMatch} />
                             </div>
                             <div>
-                              <label className="block text-xs text-neutral-400 mb-1">Multiplier</label>
+                              <label className="block text-xs text-neutral-400 mb-1">Matches to bet</label>
                               <select name="numMatches" defaultValue="1" className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded text-white text-sm" required disabled={isPlayerInMatch}>
-                                <option value="1">1 Match (×2)</option>
-                                <option value="2">2 Matches (×4)</option>
-                                <option value="3">3 Matches (×8)</option>
+                                <option value="0">0 Matches (vyrazacka only)</option>
+                                <option value="1">1 Match</option>
+                                <option value="2">2 Matches</option>
+                                <option value="3">3 Matches</option>
                               </select>
                             </div>
+                          </div>
+
+                          <div className="mb-4">
+                            <label className="block text-xs text-neutral-400 mb-1">Vyrazacka Bet (optional)</label>
+                            <div className="space-y-2">
+                              {(match.players || []).map((p:any) => (
+                                <div key={p.id} className="flex items-center justify-between gap-3 text-xs bg-neutral-800 rounded px-2 py-2">
+                                  <div className="text-neutral-200">{p.username || p.id}</div>
+                                  <select
+                                    name={`vyrazackaCount_${p.id}`}
+                                    data-player-id={p.id}
+                                    data-vyrazacka-select
+                                    defaultValue="0"
+                                    className="w-32 px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-white text-xs"
+                                    disabled={isPlayerInMatch}
+                                  >
+                                    <option value="0">0 (no bet)</option>
+                                    {[1,2,3,4,5].map((n)=> (
+                                      <option key={n} value={n}>
+                                        {n}+ vyr {match.vyrazackaOdds?.[p.id]?.[n] ? `(x${match.vyrazackaOdds[p.id][n]})` : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="text-xs text-neutral-500 mt-1">Set count per player. Higher counts have worse odds.</div>
+                          </div>
+
+                          <div className="mb-3 text-xs text-neutral-300" data-odds-preview>
+                            Current odds: x1.00 • Potential win: {formatCoins(0)}
                           </div>
 
                           <button type="submit" className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded font-semibold text-sm transition" disabled={isPlayerInMatch}>
@@ -163,11 +201,28 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                               <div key={b.$id} className="p-2 bg-neutral-900 rounded flex justify-between text-sm">
                                 <div>
                                   <div className="font-semibold">{b.username}</div>
-                                  <div className="text-xs text-neutral-400">Bet: {b.betAmount} • {b.numMatches}×</div>
-                                  <div className="text-xs text-neutral-400">Pred: {Object.entries(b.predictions || {}).map(([k,v])=>`${k.split('match')[1]}:${v}`).join(', ')}</div>
+                                  <div className="text-xs text-neutral-400">Bet: {formatCoins(b.betAmount)} • Legs: {b.totalLegs ?? b.numMatches} • Odds: {b.odds?.total ? `x${b.odds.total}` : 'n/a'}</div>
+                                  <div className="text-xs text-neutral-400">
+                                    Pred: {Object.entries(b.predictions || {})
+                                      .filter(([key]) => !key.startsWith('_'))
+                                      .map(([key, value]) => {
+                                        if (key === 'vyrazacka' && (value as any)?.playerCounts) {
+                                          const parts = Object.entries((value as any).playerCounts as Record<string, number>)
+                                            .map(([id, count]) => `${playerName(id)}>=${count}`)
+                                            .join('+');
+                                          return `vyr:${parts}`;
+                                        }
+                                        if (key.startsWith('match')) {
+                                          return `${key.replace('match', '')}:${value}`;
+                                        }
+                                        return '';
+                                      })
+                                      .filter(Boolean)
+                                      .join(', ')}
+                                  </div>
                                 </div>
                                 <div className="text-right">
-                                  <div className="text-sm font-bold">{b.status === 'pending' ? `${b.correctPredictions}/${b.numMatches}` : (b.status === 'won' ? `+${b.winnings}` : 'LOST')}</div>
+                                  <div className="text-sm font-bold">{b.status === 'pending' ? `${b.correctPredictions}/${b.totalLegs ?? b.numMatches}` : (b.status === 'won' ? `+${formatCoins(b.winnings)}` : 'LOST')}</div>
                                   <div className="text-xs text-neutral-400">{new Date(b.$createdAt || '').toLocaleString()}</div>
                                 </div>
                               </div>
@@ -208,7 +263,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className="font-semibold">
-                      {bet.numMatches}✕ Bet • {bet.betAmount} coins
+                      {bet.totalLegs ?? bet.numMatches}✕ Bet • {formatCoins(bet.betAmount)} coins
                     </span>
                     <span
                       className={`text-xs font-bold px-2 py-1 rounded ${
@@ -220,15 +275,20 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                       }`}
                     >
                       {bet.status === 'pending'
-                        ? `${bet.correctPredictions}/${bet.numMatches}`
+                          ? `${bet.correctPredictions}/${bet.totalLegs ?? bet.numMatches}`
                         : bet.status === 'won'
-                        ? `+${bet.winnings}`
+                        ? `+${formatCoins(bet.winnings)}`
                         : 'LOST'}
                     </span>
                   </div>
                   <div className="text-xs text-neutral-400">
-                    ID: {bet.matchId.substring(0, 8)}...
+                      ID: {bet.matchId.substring(0, 8)}... • Odds: {bet.odds?.total ? `x${bet.odds.total}` : 'n/a'}
                   </div>
+                  {bet.predictions?.vyrazacka?.playerIds && (
+                    <div className="text-xs text-neutral-500">
+                      Vyr: {bet.predictions.vyrazacka.playerIds.map((id: string) => id).join(', ')}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -268,6 +328,55 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
             const interval = setInterval(tick, 1000);
           }
           document.querySelectorAll('[id^="countdown-"]').forEach(el=>startCountdown(el));
+        `
+      }} />
+
+      <script dangerouslySetInnerHTML={{
+        __html: `
+          function updateOddsPreview(form) {
+            const preview = form.querySelector('[data-odds-preview]');
+            if (!preview) return;
+            const amountInput = form.querySelector('input[name="betAmount"]');
+            const amount = Number(amountInput ? amountInput.value : 0) || 0;
+            const matchOdds = Array.from(form.querySelectorAll('input[type="radio"]:checked'))
+              .map(r => Number(r.getAttribute('data-odds')) || 1);
+            let totalOdds = 1;
+            let legs = 0;
+            matchOdds.forEach(o => { totalOdds *= o; legs += 1; });
+
+            let vyOddsMap = {};
+            try {
+              vyOddsMap = JSON.parse(form.getAttribute('data-vyrazacka-odds') || '{}');
+            } catch (e) {
+              vyOddsMap = {};
+            }
+            const minCountEl = form.querySelector('select[name="vyrazackaMin"]');
+            const minCount = Number(minCountEl ? minCountEl.value : 0) || 0;
+            const vyPlayers = Array.from(form.querySelectorAll('input[name="vyrazackaPlayerIds"]:checked'))
+              .map(cb => cb.value);
+            vyPlayers.forEach((playerId) => {
+              const perPlayer = (vyOddsMap[playerId] || {});
+              const o = Number(perPlayer[minCount]) || 1;
+              totalOdds *= o;
+              legs += 1;
+            });
+
+            if (legs === 0) {
+              preview.textContent = 'Current odds: x1.00 • Potential win: 0';
+              return;
+            }
+            const payout = Math.round(amount * totalOdds);
+            preview.textContent = 'Current odds: x' + totalOdds.toFixed(2) + ' • Potential win: ' + payout.toLocaleString();
+          }
+
+          function wireOddsPreview(form) {
+            const inputs = form.querySelectorAll('input, select');
+            inputs.forEach(el => el.addEventListener('change', function(){ updateOddsPreview(form); }));
+            inputs.forEach(el => el.addEventListener('keyup', function(){ updateOddsPreview(form); }));
+            updateOddsPreview(form);
+          }
+
+          document.querySelectorAll('.bet-form').forEach(form => wireOddsPreview(form));
         `
       }} />
 

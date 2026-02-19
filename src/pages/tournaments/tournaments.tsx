@@ -1,5 +1,6 @@
 import { Context } from "hono";
 import { listTournaments } from "../../logic/tournament";
+import { formatCoins } from "../../logic/format";
 
 export async function TournamentsPage({ c }: { c: Context }) {
   try {
@@ -8,7 +9,7 @@ export async function TournamentsPage({ c }: { c: Context }) {
     const completedTournaments = allTournaments.filter(t => t.status === 'finished');
 
     return (
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-6 text-neutral-100">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Tournaments</h1>
           <a href="/v1/tournaments/create" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold transition">
@@ -46,7 +47,7 @@ export async function TournamentsPage({ c }: { c: Context }) {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-neutral-400 mb-2">Rewards Pool</p>
-                      <p className="text-purple-400 font-bold">💰 {(tournament.rewards.first + tournament.rewards.second + tournament.rewards.third + tournament.rewards.fourth) / 2}</p>
+                      <p className="text-purple-400 font-bold">💰 {formatCoins((tournament.rewards.first + tournament.rewards.second + tournament.rewards.third + tournament.rewards.fourth) * 2)}</p>
                     </div>
                   </div>
                 </a>
@@ -93,7 +94,7 @@ export async function TournamentsPage({ c }: { c: Context }) {
   } catch (error) {
     console.error('Error loading tournaments:', error);
     return (
-      <div className="max-w-3xl mx-auto p-6 bg-neutral-900/60 rounded-lg border border-neutral-800">
+      <div className="max-w-3xl mx-auto p-6 bg-neutral-900/60 rounded-lg border border-neutral-800 text-neutral-100">
         <p className="text-red-400">Error loading tournaments</p>
         <a href="/v1/lobby" className="inline-block mt-4 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-sm">
           Back to Lobby

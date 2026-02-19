@@ -1,4 +1,5 @@
 import { PlayerProfile } from "../../logic/profile";
+import { formatCoins } from "../../logic/format";
 import { badges, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 import { levelsXp, getCumulativeThresholds } from "../../static/data";
 
@@ -7,6 +8,13 @@ type DuoMatch = {
   createdAt?: string;
   players: { id: string; username: string }[];
   scores?: { a: string[]; b: string[]; scoreA: number; scoreB: number }[];
+};
+
+type GoldenTeamStat = {
+  teamIds: string[];
+  teamNames: string[];
+  count: number;
+  scorers: { id: string; username: string; count: number }[];
 };
 
 function PlayerLink({ username, children }: { username: string; children: any }) {
@@ -20,7 +28,19 @@ function PlayerLink({ username, children }: { username: string; children: any })
   );
 }
 
-export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { players: PlayerProfile[]; currentPlayer?: string; duoMatches?: DuoMatch[] }) {
+export function LeaderboardPage({
+  players,
+  currentPlayer,
+  duoMatches = [],
+  goldenTeamsScored = [],
+  goldenTeamsReceived = [],
+}: {
+  players: PlayerProfile[];
+  currentPlayer?: string;
+  duoMatches?: DuoMatch[];
+  goldenTeamsScored?: GoldenTeamStat[];
+  goldenTeamsReceived?: GoldenTeamStat[];
+}) {
   function eloColor(elo: number) {
     if (elo >= 1000) return "text-red-500";
     if (elo >= 800) return "text-indigo-500";
@@ -66,6 +86,14 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
     return JSON.stringify(value).replace(/</g, "\\u003c");
   }
 
+  function formatScorers(scorers: { username: string; count: number }[]) {
+    if (!scorers.length) return '—';
+    return scorers
+      .slice(0, 3)
+      .map((s) => `${s.username} (${s.count})`)
+      .join(', ');
+  }
+
   // Sort functions for different leaderboards
   const sortedByElo = [...players].sort((a, b) => b.elo - a.elo);
   const sortedByUltimateWins = [...players].sort((a, b) => b.ultimate_wins - a.ultimate_wins);
@@ -92,12 +120,15 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
           <button data-tab="ultimate_wins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Ultimate Wins</button>
           <button data-tab="ultimate_loses" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Ultimate Loses</button>
           <button data-tab="vyrazacka" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Vyrážečky</button>
+          <button data-tab="golden_scored" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Golden Scored</button>
+          <button data-tab="golden_received" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Golden Received</button>
           <button data-tab="total_games" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Total Games</button>
           <button data-tab="level" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Level</button>
           <button data-tab="ten_zero_loses" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Loses</button>
           <button data-tab="ten_zero_wins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Wins</button>
           <button data-tab="coins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Coins</button>
-          <button data-tab="duos" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duos</button>
+          <button data-tab="duos" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duos by Winrate</button>
+          <button data-tab="duos_matches" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duos by Matches</button>
           <button data-tab="duo" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duo Analyzer</button>
           
           <div className="">
@@ -243,6 +274,64 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Golden Vyrazacka Scored Leaderboard */}
+        <div id="golden_scored" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+            <div>Rank</div>
+            <div className="col-span-2">Team</div>
+            <div>Golden</div>
+            <div className="col-span-2">Scorers</div>
+          </div>
+          <div className="divide-y divide-neutral-800">
+            {goldenTeamsScored.length === 0 ? (
+              <div className="px-6 py-4 text-neutral-400">No golden vyrážečka recorded yet.</div>
+            ) : (
+              goldenTeamsScored.map((team, idx) => (
+                <div
+                  key={team.teamIds.join('|')}
+                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                    ${idx % 2 === 0 ? 'bg-neutral-900/40' : 'bg-neutral-800/40'}
+                    hover:bg-neutral-700/40`}
+                >
+                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="col-span-2 font-semibold">{team.teamNames.join(' / ')}</div>
+                  <div className="text-yellow-400 font-bold">{team.count}</div>
+                  <div className="col-span-2 text-neutral-300">{formatScorers(team.scorers)}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Golden Vyrazacka Received Leaderboard */}
+        <div id="golden_received" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+            <div>Rank</div>
+            <div className="col-span-2">Team</div>
+            <div>Received</div>
+            <div className="col-span-2">Scorers</div>
+          </div>
+          <div className="divide-y divide-neutral-800">
+            {goldenTeamsReceived.length === 0 ? (
+              <div className="px-6 py-4 text-neutral-400">No golden vyrážečka recorded yet.</div>
+            ) : (
+              goldenTeamsReceived.map((team, idx) => (
+                <div
+                  key={team.teamIds.join('|')}
+                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                    ${idx % 2 === 0 ? 'bg-neutral-900/40' : 'bg-neutral-800/40'}
+                    hover:bg-neutral-700/40`}
+                >
+                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="col-span-2 font-semibold">{team.teamNames.join(' / ')}</div>
+                  <div className="text-red-400 font-bold">{team.count}</div>
+                  <div className="col-span-2 text-neutral-300">{formatScorers(team.scorers)}</div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -395,7 +484,7 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
                   </div>
-                  <div className="text-yellow-400 font-bold">{player.coins}</div>
+                  <div className="text-yellow-400 font-bold">{formatCoins(player.coins)}</div>
                 </div>
               );
             })}
@@ -413,6 +502,21 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
             <div>Goals</div>
           </div>
           <div id="duos-leaderboard-body" className="divide-y divide-neutral-800">
+            {/* Populated by script */}
+          </div>
+        </div>
+
+        {/* Duos by Matches Leaderboard */}
+        <div id="duos_matches" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+          <div className="grid grid-cols-7 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+            <div>Rank</div>
+            <div className="col-span-2">Duo</div>
+            <div>Matches</div>
+            <div>W-L</div>
+            <div>Win Rate</div>
+            <div>Goals</div>
+          </div>
+          <div id="duos-matches-leaderboard-body" className="divide-y divide-neutral-800">
             {/* Populated by script */}
           </div>
         </div>
@@ -519,6 +623,7 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
   // Calculate and populate Duos Leaderboard
   const duoMatches = ${safeJson(duoMatches)};
   const duoPlayers = ${safeJson(duoPlayers)};
+  const currentPlayer = ${safeJson(currentPlayer || null)};
   const byIdToName = new Map();
   duoPlayers.forEach((p) => byIdToName.set(p.id, p.username));
 
@@ -597,9 +702,27 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
     }))
     .sort((a, b) => {
       if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+
+      const goalDiffA = a.goalsFor - a.goalsAgainst;
+      const goalDiffB = b.goalsFor - b.goalsAgainst;
+      if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+
+      if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
       if (b.wins !== a.wins) return b.wins - a.wins;
       return b.matches - a.matches;
     });
+
+  const duoRowsByMatches = [...duoRows].sort((a, b) => {
+    if (b.matches !== a.matches) return b.matches - a.matches;
+
+    const goalDiffA = a.goalsFor - a.goalsAgainst;
+    const goalDiffB = b.goalsFor - b.goalsAgainst;
+    if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+
+    if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+    if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+    return b.wins - a.wins;
+  });
 
   const duosLeaderboardBody = document.getElementById('duos-leaderboard-body');
   if (duosLeaderboardBody) {
@@ -608,8 +731,14 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
     } else {
       duosLeaderboardBody.innerHTML = duoRows.map((row, idx) => {
         const isEven = idx % 2 === 0;
-        const rowClass = isEven ? 'bg-neutral-900/40' : 'bg-neutral-800/40';
+        const isCurrentPlayer = currentPlayer && (byIdToName.get(row.player1) === currentPlayer || byIdToName.get(row.player2) === currentPlayer);
+        const rowClass = isCurrentPlayer
+          ? 'bg-green-950/60 border-l-4 border-green-500'
+          : (isEven ? 'bg-neutral-900/40' : 'bg-neutral-800/40');
         const winRateColor = row.winRatePercent >= 70 ? 'text-green-400' : (row.winRatePercent >= 50 ? 'text-blue-400' : 'text-red-400');
+        const goalRatio = row.goalsAgainst > 0
+          ? String(Math.round((row.goalsFor / row.goalsAgainst) * 100) / 100)
+          : 'inf';
         return (
           '<div class="grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 ' + rowClass + ' hover:bg-neutral-700/40 transition-colors">' +
             '<div class="font-bold text-lg">#' + (idx + 1) + '</div>' +
@@ -617,7 +746,36 @@ export function LeaderboardPage({ players, currentPlayer, duoMatches = [] }: { p
             '<div class="text-purple-400 font-bold">' + row.matches + '</div>' +
             '<div class="text-neutral-400">' + row.wins + '-' + row.losses + '</div>' +
             '<div class="font-bold ' + winRateColor + '">' + row.winRatePercent + '%</div>' +
-            '<div class="text-neutral-400">' + row.goalsFor + ':' + row.goalsAgainst + '</div>' +
+            '<div class="text-neutral-400">' + row.goalsFor + ':' + row.goalsAgainst + ' (' + goalRatio + ')</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+  }
+
+  const duosMatchesLeaderboardBody = document.getElementById('duos-matches-leaderboard-body');
+  if (duosMatchesLeaderboardBody) {
+    if (duoRowsByMatches.length === 0) {
+      duosMatchesLeaderboardBody.innerHTML = '<div class="px-6 py-4 text-neutral-400">No duos with 5+ matches found.</div>';
+    } else {
+      duosMatchesLeaderboardBody.innerHTML = duoRowsByMatches.map((row, idx) => {
+        const isEven = idx % 2 === 0;
+        const isCurrentPlayer = currentPlayer && (byIdToName.get(row.player1) === currentPlayer || byIdToName.get(row.player2) === currentPlayer);
+        const rowClass = isCurrentPlayer
+          ? 'bg-green-950/60 border-l-4 border-green-500'
+          : (isEven ? 'bg-neutral-900/40' : 'bg-neutral-800/40');
+        const winRateColor = row.winRatePercent >= 70 ? 'text-green-400' : (row.winRatePercent >= 50 ? 'text-blue-400' : 'text-red-400');
+        const goalRatio = row.goalsAgainst > 0
+          ? String(Math.round((row.goalsFor / row.goalsAgainst) * 100) / 100)
+          : 'inf';
+        return (
+          '<div class="grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 ' + rowClass + ' hover:bg-neutral-700/40 transition-colors">' +
+            '<div class="font-bold text-lg">#' + (idx + 1) + '</div>' +
+            '<div class="col-span-2 font-semibold text-white">' + row.duoNames + '</div>' +
+            '<div class="text-purple-400 font-bold">' + row.matches + '</div>' +
+            '<div class="text-neutral-400">' + row.wins + '-' + row.losses + '</div>' +
+            '<div class="font-bold ' + winRateColor + '">' + row.winRatePercent + '%</div>' +
+            '<div class="text-neutral-400">' + row.goalsFor + ':' + row.goalsAgainst + ' (' + goalRatio + ')</div>' +
           '</div>'
         );
       }).join('');

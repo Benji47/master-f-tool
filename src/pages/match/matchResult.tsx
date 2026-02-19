@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { formatCoins } from "../../logic/format";
 
 export function MatchResultPage({ c, result, username, bets = [] }: { c: Context; result: any, username: string | null; bets?: any[] }) {
   const players = result.players || [];
@@ -47,7 +48,7 @@ export function MatchResultPage({ c, result, username, bets = [] }: { c: Context
                   <div className="text-right">
                     <div className="text-sm text-neutral-300">ELO: <span className="font-bold text-yellow-400">{p.oldElo}</span> → <span className={p.newElo - p.oldElo >= 0 ? 'text-green-400' : 'text-red-400'}>{p.newElo}</span> ({p.newElo - p.oldElo >= 0 ? '+' : ''}{p.newElo - p.oldElo})</div>
                     <div className="text-sm text-neutral-300">XP: <span className="font-bold text-green-400">+{p.xpGained}</span></div>
-                    <div className="text-sm text-neutral-300">💰 Coins: <span className="font-bold text-yellow-300">+{p.coinsGained || 0}</span></div>
+                    <div className="text-sm text-neutral-300">💰 Coins: <span className="font-bold text-yellow-300">+{formatCoins(p.coinsGained || 0)}</span></div>
                   </div>
                 </div>
 
@@ -126,13 +127,13 @@ export function MatchResultPage({ c, result, username, bets = [] }: { c: Context
                         <span className="text-white font-semibold">{bet.username}</span>
                         <span className={statusClass}>{status.toUpperCase()}</span>
                       </div>
-                      <div className="text-xs text-neutral-300">Bet: {Number(bet.betAmount || 0).toLocaleString()} coins • Matches: {bet.numMatches}</div>
+                      <div className="text-xs text-neutral-300">Bet: {formatCoins(bet.betAmount || 0)} coins • Matches: {bet.numMatches}</div>
                       <div className="text-xs text-neutral-400">Prediction: {formatPrediction(bet.predictions) || '—'}</div>
                       <div className="text-xs text-neutral-400">Correct: {bet.correctPredictions || 0}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-neutral-400">Winnings</div>
-                      <div className="text-2xl font-bold text-yellow-300">{Number(bet.winnings || 0).toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-yellow-300">{formatCoins(bet.winnings || 0)}</div>
                     </div>
                   </div>
                 );

@@ -31,15 +31,16 @@ import { CreateTeamPage } from "./pages/tournaments/createTeam";
 import { JoinTeamPage } from "./pages/tournaments/joinTeam";
 import { ChangesLogPage } from "./pages/menu/changesLog";
 import { recordAchievement } from "./logic/dailyAchievements";
-import { unlockAchievement, getPlayerAchievements } from "./logic/achievements";
+import { checkAndUnlockMatchAchievements, unlockAchievement, getPlayerAchievements } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
-import { placeBet, getBetsForMatch, resolveBets, MULTIPLIERS, getBetsForPlayer } from "./logic/betting";
+import { placeBet, getBetsForMatch, resolveBets, MULTIPLIERS, getBetsForPlayer, getRoundOdds, getVyrazackaOdds } from "./logic/betting";
 import { 
   createTournament, 
   getTournament, 
   updateTournamentStatus, 
   createTeam, 
   joinTeam, 
+  leaveTournamentTeam,
   getTournamentTeams, 
   generateDoubleEliminationBracket, 
   createBracketMatches, 
@@ -344,6 +345,32 @@ app.get("/v1/lobby", async (c) => {
   }
 });
 
+// Helper function for golden stat tracking (outside route handler to avoid strict mode issues)
+function addGoldenStat(
+  map: Map<string, { teamIds: string[]; teamNames: string[]; count: number; scorers: Map<string, { id: string; username: string; count: number }> }>,
+  teamIds: string[],
+  teamNames: string[],
+  scorerId: string,
+  scorerName: string
+) {
+  const sortedIds = teamIds.slice().sort();
+  const key = sortedIds.join('|');
+  const sortedNames = teamNames.slice().sort();
+  const row = map.get(key) || {
+    teamIds: sortedIds,
+    teamNames: sortedNames,
+    count: 0,
+    scorers: new Map<string, { id: string; username: string; count: number }>(),
+  };
+  row.count += 1;
+  if (scorerId) {
+    const scorerRow = row.scorers.get(scorerId) || { id: scorerId, username: scorerName, count: 0 };
+    scorerRow.count += 1;
+    row.scorers.set(scorerId, scorerRow);
+  }
+  map.set(key, row);
+}
+
 // render leaderboard (GET)
 app.get("/v1/leaderboard", async (c) => {
   try {
@@ -380,25 +407,91 @@ app.get("/v1/leaderboard", async (c) => {
       }
     }
 
-    const duoMatches = allDocuments
-      .map((doc: any) => parseMatchHistoryDoc(doc))
-      .map((match: MatchHistoryDoc) => ({
-        $id: match.$id,
-        createdAt: match.createdAt,
-        players: (match.players || []).map((p: HistoryPlayers) => ({
-          id: p.id,
-          username: p.username,
-        })),
-        scores: (match.scores || []).map((s: any) => ({
-          a: s.a,
-          b: s.b,
-          scoreA: s.scoreA,
-          scoreB: s.scoreB,
-        })),
-      }));
+    const parsedMatches = allDocuments.map((doc: any) => parseMatchHistoryDoc(doc));
+
+    const duoMatches = parsedMatches.map((match: MatchHistoryDoc) => ({
+      $id: match.$id,
+      createdAt: match.createdAt,
+      players: (match.players || []).map((p: HistoryPlayers) => ({
+        id: p.id,
+        username: p.username,
+      })),
+      scores: (match.scores || []).map((s: any) => ({
+        a: s.a,
+        b: s.b,
+        scoreA: s.scoreA,
+        scoreB: s.scoreB,
+      })),
+    }));
+
+    const goldenScoredMap = new Map<string, {
+      teamIds: string[];
+      teamNames: string[];
+      count: number;
+      scorers: Map<string, { id: string; username: string; count: number }>;
+    }>();
+    const goldenReceivedMap = new Map<string, {
+      teamIds: string[];
+      teamNames: string[];
+      count: number;
+      scorers: Map<string, { id: string; username: string; count: number }>;
+    }>();
+
+    parsedMatches.forEach((match: MatchHistoryDoc) => {
+      const nameById = new Map<string, string>();
+      (match.players || []).forEach((p: HistoryPlayers) => nameById.set(p.id, p.username));
+
+      const rounds = match.scores || [];
+      rounds.forEach((s: any) => {
+        const golden = s?.goldenVyrazacka;
+        if (!golden || !golden.playerId) return;
+
+        const a = Array.isArray(s.a) ? s.a : [];
+        const b = Array.isArray(s.b) ? s.b : [];
+        if (!a.length || !b.length) return;
+
+        let scoringSide = golden.side;
+        if (scoringSide !== 'a' && scoringSide !== 'b') {
+          if (a.includes(golden.playerId)) scoringSide = 'a';
+          else if (b.includes(golden.playerId)) scoringSide = 'b';
+        }
+        if (scoringSide !== 'a' && scoringSide !== 'b') return;
+
+        const scoringTeamIds = scoringSide === 'a' ? a : b;
+        const receivingTeamIds = scoringSide === 'a' ? b : a;
+
+        const scoringTeamNames = scoringTeamIds.map((id: string) => nameById.get(id) || id);
+        const receivingTeamNames = receivingTeamIds.map((id: string) => nameById.get(id) || id);
+
+        const scorerName = nameById.get(golden.playerId) || golden.playerId;
+
+        addGoldenStat(goldenScoredMap, scoringTeamIds, scoringTeamNames, golden.playerId, scorerName);
+        addGoldenStat(goldenReceivedMap, receivingTeamIds, receivingTeamNames, golden.playerId, scorerName);
+      });
+    });
+
+    const goldenTeamsScored = Array.from(goldenScoredMap.values()).map((row) => ({
+      teamIds: row.teamIds,
+      teamNames: row.teamNames,
+      count: row.count,
+      scorers: Array.from(row.scorers.values()).sort((a, b) => b.count - a.count),
+    })).sort((a, b) => b.count - a.count);
+
+    const goldenTeamsReceived = Array.from(goldenReceivedMap.values()).map((row) => ({
+      teamIds: row.teamIds,
+      teamNames: row.teamNames,
+      count: row.count,
+      scorers: Array.from(row.scorers.values()).sort((a, b) => b.count - a.count),
+    })).sort((a, b) => b.count - a.count);
     return c.html(
       <MainLayout c={c}>
-        <LeaderboardPage players={players} currentPlayer={username} duoMatches={duoMatches} />
+        <LeaderboardPage
+          players={players}
+          currentPlayer={username}
+          duoMatches={duoMatches}
+          goldenTeamsScored={goldenTeamsScored}
+          goldenTeamsReceived={goldenTeamsReceived}
+        />
       </MainLayout>,
     );
   } catch (err: any) {
@@ -823,7 +916,7 @@ app.post("/v1/match/game/golden-vyrazacka", async (c) => {
     const matchId = String(form.get("matchId") ?? '');
     const index = Number(form.get("index") ?? 0);
     const playerId = String(form.get("playerId") ?? ''); // player ID or empty
-    const points = Number(form.get("points") ?? 0); // points value (0-10)
+    const diff = Number(form.get("diff") ?? 0);
 
     if (!matchId) return c.json({ error: 'missing matchId' }, 400);
 
@@ -836,8 +929,11 @@ app.post("/v1/match/game/golden-vyrazacka", async (c) => {
     const s = scores[index];
 
     if (playerId) {
+      const side = s.a?.includes(playerId) ? 'a' : (s.b?.includes(playerId) ? 'b' : null);
+      if (!side) return c.json({ error: 'player not in match side' }, 400);
+
       // Enable golden vyrážečka for this player
-      s.goldenVyrazacka = { playerId, points: Math.max(0, Math.min(10, points)) };
+      s.goldenVyrazacka = { playerId, side, diff: Math.max(0, Math.min(10, diff)) };
     } else {
       // Disable golden vyrážečka
       delete s.goldenVyrazacka;
@@ -846,8 +942,7 @@ app.post("/v1/match/game/golden-vyrazacka", async (c) => {
     const updated = await updateGameScores(matchId, scores);
     return c.json({ 
       ok: true, 
-      scoreA: updated.scores?.[index]?.scoreA ?? 0,
-      scoreB: updated.scores?.[index]?.scoreB ?? 0,
+      goldenVyrazacka: updated.scores?.[index]?.goldenVyrazacka ?? null,
     });
   } catch (err: any) {
     console.error('update golden vyrazacka error', err);
@@ -861,6 +956,60 @@ app.post("/v1/match/game/golden-vyrazacka", async (c) => {
       const elo2 = (p2Elo && typeof p2Elo === 'number') ? p2Elo : 500;
       return Math.round((elo1 + elo2) / 2);
     }
+
+function buildPlayerEloMap(match: MatchDoc): Record<string, number> {
+  const map: Record<string, number> = {};
+  (match.players || []).forEach((p: MatchPlayer) => {
+    map[p.id] = typeof p.elo === 'number' ? p.elo : 500;
+  });
+  return map;
+}
+
+async function buildPlayerStatsMap(match: MatchDoc): Promise<Record<string, { vyrazecky: number; wins: number; loses: number }>> {
+  const map: Record<string, { vyrazecky: number; wins: number; loses: number }> = {};
+  for (const p of match.players || []) {
+    let profile = null;
+    try {
+      profile = await getPlayerProfile(p.id);
+    } catch {
+      profile = null;
+    }
+    if (!profile && p.username && p.username !== p.id) {
+      try {
+        profile = await getPlayerProfile(p.username);
+      } catch {
+        profile = null;
+      }
+    }
+    map[p.id] = {
+      vyrazecky: profile?.vyrazecky ?? 0,
+      wins: profile?.wins ?? p.wins ?? 0,
+      loses: profile?.loses ?? p.loses ?? 0,
+    };
+  }
+  return map;
+}
+
+function buildRoundOdds(match: MatchDoc, playerElosById: Record<string, number>): { a: number; b: number }[] {
+  return (match.scores || []).map((s: any) => getRoundOdds(s.a || [], s.b || [], playerElosById));
+}
+
+function buildVyrazackaOdds(
+  match: MatchDoc,
+  statsById: Record<string, { vyrazecky: number; wins: number; loses: number }>,
+  minCounts: number[]
+): Record<string, Record<number, number>> {
+  const rounds = (match.scores || []).length || 3;
+  const oddsByPlayer: Record<string, Record<number, number>> = {};
+  (match.players || []).forEach((p: MatchPlayer) => {
+    const stats = statsById[p.id] || { vyrazecky: 0, wins: 0, loses: 0 };
+    oddsByPlayer[p.id] = {};
+    minCounts.forEach((minCount) => {
+      oddsByPlayer[p.id][minCount] = getVyrazackaOdds(stats, minCount, rounds);
+    });
+  });
+  return oddsByPlayer;
+}
 
 export async function getMatchFromHistory(matchId: string): Promise<MatchHistoryDoc | null> {
   const client = new sdk.Client().setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1').setProject(process.env.APPWRITE_PROJECT).setKey(process.env.APPWRITE_KEY);
@@ -1384,6 +1533,25 @@ app.post("/v1/match/game/finish", async (c) => {
               },
             });
           }
+
+          const newWins = (profile.wins || 0) + winsAdd;
+          const newEloTotal = (profile.elo || 0) + (newElo - oldElo);
+          const newVyrazecky = (profile.vyrazecky || 0) + rec.vyrazecky;
+          const hasGoldenVyrazecka = (scores || []).some((s: any) => {
+            const golden = s?.goldenVyrazacka;
+            return golden?.playerId === id;
+          });
+
+          await checkAndUnlockMatchAchievements(id, rec.username, matchId, {
+            wins: newWins,
+            elo: newEloTotal,
+            level: newLevel,
+            vyrazecky: newVyrazecky,
+            tenZeroWins: (profile.ten_zero_wins || 0) + rec.ten_zero_wins,
+            winsAdded: winsAdd,
+            hadShutoutWin: rec.ten_zero_wins > 0,
+            hasGoldenVyrazecka,
+          });
         }
       } catch (e) {
         console.error('failed updating profile', id, e);
@@ -1486,8 +1654,9 @@ app.post("/v1/bet/place", async (c) => {
     const match1 = String(form.get("match1") ?? "");
     const match2 = String(form.get("match2") ?? "");
     const match3 = String(form.get("match3") ?? "");
+    const vyrazackaMin = Number(form.get("vyrazackaMin") ?? 0);
 
-    if (!matchId || betAmount < 1 || ![1,2,3].includes(numMatches)) {
+    if (!matchId || betAmount < 1 || ![0,1,2,3].includes(numMatches)) {
       return c.text("Invalid bet parameters", 400);
     }
 
@@ -1501,10 +1670,75 @@ app.post("/v1/bet/place", async (c) => {
       return c.text(`Please select ${numMatches} predictions`, 400);
     }
 
+    const vyrazackaPlayerCounts: Record<string, number> = {};
+    for (const [key, value] of Array.from(form.entries())) {
+      if (!key.startsWith("vyrazackaCount_")) continue;
+      const playerId = key.replace("vyrazackaCount_", "");
+      const count = Number(value || 0);
+      if (playerId && count > 0) {
+        vyrazackaPlayerCounts[playerId] = count;
+      }
+    }
+
+    if (Object.keys(vyrazackaPlayerCounts).length === 0 && numMatches === 0) {
+      return c.text("Select matches or a vyrazacka bet", 400);
+    }
+
+    const match = await getMatch(matchId);
+    if (!match) return c.text("Match not found", 404);
+
+    if (Object.keys(vyrazackaPlayerCounts).length) {
+      const matchPlayerIds = new Set((match.players || []).map((p: MatchPlayer) => p.id));
+      const allInMatch = Object.keys(vyrazackaPlayerCounts).every((id) => matchPlayerIds.has(id));
+      if (!allInMatch) return c.text("Vyrazacka player not in match", 400);
+      const invalidCount = Object.values(vyrazackaPlayerCounts).some((count) => !Number.isFinite(count) || count < 1);
+      if (invalidCount) {
+        return c.text("Invalid vyrazacka count", 400);
+      }
+      predictions.vyrazacka = { playerCounts: vyrazackaPlayerCounts };
+    }
+
     const profile = await getPlayerProfile(username);
     if (!profile || (profile.coins || 0) < betAmount) {
       return c.text("Insufficient coins", 400);
     }
+
+    const playerElosById = buildPlayerEloMap(match);
+    const roundOdds = buildRoundOdds(match, playerElosById);
+    const statsById = await buildPlayerStatsMap(match);
+
+    const odds: any = {};
+    const oddsValues: number[] = [];
+    if (match1) {
+      const oddsValue = roundOdds[0]?.[match1 as keyof typeof roundOdds[0]] ?? MULTIPLIERS[1];
+      odds.match1 = oddsValue;
+      oddsValues.push(oddsValue);
+    }
+    if (match2) {
+      const oddsValue = roundOdds[1]?.[match2 as keyof typeof roundOdds[1]] ?? MULTIPLIERS[1];
+      odds.match2 = oddsValue;
+      oddsValues.push(oddsValue);
+    }
+    if (match3) {
+      const oddsValue = roundOdds[2]?.[match3 as keyof typeof roundOdds[2]] ?? MULTIPLIERS[1];
+      odds.match3 = oddsValue;
+      oddsValues.push(oddsValue);
+    }
+    if (predictions.vyrazacka) {
+      let vyProduct = 1;
+      Object.entries(predictions.vyrazacka.playerCounts).forEach(([playerId, minCount]) => {
+        const vyStats = statsById[playerId] || { vyrazecky: 0, wins: 0, loses: 0 };
+        const vyOdds = getVyrazackaOdds(vyStats, Number(minCount), roundOdds.length || 3);
+        vyProduct *= vyOdds;
+      });
+      odds.vyrazacka = Number(vyProduct.toFixed(2));
+      oddsValues.push(odds.vyrazacka);
+    }
+
+    const totalLegs = numMatches + (predictions.vyrazacka ? Object.keys(predictions.vyrazacka.playerCounts).length : 0);
+    odds.total = Number((oddsValues.reduce((sum, value) => sum * value, 1)).toFixed(2));
+    predictions._odds = odds;
+    predictions._totalLegs = totalLegs;
 
     // Deduct coins
     await updatePlayerStats(profile.$id, { coins: (profile.coins || 0) - betAmount });
@@ -1537,7 +1771,11 @@ app.get("/v1/f-bet", async (c) => {
     const playingMatches: any[] = [];
     for (const m of allMatches) {
       const bets = await getBetsForMatch(m.$id);
-      const enriched = { ...m, bets };
+      const playerElosById = buildPlayerEloMap(m);
+      const roundOdds = buildRoundOdds(m, playerElosById);
+      const statsById = await buildPlayerStatsMap(m);
+      const vyrazackaOdds = buildVyrazackaOdds(m, statsById, [1, 2, 3, 4, 5]);
+      const enriched = { ...m, bets, bettingOdds: roundOdds, vyrazackaOdds };
       if (m.state === 'playing') playingMatches.push(enriched);
     }
 
@@ -1707,6 +1945,30 @@ app.post("/v1/api/tournaments/:tourId/teams/:teamId/join", async (c) => {
     return c.redirect(`/v1/tournaments/${tournamentId}`);
   } catch (error: any) {
     console.error("Join team error:", error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Leave team (registration only)
+app.post("/v1/api/tournaments/:id/teams/leave", async (c) => {
+  try {
+    const tournamentId = c.req.param("id");
+    const userId = getCookie(c, "user");
+    if (!userId) return c.redirect("/v1/auth/login");
+
+    const tournament = await getTournament(tournamentId);
+    if (!tournament) {
+      return c.json({ error: "Tournament not found" }, 404);
+    }
+
+    if (tournament.status !== "registration") {
+      return c.json({ error: "Tournament already started" }, 400);
+    }
+
+    await leaveTournamentTeam(tournamentId, userId);
+    return c.redirect(`/v1/tournaments/${tournamentId}`);
+  } catch (error: any) {
+    console.error("Leave tournament error:", error);
     return c.json({ error: error.message }, 500);
   }
 });

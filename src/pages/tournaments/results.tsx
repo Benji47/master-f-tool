@@ -1,5 +1,6 @@
 import { Context } from "hono";
 import { getTournament, getTournamentResults, getTeam } from "../../logic/tournament";
+import { formatCoins } from "../../logic/format";
 
 export async function TournamentResultsPage({ c }: { c: Context }) {
   const tournamentId = c.req.param('id');
@@ -29,7 +30,7 @@ export async function TournamentResultsPage({ c }: { c: Context }) {
     };
 
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-6 text-neutral-100">
         <h1 className="text-3xl font-bold mb-2">{tournament.name}</h1>
         <p className="text-neutral-400 mb-8">Tournament Results</p>
 
@@ -60,7 +61,7 @@ export async function TournamentResultsPage({ c }: { c: Context }) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-3xl font-bold text-yellow-300 mb-1">💰 {result.coinsAwarded}</p>
+                      <p className="text-3xl font-bold text-yellow-300 mb-1">💰 {formatCoins(result.coinsAwarded)}</p>
                       <p className="text-sm text-neutral-300">coins per player</p>
                     </div>
                   </div>
@@ -83,19 +84,19 @@ export async function TournamentResultsPage({ c }: { c: Context }) {
           <div className="grid grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-neutral-400">1st Place</p>
-              <p className="font-bold text-yellow-400">{tournament.rewards.first} coins</p>
+              <p className="font-bold text-yellow-400">{formatCoins(tournament.rewards.first)} coins</p>
             </div>
             <div>
               <p className="text-neutral-400">2nd Place</p>
-              <p className="font-bold text-gray-300">{tournament.rewards.second} coins</p>
+              <p className="font-bold text-gray-300">{formatCoins(tournament.rewards.second)} coins</p>
             </div>
             <div>
               <p className="text-neutral-400">3rd Place</p>
-              <p className="font-bold text-orange-400">{tournament.rewards.third} coins</p>
+              <p className="font-bold text-orange-400">{formatCoins(tournament.rewards.third)} coins</p>
             </div>
             <div>
               <p className="text-neutral-400">4th Place</p>
-              <p className="font-bold text-neutral-300">{tournament.rewards.fourth} coins</p>
+              <p className="font-bold text-neutral-300">{formatCoins(tournament.rewards.fourth)} coins</p>
             </div>
           </div>
           <p className="text-xs text-neutral-500 mt-3">*Coins are awarded to each player in the team</p>

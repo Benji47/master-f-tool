@@ -140,6 +140,52 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
                   </div>
                 </div>
               </div>
+
+              {/* Golden vyrazacka section */}
+              <div className="border-t border-neutral-700 pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-neutral-300 mb-3">Golden Vyrážečka</h4>
+                {(() => {
+                  const golden = s.goldenVyrazacka;
+                  const scorer = players.find((x: any) => x.id === golden?.playerId);
+                  const displayText = golden?.playerId
+                    ? `Scored by ${scorer ? scorer.username : golden.playerId} (side ${golden.side?.toUpperCase() || '?'}, diff ${golden.diff ?? 0})`
+                    : 'Not set';
+                  const options = [...(s.a || []), ...(s.b || [])];
+                  return (
+                    <div className="grid md:grid-cols-3 gap-3 items-center">
+                      <div className="text-sm text-neutral-200" id={`golden-display-${idx}`}>{displayText}</div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          id={`golden-player-${idx}`}
+                          defaultValue={golden?.playerId || ''}
+                          className="bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-3 py-2 text-sm"
+                        >
+                          <option value="">Select scorer</option>
+                          {options.map((id: string) => {
+                            const p = players.find((x: any) => x.id === id);
+                            return (
+                              <option key={id} value={id}>{p ? p.username : id}</option>
+                            );
+                          })}
+                        </select>
+                        <input
+                          id={`golden-diff-${idx}`}
+                          type="number"
+                          min="0"
+                          max="10"
+                          defaultValue={golden?.diff ?? 0}
+                          className="w-20 bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-2 py-2 text-sm"
+                          placeholder="Diff"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="px-3 py-2 bg-yellow-600 hover:bg-yellow-700 cursor-pointer rounded text-sm text-white" data-golden-action="set" data-idx={idx}>Set</button>
+                        <button className="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer rounded text-sm text-white" data-golden-action="clear" data-idx={idx}>Clear</button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           ))}
 
@@ -207,6 +253,55 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
     }catch(e){ console.error(e); }
   }
 
+  async function sendGoldenUpdate(idx, playerId, diff){
+    try{
+      const form = new FormData();
+      form.append('matchId', matchId);
+      form.append('index', String(idx));
+      if (playerId) {
+        form.append('playerId', playerId);
+        form.append('diff', String(diff));
+      }
+      const res = await fetch('/v1/match/game/golden-vyrazacka', { method: 'POST', body: form });
+      if(!res.ok) {
+        const txt = await res.text().catch(()=>null);
+        console.error('golden vyrazacka update failed', txt);
+        return;
+      }
+      const data = await res.json();
+      const golden = data.goldenVyrazacka || null;
+      updateGoldenDisplay(idx, golden);
+    }catch(e){ console.error(e); }
+  }
+
+  function updateGoldenDisplay(idx, golden){
+    const display = document.getElementById('golden-display-'+idx);
+    const select = document.getElementById('golden-player-'+idx);
+    const diffInput = document.getElementById('golden-diff-'+idx);
+
+    if (select && golden && golden.playerId) {
+      select.value = golden.playerId;
+    } else if (select && !golden) {
+      select.value = '';
+    }
+
+    if (diffInput) {
+      diffInput.value = String(golden && golden.diff != null ? golden.diff : 0);
+    }
+
+    if (display) {
+      if (!golden || !golden.playerId) {
+        display.textContent = 'Not set';
+      } else {
+        const option = select ? select.querySelector('option[value="' + golden.playerId + '"]') : null;
+        const name = option ? option.textContent : golden.playerId;
+        const sideLabel = golden.side ? String(golden.side).toUpperCase() : '?';
+        const diffLabel = golden.diff != null ? golden.diff : 0;
+        display.textContent = 'Scored by ' + name + ' (side ' + sideLabel + ', diff ' + diffLabel + ')';
+      }
+    }
+  }
+
 
   document.addEventListener('click', function(e){
     const el = e.target;
@@ -231,6 +326,26 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
     const vyrDelta = el.getAttribute('data-vyr-delta');
     if(vyrIdx !== null && playerId && vyrDelta){
       sendVyrazackaUpdate(Number(vyrIdx), playerId, Number(vyrDelta));
+    }
+
+    // Golden vyrazacka buttons
+    const goldenAction = el.getAttribute('data-golden-action');
+    const goldenIdx = el.getAttribute('data-idx');
+    if (goldenAction && goldenIdx !== null) {
+      const idxNum = Number(goldenIdx);
+      if (goldenAction === 'clear') {
+        sendGoldenUpdate(idxNum, '', 0);
+      } else if (goldenAction === 'set') {
+        const select = document.getElementById('golden-player-'+idxNum);
+        const diffInput = document.getElementById('golden-diff-'+idxNum);
+        const playerValue = select ? select.value : '';
+        const diffValue = diffInput ? Number(diffInput.value || '0') : 0;
+        if (!playerValue) {
+          console.error('Select a scorer before setting golden vyrazacka');
+          return;
+        }
+        sendGoldenUpdate(idxNum, playerValue, diffValue);
+      }
     }
 
     // finish button
@@ -279,6 +394,8 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
             if (el) el.textContent = String(s.vyrazacka[pid]);
           }
         }
+
+        updateGoldenDisplay(i, s.goldenVyrazacka || null);
 
         
       });

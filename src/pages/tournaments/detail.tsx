@@ -1,5 +1,6 @@
 import { Context } from "hono";
 import { getTournament, getTournamentTeams, getTeamAverageElo } from "../../logic/tournament";
+import { formatCoins } from "../../logic/format";
 import { getPlayerProfile } from "../../logic/profile";
 import { getRankInfoFromElo } from "../../static/data";
 import { getCookie } from "hono/cookie";
@@ -29,7 +30,7 @@ export async function TournamentDetailPage({ c }: { c: Context }) {
     const isTournamentCreator = tournament.creatorId === userId;
 
     return (
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-6 text-neutral-100">
         {/* Header */}
         <div className="mb-8">
           <div className="flex justify-between items-start mb-4">
@@ -60,18 +61,18 @@ export async function TournamentDetailPage({ c }: { c: Context }) {
             </div>
             <div className="bg-neutral-900/60 rounded-lg border border-neutral-800 p-4">
               <p className="text-neutral-400 text-sm">1st Place Prize</p>
-              <p className="text-2xl font-bold text-yellow-400">💰 {tournament.rewards.first}</p>
+              <p className="text-2xl font-bold text-yellow-400">💰 {formatCoins(tournament.rewards.first)}</p>
             </div>
             <div className="bg-neutral-900/60 rounded-lg border border-neutral-800 p-4">
               <p className="text-neutral-400 text-sm">Total Prize Pool</p>
-              <p className="text-2xl font-bold text-green-400">💰 {(tournament.rewards.first + tournament.rewards.second + tournament.rewards.third + tournament.rewards.fourth) * 2}</p>
+              <p className="text-2xl font-bold text-green-400">💰 {formatCoins((tournament.rewards.first + tournament.rewards.second + tournament.rewards.third + tournament.rewards.fourth) * 2)}</p>
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
         {tournament.status === 'registration' && (
-          <div className="mb-8 flex gap-4">
+          <div className="mb-8 flex flex-wrap gap-4">
             {!userTeam && (
               <>
                 <a href={`/v1/tournaments/${tournamentId}/teams/create`} className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded font-semibold transition">
@@ -81,6 +82,15 @@ export async function TournamentDetailPage({ c }: { c: Context }) {
                   Join Existing Team
                 </a>
               </>
+            )}
+            {userTeam && (
+              <button
+                hx-post={`/v1/api/tournaments/${tournamentId}/teams/leave`}
+                hx-swap="redirect:"
+                className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
+              >
+                Leave Tournament
+              </button>
             )}
             {isTournamentCreator && lockedTeams.length >= 2 && (
               <button

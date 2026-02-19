@@ -6,6 +6,20 @@ const apiKey = process.env.APPWRITE_KEY;
 const databaseId = process.env.APPWRITE_DATABASE_ID;
 const collectionId = 'bets';
 
+export interface BetOdds {
+  match1?: number;
+  match2?: number;
+  match3?: number;
+  vyrazacka?: number;
+  total?: number;
+}
+
+export interface VyrazackaOddsRequest {
+  vyrazecky?: number;
+  wins?: number;
+  loses?: number;
+}
+
 export interface Bet {
   $id?: string;
   playerId: string;
@@ -15,12 +29,19 @@ export interface Bet {
     match1?: 'a' | 'b';
     match2?: 'a' | 'b';
     match3?: 'a' | 'b';
+    vyrazacka?: {
+      playerCounts: Record<string, number>;
+    };
+    _odds?: BetOdds;
+    _totalLegs?: number;
   };
   betAmount: number;
   numMatches: number;
   status: 'pending' | 'won' | 'lost';
   winnings: number;
   correctPredictions: number;
+  odds?: BetOdds;
+  totalLegs?: number;
   $createdAt?: string;
 }
 
@@ -31,28 +52,96 @@ const MULTIPLIERS: Record<number, number> = {
   3: 8,
 };
 
+const MIN_ODDS = 1.2;
+const MAX_ODDS = 6;
+const HOUSE_EDGE = 0.92;
+
 function client() {
   if (!projectId || !apiKey) throw new Error('Appwrite credentials not configured');
   return new sdk.Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
 }
 
+function clampOdds(value: number): number {
+  if (!Number.isFinite(value)) return MIN_ODDS;
+  return Math.min(MAX_ODDS, Math.max(MIN_ODDS, Number(value.toFixed(2))));
+}
+
+function eloWinProb(eloA: number, eloB: number): number {
+  const diff = eloB - eloA;
+  return 1 / (1 + Math.pow(10, diff / 400));
+}
+
+export function getRoundOdds(
+  aPlayerIds: string[],
+  bPlayerIds: string[],
+  playerElosById: Record<string, number>
+): { a: number; b: number } {
+  const aElo = Math.round(
+    aPlayerIds.reduce((sum, id) => sum + (playerElosById[id] ?? 500), 0) / Math.max(1, aPlayerIds.length)
+  );
+  const bElo = Math.round(
+    bPlayerIds.reduce((sum, id) => sum + (playerElosById[id] ?? 500), 0) / Math.max(1, bPlayerIds.length)
+  );
+  const probA = Math.max(0.05, Math.min(0.95, eloWinProb(aElo, bElo)));
+  const probB = 1 - probA;
+  return {
+    a: clampOdds((1 / probA) * HOUSE_EDGE),
+    b: clampOdds((1 / probB) * HOUSE_EDGE),
+  };
+}
+
+function factorial(n: number): number {
+  let result = 1;
+  for (let i = 2; i <= n; i += 1) result *= i;
+  return result;
+}
+
+function poissonCdf(k: number, lambda: number): number {
+  if (k < 0) return 0;
+  let sum = 0;
+  for (let i = 0; i <= k; i += 1) {
+    sum += (Math.pow(lambda, i) * Math.exp(-lambda)) / factorial(i);
+  }
+  return Math.min(1, Math.max(0, sum));
+}
+
+export function getVyrazackaOdds(
+  stats: VyrazackaOddsRequest,
+  minCount: number,
+  rounds: number = 3
+): number {
+  const games = Math.max(1, Number(stats.wins || 0) + Number(stats.loses || 0));
+  const vyrazecky = Math.max(0, Number(stats.vyrazecky || 0));
+  const perRound = vyrazecky / games;
+  const lambda = Math.max(0.05, perRound * rounds);
+  let prob = 1 - poissonCdf(Math.max(0, minCount - 1), lambda);
+  if (minCount >= 2) {
+    const penalty = Math.pow(0.5, minCount - 1);
+    prob *= penalty;
+  }
+  return clampOdds((1 / Math.max(0.05, prob)) * HOUSE_EDGE);
+}
+
 function parseBetDoc(doc: any): Bet {
+  const predictions = typeof doc.predictions === 'string' ? JSON.parse(doc.predictions) : doc.predictions;
   return {
     $id: doc.$id,
     playerId: doc.playerId,
     username: doc.username,
     matchId: doc.matchId,
-    predictions: typeof doc.predictions === 'string' ? JSON.parse(doc.predictions) : doc.predictions,
+    predictions,
     betAmount: doc.betAmount,
     numMatches: doc.numMatches,
     status: doc.status,
     winnings: doc.winnings || 0,
     correctPredictions: doc.correctPredictions || 0,
+    odds: predictions?._odds,
+    totalLegs: predictions?._totalLegs,
     $createdAt: doc.$createdAt,
   };
 }
 
-export async function placeBet(b: Omit<Bet, '$id' | 'status' | 'winnings' | 'correctPredictions'>): Promise<Bet> {
+export async function placeBet(b: Omit<Bet, '$id' | 'status' | 'winnings' | 'correctPredictions' | 'odds' | 'totalLegs'>): Promise<Bet> {
   const cli = client();
   const databases = new sdk.Databases(cli);
   const doc = await databases.createDocument(
@@ -122,14 +211,36 @@ export async function resolveBets(matchId: string, scores: any[]): Promise<void>
     return 'tie';
   });
 
+  // sum vyrazacka across rounds per player
+  const vyrazackaTotals: Record<string, number> = {};
+  scores.forEach((s: any) => {
+    if (!s?.vyrazacka) return;
+    Object.entries(s.vyrazacka).forEach(([playerId, count]: [string, any]) => {
+      vyrazackaTotals[playerId] = (vyrazackaTotals[playerId] || 0) + Number(count || 0);
+    });
+  });
+
   for (const bet of pending) {
     let correct = 0;
     if (bet.predictions.match1 && winners[0] === bet.predictions.match1) correct++;
     if (bet.predictions.match2 && winners[1] === bet.predictions.match2) correct++;
     if (bet.predictions.match3 && winners[2] === bet.predictions.match3) correct++;
 
-    const won = correct === bet.numMatches;
-    const winnings = won ? (bet.betAmount * (MULTIPLIERS[bet.numMatches] || 1)) : 0;
+    if (bet.predictions.vyrazacka) {
+      Object.entries(bet.predictions.vyrazacka.playerCounts || {}).forEach(([playerId, minCount]) => {
+        const total = vyrazackaTotals[playerId] || 0;
+        if (total >= Number(minCount || 0)) correct++;
+      });
+    }
+
+    const vyrazackaLegs = bet.predictions.vyrazacka
+      ? Object.keys(bet.predictions.vyrazacka.playerCounts || {}).length
+      : 0;
+    const totalLegs = bet.totalLegs ?? (bet.numMatches + vyrazackaLegs);
+    const won = totalLegs > 0 && correct === totalLegs;
+    const fallbackOdds = MULTIPLIERS[bet.numMatches] || 1;
+    const totalOdds = bet.odds?.total || fallbackOdds;
+    const winnings = won ? (bet.betAmount * totalOdds) : 0;
 
     try {
       await databases.updateDocument(databaseId, collectionId, bet.$id, {

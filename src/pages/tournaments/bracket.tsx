@@ -33,7 +33,7 @@ export async function TournamentBracketPage({ c }: { c: Context }) {
     });
 
     return (
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-6 text-neutral-100">
         <h1 className="text-3xl font-bold mb-8">{tournament.name} - Bracket</h1>
 
         {/* Winners Bracket */}

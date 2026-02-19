@@ -2,7 +2,7 @@ import { Context } from "hono";
 
 export function CreateTournamentPage({ c }: { c: Context }) {
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="max-w-2xl mx-auto p-6 text-neutral-100">
       <h1 className="text-3xl font-bold mb-8 text-white">Create Tournament</h1>
 
       <form hx-post="/v1/api/tournaments/create" hx-swap="redirect:" className="space-y-6">

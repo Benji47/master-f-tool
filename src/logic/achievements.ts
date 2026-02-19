@@ -37,6 +37,17 @@ interface PlayerAchievementWithDef extends PlayerAchievement {
   definition?: AchievementDefinition;
 }
 
+export interface MatchAchievementStats {
+  wins: number;
+  elo: number;
+  level: number;
+  vyrazecky: number;
+  tenZeroWins: number;
+  winsAdded: number;
+  hadShutoutWin: boolean;
+  hasGoldenVyrazecka: boolean;
+}
+
 const getClient = () => {
   const client = new sdk.Client()
     .setEndpoint(endpoint)
@@ -245,6 +256,62 @@ export async function getAllAchievementsForPlayer(
   } catch (error) {
     console.error('Error getting all achievements:', error);
     return { unlocked: [], locked: ACHIEVEMENT_DEFINITIONS };
+  }
+}
+
+export async function checkAndUnlockMatchAchievements(
+  playerId: string,
+  username: string,
+  matchId: string,
+  stats: MatchAchievementStats
+): Promise<void> {
+  const checks = ACHIEVEMENT_DEFINITIONS.filter(def => def.requirement);
+
+  for (const def of checks) {
+    const requirement = def.requirement;
+    if (!requirement) continue;
+
+    const value = requirement.value ?? 1;
+    let shouldUnlock = false;
+    let data: Record<string, unknown> | undefined;
+
+    switch (requirement.type) {
+      case 'win_match':
+        shouldUnlock = stats.winsAdded > 0 && stats.wins >= value;
+        data = { matchId, value: stats.wins };
+        break;
+      case 'shutout_win':
+        shouldUnlock = stats.hadShutoutWin;
+        data = { matchId };
+        break;
+      case 'golden_vyrazecka':
+        shouldUnlock = stats.hasGoldenVyrazecka;
+        data = { matchId };
+        break;
+      case 'level':
+        shouldUnlock = stats.level >= value;
+        data = { matchId, value: stats.level };
+        break;
+      case 'elo':
+        shouldUnlock = stats.elo >= value;
+        data = { matchId, value: stats.elo };
+        break;
+      case 'wins':
+        shouldUnlock = stats.wins >= value;
+        data = { matchId, value: stats.wins };
+        break;
+      case 'vyrazecky':
+        shouldUnlock = stats.vyrazecky >= value;
+        data = { matchId, value: stats.vyrazecky };
+        break;
+      default:
+        shouldUnlock = false;
+        break;
+    }
+
+    if (shouldUnlock) {
+      await unlockAchievement(playerId, username, def.achievementId, data);
+    }
   }
 }
 

@@ -38,7 +38,7 @@ export async function TournamentMatchPage({ c }: { c: Context }) {
 
     if (match.state === 'waiting' && !match.isBye) {
       return (
-        <div className="max-w-2xl mx-auto p-6">
+        <div className="max-w-2xl mx-auto p-6 text-neutral-100">
           <h1 className="text-3xl font-bold mb-8">{tournament?.name} - Tournament Match</h1>
           <div className="bg-neutral-900/60 rounded-lg border border-neutral-800 p-8">
             <div className="grid grid-cols-2 gap-6 mb-8">
@@ -74,7 +74,7 @@ export async function TournamentMatchPage({ c }: { c: Context }) {
 
     if (match.state === 'playing') {
       return (
-        <div className="max-w-3xl mx-auto p-6">
+        <div className="max-w-3xl mx-auto p-6 text-neutral-100">
           <h1 className="text-3xl font-bold mb-8">{tournament?.name} - Match In Progress</h1>
 
           <div className="bg-neutral-900/60 rounded-lg border border-neutral-800 p-8 mb-8">
@@ -126,7 +126,7 @@ export async function TournamentMatchPage({ c }: { c: Context }) {
 
     // Match finished
     return (
-      <div className="max-w-2xl mx-auto p-6">
+      <div className="max-w-2xl mx-auto p-6 text-neutral-100">
         <h1 className="text-3xl font-bold mb-8">{tournament?.name} - Match Result</h1>
 
         <div className="bg-neutral-900/60 rounded-lg border border-neutral-800 p-8 mb-8">

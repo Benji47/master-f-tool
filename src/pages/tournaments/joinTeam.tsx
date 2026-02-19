@@ -18,7 +18,7 @@ export async function JoinTeamPage({ c }: { c: Context }) {
 
     if (userExistingTeam) {
       return (
-        <div className="max-w-2xl mx-auto p-6">
+        <div className="max-w-2xl mx-auto p-6 text-neutral-100">
           <div className="bg-orange-900/30 border border-orange-700 rounded-lg p-6 mb-6">
             <p className="text-orange-300 font-semibold mb-2">Already in Tournament</p>
             <p className="text-neutral-300 mb-4">You're already registered in this tournament.</p>
@@ -29,7 +29,7 @@ export async function JoinTeamPage({ c }: { c: Context }) {
     }
 
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-6 text-neutral-100">
         <h1 className="text-3xl font-bold mb-2">{tournament.name}</h1>
         <p className="text-neutral-400 mb-8">Join an existing team</p>
 

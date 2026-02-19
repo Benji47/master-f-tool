@@ -1,4 +1,5 @@
 import { PlayerProfile } from "../../logic/profile";
+import { formatCoins } from "../../logic/format";
 import { badges, rankTiers, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 
 function renderBadgeName(name: string, iconUrl?: string) {
@@ -293,7 +294,7 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
         <div className="space-y-2 text-sm">
           <div className="flex justify-between text-neutral-300">
             <span className="text-yellow-400">💰 Coins:</span>
-            <span className="text-yellow-400 font-bold text-lg">{playerProfile.coins}</span>
+              <span className="text-yellow-400 font-bold text-lg">{formatCoins(playerProfile.coins)}</span>
           </div>
           <form action="/v1/coins/send" method="post" className="mt-3 flex flex-col gap-2">
             <div className="flex flex-col gap-1">

@@ -62,7 +62,14 @@ export type Tournament = {
   createdAt?: string;
   startedAt?: string;
   finishedAt?: string;
-  rewards: string;
+  rewards: TournamentRewards;
+};
+
+export type TournamentRewards = {
+  first: number;
+  second: number;
+  third: number;
+  fourth: number;
 };
 
 export type TournamentResult = {
@@ -81,6 +88,97 @@ export type TournamentResult = {
 function client() {
   if (!projectId || !apiKey || !databaseId) throw new Error('Appwrite credentials/database not configured');
   return new sdk.Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+}
+
+const DEFAULT_TOURNAMENT_REWARDS: TournamentRewards = {
+  first: 500000,
+  second: 300000,
+  third: 200000,
+  fourth: 50000,
+};
+
+const DEFAULT_TEAM_PLAYER: TournamentTeamPlayer = {
+  id: 'unknown',
+  username: 'Unknown',
+  elo: 0,
+};
+
+function normalizeRewards(value: unknown): TournamentRewards {
+  if (!value) return { ...DEFAULT_TOURNAMENT_REWARDS };
+
+  const parsed = typeof value === 'string' ? safeJsonParse(value) : value;
+  if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_TOURNAMENT_REWARDS };
+
+  const rewards = parsed as Partial<TournamentRewards>;
+  return {
+    first: Number(rewards.first ?? DEFAULT_TOURNAMENT_REWARDS.first),
+    second: Number(rewards.second ?? DEFAULT_TOURNAMENT_REWARDS.second),
+    third: Number(rewards.third ?? DEFAULT_TOURNAMENT_REWARDS.third),
+    fourth: Number(rewards.fourth ?? DEFAULT_TOURNAMENT_REWARDS.fourth),
+  };
+}
+
+function safeJsonParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function parseTournamentDoc(doc: any): Tournament {
+  return {
+    ...doc,
+    rewards: normalizeRewards(doc?.rewards),
+  } as Tournament;
+}
+
+function normalizeTeamPlayer(value: unknown): TournamentTeamPlayer {
+  if (!value) return { ...DEFAULT_TEAM_PLAYER };
+
+  const parsed = typeof value === 'string' ? safeJsonParse(value) : value;
+  if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_TEAM_PLAYER };
+
+  const player = parsed as Partial<TournamentTeamPlayer>;
+  return {
+    id: String(player.id ?? DEFAULT_TEAM_PLAYER.id),
+    username: String(player.username ?? DEFAULT_TEAM_PLAYER.username),
+    elo: Number(player.elo ?? DEFAULT_TEAM_PLAYER.elo),
+  };
+}
+
+function parseTeamDoc(doc: any): TournamentTeam {
+  const player1 = normalizeTeamPlayer(doc?.player1);
+  const rawPlayer2 = doc?.player2;
+  const player2 = rawPlayer2 ? normalizeTeamPlayer(rawPlayer2) : undefined;
+
+  return {
+    ...doc,
+    player1,
+    player2,
+  } as TournamentTeam;
+}
+
+function normalizeMatchScores(value: unknown): TournamentMatch['scores'] {
+  if (!value) return undefined;
+
+  const parsed = typeof value === 'string' ? safeJsonParse(value) : value;
+  if (!parsed || typeof parsed !== 'object') return undefined;
+
+  const scores = parsed as { team1Score?: number; team2Score?: number };
+  if (scores.team1Score === undefined || scores.team2Score === undefined) return undefined;
+
+  return {
+    team1Score: Number(scores.team1Score),
+    team2Score: Number(scores.team2Score),
+  };
+}
+
+function parseMatchDoc(doc: any): TournamentMatch {
+  return {
+    ...doc,
+    scores: normalizeMatchScores(doc?.scores),
+  } as TournamentMatch;
 }
 
 // ============ Tournament CRUD ============
@@ -105,17 +203,11 @@ export async function createTournament(
         status: 'setup',
         creatorId,
         maxTeams,
-        rewards: 
-        JSON.stringify({
-            first: 500000,
-            second: 300000,
-            third: 200000,
-            fourth: 50000,
-        }),
+        rewards: JSON.stringify(DEFAULT_TOURNAMENT_REWARDS),
       }
     );
 
-    return doc as Tournament;
+    return parseTournamentDoc(doc);
   } catch (err: any) {
     console.error('Create tournament error:', err);
     throw err;
@@ -128,7 +220,7 @@ export async function getTournament(tournamentId: string): Promise<Tournament | 
 
   try {
     const doc = await databases.getDocument(databaseId, TOURNAMENTS_COLLECTION, tournamentId);
-    return doc as Tournament;
+    return parseTournamentDoc(doc);
   } catch (err: any) {
     if (err.code === 404) return null;
     console.error('Get tournament error:', err);
@@ -148,7 +240,7 @@ export async function listTournaments(status?: string): Promise<Tournament[]> {
     queries.push(sdk.Query.limit(100));
 
     const res = await databases.listDocuments(databaseId, TOURNAMENTS_COLLECTION, queries);
-    return (res.documents || []) as Tournament[];
+    return (res.documents || []).map(parseTournamentDoc);
   } catch (err: any) {
     console.error('List tournaments error:', err);
     throw err;
@@ -171,7 +263,7 @@ export async function updateTournamentStatus(
     }
 
     const doc = await databases.updateDocument(databaseId, TOURNAMENTS_COLLECTION, tournamentId, updates);
-    return doc as Tournament;
+    return parseTournamentDoc(doc);
   } catch (err: any) {
     console.error('Update tournament status error:', err);
     throw err;
@@ -196,17 +288,17 @@ export async function createTeam(
       sdk.ID.unique(),
       {
         tournamentId,
-        player1: {
+        player1: JSON.stringify({
           id: player1Id,
           username: player1Username,
           elo: player1Elo,
-        },
+        }),
         player2: null,
         status: 'looking',
       }
     );
 
-    return doc as TournamentTeam;
+    return parseTeamDoc(doc);
   } catch (err: any) {
     console.error('Create team error:', err);
     throw err;
@@ -224,22 +316,23 @@ export async function joinTeam(
 
   try {
     // Check if player is not already in another team in this tournament
-    const team = await databases.getDocument(databaseId, TEAMS_COLLECTION, teamId);
+    const teamDoc = await databases.getDocument(databaseId, TEAMS_COLLECTION, teamId);
+    const team = parseTeamDoc(teamDoc);
     if (team.player1.id === player2Id) {
       throw new Error('You cannot join your own team');
     }
 
     const doc = await databases.updateDocument(databaseId, TEAMS_COLLECTION, teamId, {
-      player2: {
+      player2: JSON.stringify({
         id: player2Id,
         username: player2Username,
         elo: player2Elo,
-      },
+      }),
       status: 'locked',
       lockedAt: new Date().toISOString(),
     });
 
-    return doc as TournamentTeam;
+    return parseTeamDoc(doc);
   } catch (err: any) {
     console.error('Join team error:', err);
     throw err;
@@ -255,7 +348,7 @@ export async function getTournamentTeams(tournamentId: string): Promise<Tourname
       sdk.Query.equal('tournamentId', tournamentId),
       sdk.Query.limit(200),
     ]);
-    return res.documents as TournamentTeam[];
+    return (res.documents || []).map(parseTeamDoc);
   } catch (err: any) {
     console.error('Get tournament teams error:', err);
     throw err;
@@ -268,7 +361,7 @@ export async function getTeam(teamId: string): Promise<TournamentTeam | null> {
 
   try {
     const doc = await databases.getDocument(databaseId, TEAMS_COLLECTION, teamId);
-    return doc as TournamentTeam;
+    return parseTeamDoc(doc);
   } catch (err: any) {
     if (err.code === 404) return null;
     console.error('Get team error:', err);
@@ -285,6 +378,45 @@ export async function getPlayerTeams(tournamentId: string, playerId: string): Pr
     return teams.filter((t) => t.player1.id === playerId || t.player2?.id === playerId);
   } catch (err: any) {
     console.error('Get player teams error:', err);
+    throw err;
+  }
+}
+
+export async function leaveTournamentTeam(
+  tournamentId: string,
+  playerId: string
+): Promise<{ action: 'updated' | 'deleted' | 'none'; team?: TournamentTeam }> {
+  const c = client();
+  const databases = new sdk.Databases(c);
+
+  try {
+    const teams = await getTournamentTeams(tournamentId);
+    const team = teams.find((t) => t.player1.id === playerId || t.player2?.id === playerId);
+    if (!team) return { action: 'none' };
+
+    if (team.player1.id === playerId) {
+      if (team.player2) {
+        const updated = await databases.updateDocument(databaseId, TEAMS_COLLECTION, team.$id, {
+          player1: JSON.stringify(team.player2),
+          player2: null,
+          status: 'looking',
+          lockedAt: null,
+        });
+        return { action: 'updated', team: parseTeamDoc(updated) };
+      }
+
+      await databases.deleteDocument(databaseId, TEAMS_COLLECTION, team.$id);
+      return { action: 'deleted' };
+    }
+
+    const updated = await databases.updateDocument(databaseId, TEAMS_COLLECTION, team.$id, {
+      player2: null,
+      status: 'looking',
+      lockedAt: null,
+    });
+    return { action: 'updated', team: parseTeamDoc(updated) };
+  } catch (err: any) {
+    console.error('Leave tournament team error:', err);
     throw err;
   }
 }
@@ -479,7 +611,7 @@ export async function createBracketMatches(
         }
       );
 
-      createdMatches.push(doc as TournamentMatch);
+        createdMatches.push(parseMatchDoc(doc));
     }
 
     return createdMatches;
@@ -498,7 +630,7 @@ export async function getTournamentMatches(tournamentId: string): Promise<Tourna
       sdk.Query.equal('tournamentId', tournamentId),
       sdk.Query.limit(500),
     ]);
-    return res.documents as TournamentMatch[];
+    return (res.documents || []).map(parseMatchDoc);
   } catch (err: any) {
     console.error('Get tournament matches error:', err);
     throw err;
@@ -511,7 +643,7 @@ export async function getMatch(matchId: string): Promise<TournamentMatch | null>
 
   try {
     const doc = await databases.getDocument(databaseId, MATCHES_COLLECTION, matchId);
-    return doc as TournamentMatch;
+    return parseMatchDoc(doc);
   } catch (err: any) {
     if (err.code === 404) return null;
     console.error('Get match error:', err);
@@ -533,10 +665,10 @@ export async function updateMatchState(
     const updates: any = { state };
 
     if (team1Score !== undefined && team2Score !== undefined) {
-      updates.scores = {
+      updates.scores = JSON.stringify({
         team1Score,
         team2Score,
-      };
+      });
     }
 
     if (winnerId) {
@@ -545,7 +677,7 @@ export async function updateMatchState(
     }
 
     const doc = await databases.updateDocument(databaseId, MATCHES_COLLECTION, matchId, updates);
-    return doc as TournamentMatch;
+    return parseMatchDoc(doc);
   } catch (err: any) {
     console.error('Update match state error:', err);
     throw err;
