@@ -32,6 +32,7 @@ import { CreateTeamPage } from "./pages/tournaments/createTeam";
 import { JoinTeamPage } from "./pages/tournaments/joinTeam";
 import { AdminPasswordResetPage } from "./pages/admin/passwordReset";
 import { ChangesLogPage } from "./pages/menu/changesLog";
+import { FAQPage } from "./pages/menu/faq";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { checkAndUnlockMatchAchievements, unlockAchievement, getPlayerAchievements } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
@@ -1404,7 +1405,7 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].winsAdded += 1;
           byId[id].xpGained += 15;
           byId[id].newElo += 20;
-          byId[id].coinsGained += 100; // +100 coins for winning
+          byId[id].coinsGained += 200; // +100 coins for winning
           byId[id].coinsGained += aScore * 2; // +2 coins per goal scored
           byId[id].gamesAdded += 1;
           byId[id].goals_conceded += bScore;
@@ -1420,6 +1421,7 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].goals_conceded += aScore;
           byId[id].goals_scored += bScore;
           byId[id].xpGained += bScore;
+          byId[id].coinsGained += 100; // +100 coins participation reward
           byId[id].coinsGained += bScore * 2; // +2 coins per goal scored (even if lost)
           byId[id].losesAdded += 1;
           byId[id].xpGained += 5;
@@ -1444,7 +1446,7 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].winsAdded += 1;
           byId[id].xpGained += 15;
           byId[id].newElo += 20;
-          byId[id].coinsGained += 100; // +100 coins for winning
+          byId[id].coinsGained += 200; // +100 coins for winning
           byId[id].coinsGained += bScore * 2; // +2 coins per goal scored
           byId[id].gamesAdded += 1;
           byId[id].xpGained += bScore;
@@ -1460,6 +1462,7 @@ app.post("/v1/match/game/finish", async (c) => {
           byId[id].goals_conceded += bScore;
           byId[id].goals_scored += aScore;
           byId[id].xpGained += aScore;
+          byId[id].coinsGained += 100; // +100 coins participation reward
           byId[id].coinsGained += aScore * 2; // +2 coins per goal scored (even if lost)
           byId[id].losesAdded += 1;
           byId[id].xpGained += 5;
@@ -1927,6 +1930,14 @@ app.get("/v1/tournaments", (c) => {
   return c.html(
     <MainLayout c={c}>
       <TournamentsPage c={c} />
+    </MainLayout>
+  );
+});
+
+app.get("/v1/faq", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <FAQPage c={c} />
     </MainLayout>
   );
 });
