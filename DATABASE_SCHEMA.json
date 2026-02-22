@@ -362,6 +362,48 @@
             "name": "rank_index"
           }
         ]
+      },
+      {
+        "name": "site_content",
+        "collectionId": "site_content",
+        "description": "Site content configuration (editable by admin) - supports FAQ, announcements, rules, and other text sections",
+        "attributes": [
+          {
+            "key": "key",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Configuration key (e.g., 'match_rules', 'homepage_welcome', 'lobby_announcement', 'tournament_rules', 'betting_disclaimer')"
+          },
+          {
+            "key": "content",
+            "type": "string",
+            "size": 10000,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Content as JSON string (for rules) or plain text"
+          },
+          {
+            "key": "updatedAt",
+            "type": "datetime",
+            "required": false,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          }
+        ],
+        "indexes": [
+          {
+            "key": "key",
+            "type": "unique",
+            "name": "key_unique"
+          }
+        ]
       }
     ]
   }

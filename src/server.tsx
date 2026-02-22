@@ -31,8 +31,24 @@ import { TournamentResultsPage } from "./pages/tournaments/results";
 import { CreateTeamPage } from "./pages/tournaments/createTeam";
 import { JoinTeamPage } from "./pages/tournaments/joinTeam";
 import { AdminPasswordResetPage } from "./pages/admin/passwordReset";
+import { AdminContentManagerPage } from "./pages/admin/contentManager";
+import { AdminContentEditorPage } from "./pages/admin/contentEditor";
 import { ChangesLogPage } from "./pages/menu/changesLog";
 import { FAQPage } from "./pages/menu/faq";
+import { 
+  getSiteContent, 
+  updateSiteContent, 
+  getAllSiteContent,
+  parseMatchRules, 
+  parseTextContent,
+  serializeMatchRules, 
+  getDefaultContent,
+  getContentSection,
+  CONTENT_SECTIONS,
+  DEFAULT_MATCH_RULES, 
+  MatchRule,
+  ContentSection 
+} from "./logic/siteContent";
 import { HallOfFamePage } from "./pages/menu/hallOfFame";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { checkAndUnlockMatchAchievements, unlockAchievement, getPlayerAchievements } from "./logic/achievements";
@@ -876,6 +892,141 @@ app.post("/v1/admin/reset-password", async (c) => {
   } catch (err: any) {
     console.error("admin reset password error:", err);
     return c.text("Failed to reset password", 500);
+  }
+});
+
+app.get("/v1/admin/faq", async (c) => {
+  // Legacy redirect - redirect old FAQ editor link to new content manager
+  return c.redirect("/v1/admin/content/match_rules");
+});
+
+app.get("/v1/admin/content", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? "";
+    if (!username || !isAdminUsername(username)) {
+      return c.redirect("/v1/auth/admin-login");
+    }
+
+    const existingContent = await getAllSiteContent();
+
+    return c.html(
+      <MainLayout c={c}>
+        <AdminContentManagerPage 
+          c={c} 
+          adminUsername={username} 
+          sections={CONTENT_SECTIONS}
+          existingContent={existingContent}
+        />
+      </MainLayout>,
+    );
+  } catch (err: any) {
+    console.error("admin content manager error:", err);
+    return c.text("Failed to load content manager", 500);
+  }
+});
+
+app.get("/v1/admin/content/:sectionKey", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? "";
+    if (!username || !isAdminUsername(username)) {
+      return c.redirect("/v1/auth/admin-login");
+    }
+
+    const sectionKey = c.req.param("sectionKey");
+    const section = getContentSection(sectionKey);
+
+    if (!section) {
+      return c.text("Invalid content section", 404);
+    }
+
+    const config = await getSiteContent(sectionKey);
+    let content: any;
+
+    if (section.contentType === 'json_rules') {
+      content = config ? parseMatchRules(config.content) : parseMatchRules(getDefaultContent(sectionKey));
+    } else if (section.contentType === 'text') {
+      content = config ? config.content : getDefaultContent(sectionKey);
+    } else {
+      content = config ? config.content : getDefaultContent(sectionKey);
+    }
+
+    return c.html(
+      <MainLayout c={c}>
+        <AdminContentEditorPage 
+          c={c} 
+          adminUsername={username} 
+          section={section}
+          content={content}
+        />
+      </MainLayout>,
+    );
+  } catch (err: any) {
+    console.error("admin content editor error:", err);
+    return c.text("Failed to load content editor", 500);
+  }
+});
+
+app.post("/v1/admin/faq/update", async (c) => {
+  // Legacy redirect - redirect old FAQ update to new content update
+  return c.redirect("/v1/admin/content/match_rules");
+});
+
+app.post("/v1/admin/content/:sectionKey/update", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? "";
+    if (!username || !isAdminUsername(username)) {
+      return c.redirect("/v1/auth/admin-login");
+    }
+
+    const sectionKey = c.req.param("sectionKey");
+    const section = getContentSection(sectionKey);
+
+    if (!section) {
+      return c.text("Invalid content section", 404);
+    }
+
+    const form = await c.req.formData();
+    let content: string;
+
+    if (section.contentType === 'json_rules') {
+      // Parse rules from form data
+      const rules: MatchRule[] = [];
+      let index = 0;
+      while (true) {
+        const label = form.get(`rule_${index}_label`);
+        const value = form.get(`rule_${index}_value`);
+        
+        if (!label || !value) break;
+        
+        rules.push({
+          label: String(label).trim(),
+          value: String(value).trim(),
+        });
+        
+        index++;
+      }
+
+      if (rules.length === 0) {
+        return c.text("At least one rule is required", 400);
+      }
+
+      content = serializeMatchRules(rules);
+    } else if (section.contentType === 'text') {
+      // Get text content from form
+      const textContent = String(form.get("content") ?? "").trim();
+      if (!textContent) {
+        return c.text("Content is required", 400);
+      }
+      content = textContent;
+    } else {
+      return c.text("Unsupported content type", 400);
+    }
+
+    await updateSiteContent(sectionKey, content);
+    return c.redirect(`/v1/admin/content/${sectionKey}`);
+  } catch (err: any) {
+    console.error("admin content update error:", err);
+    return c.text("Failed to update content", 500);
   }
 });
 
@@ -2126,12 +2277,24 @@ app.get("/v1/tournaments", (c) => {
   );
 });
 
-app.get("/v1/faq", (c) => {
-  return c.html(
-    <MainLayout c={c}>
-      <FAQPage c={c} />
-    </MainLayout>
-  );
+app.get("/v1/faq", async (c) => {
+  try {
+    const config = await getSiteContent('match_rules');
+    const matchRules = config ? parseMatchRules(config.content) : DEFAULT_MATCH_RULES;
+    
+    return c.html(
+      <MainLayout c={c}>
+        <FAQPage c={c} matchRules={matchRules} />
+      </MainLayout>,
+    );
+  } catch (error: any) {
+    console.error('FAQ page error:', error);
+    return c.html(
+      <MainLayout c={c}>
+        <FAQPage c={c} matchRules={DEFAULT_MATCH_RULES} />
+      </MainLayout>,
+    );
+  }
 });
 
 app.get("/v1/hall-of-fame", async (c) => {

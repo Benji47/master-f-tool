@@ -3,7 +3,7 @@ import { MatchHistoryDoc } from "./match";
 
 export type StatsScope = "overall" | "current" | "season";
 
-const SEASON_ZERO_START = new Date(process.env.SEASON_ZERO_START_DATE ?? "2026-02-03T00:00:00");
+const SEASON_ZERO_START = new Date(process.env.SEASON_ZERO_START_DATE ?? "2025-11-24T00:00:00");
 const SEASON_ONE_START = new Date(process.env.SEASON_ONE_START_DATE ?? "2026-02-24T00:00:00");
 const SEASON_DURATION_MONTHS = 3;
 

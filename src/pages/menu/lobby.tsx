@@ -98,19 +98,9 @@ export async function LobbyPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-4">
-      {/* Top-center nav (buttons styled like main action, no rectangle background) */}
+      {/* Top-center nav - Empty placeholder */}
       <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
-        <nav className="flex gap-2 items-center overflow-x-auto whitespace-nowrap">
-          <a href="/v1/leaderboard" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🪜 Leaderboards</a>
-          <a href="/v1/match-history" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">📜 Match History</a>
-          <a href="/v1/graphs" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">📊 Graphs</a>
-          <a href="/v1/changes-log" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🛠️ Changes & Fixes</a>
-          <a href="/v1/f-bet" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🎲 F Bet</a>
-          <a href="/v1/achievements" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🎯 Achievements</a>
-          <a href="/v1/tournaments" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🏆 Tournaments</a>
-          <a href="/v1/faq" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">❓ FAQ</a>
-          <a href="/v1/hall-of-fame" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-yellow-400 rounded-md font-bold">🏛️ Hall of Fame</a>
-        </nav>
+        <nav className="flex gap-3 items-center"></nav>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -118,50 +108,249 @@ export async function LobbyPage({
         {/* Left Sidebar - Player Profile (moved to component) */}
         <PlayerProfilePanel playerProfile={playerProfile} players={players} walletCoins={walletCoins} />
 
-        {/* Center - Main Actions */}
-        <div className="lg:col-span-2 flex flex-col justify-start items-center gap-6 pt-110">
-          <div className="w-full max-w-sm rounded-md border border-neutral-800 bg-neutral-900/60 p-3">
-            <p className="text-xs text-neutral-400 mb-2">Showing stats:</p>
-            <div className="flex flex-wrap gap-2">
-              <a href="/v1/lobby?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
-                Current Season
-              </a>
-              <a href="/v1/lobby?scope=overall" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "overall" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
-                Overall
-              </a>
-              {availableSeasonIndexes.filter((season) => season !== currentSeasonIndex).map((season) => (
-                <a
-                  key={season}
-                  href={`/v1/lobby?scope=season&season=${season}`}
-                  className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "season" && selectedSeasonIndex === season ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}
-                >
-                  {getSeasonLabel(season)}
-                </a>
-              ))}
-            </div>
-          </div>
+        {/* Center - 3x3 Grid with PLAY in Middle */}
+        <div className="lg:col-span-2 flex flex-col justify-center items-center gap-6 pt-20">
+          <div className="grid grid-cols-3 gap-8 w-fit">
+            {/* Row 1 */}
+            <a href="/v1/leaderboard" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-blue-500/50">
+                🪜
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Leaderboards</span>
+            </a>
 
-          <a href="/v1/match/lobby" className="w-full max-w-sm">
-            <button className="w-full py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 cursor-pointer text-white font-bold text-lg rounded-md transition-all">
-              ⚔️ PLAY
-            </button>
-          </a>
+            <a href="/v1/match-history" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-indigo-500/50">
+                📜
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Match History</span>
+            </a>
+
+            <a href="/v1/graphs" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-purple-700 hover:from-purple-400 hover:to-purple-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-purple-500/50">
+                📊
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Graphs</span>
+            </a>
+
+            {/* Row 2 */}
+            <a href="/v1/changes-log" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-gray-600 to-gray-800 hover:from-gray-500 hover:to-gray-700 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-gray-500/50">
+                🛠️
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Changes & Fixes</span>
+            </a>
+
+            {/* PLAY Button in Center */}
+            <a href="/v1/match/lobby" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-green-700 hover:from-green-400 hover:to-green-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-green-500/50">
+                ⚔️
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">PLAY</span>
+            </a>
+
+            <a href="/v1/f-bet" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-yellow-500 to-yellow-700 hover:from-yellow-400 hover:to-yellow-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-yellow-500/50">
+                🎲
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">F Bet</span>
+            </a>
+
+            {/* Row 3 */}
+            <a href="/v1/achievements" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-red-500/50">
+                🎯
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Achievements</span>
+            </a>
+
+            <a href="/v1/tournaments" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-orange-700 hover:from-orange-400 hover:to-orange-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-orange-500/50">
+                🏆
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Tournaments</span>
+            </a>
+
+            <a href="/v1/hall-of-fame" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-amber-500/50">
+                🏛️
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Hall of Fame</span>
+            </a>
+          </div>
         </div>
 
       </div>
 
-      {/* Top-right logout button */}
-      <form action="/v1/auth/logout" method="post" className="fixed top-4 right-4 z-50">
-        <button
-          type="submit"
-          className="px-3 py-2 w-full bg-red-500 border-red-500 text-white rounded-md hover:bg-red-700 cursor-pointer transition-all"
-        >
-          Logout
-        </button>
-      </form>
+      {/* Top-right buttons - FAG and Logout */}
+      <div className="fixed top-4 right-4 z-50 flex gap-3 items-center">
+        {/* FAG Button */}
+        <a href="/v1/faq" className="group relative">
+          <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-400 hover:to-pink-600 rounded-lg flex items-center justify-center text-3xl transition-all transform hover:scale-110 shadow-lg hover:shadow-pink-500/50">
+            ?
+          </div>
+          <span className="absolute top-14 -left-2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">FAQ</span>
+        </a>
+
+        {/* Logout Button */}
+        <form action="/v1/auth/logout" method="post" className="group relative">
+          <button
+            type="submit"
+            className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 rounded-lg flex items-center justify-center text-xl transition-all transform hover:scale-110 shadow-lg hover:shadow-red-500/50 text-white cursor-pointer"
+          >
+            🚪
+          </button>
+          <span className="absolute top-14 -left-3 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Logout</span>
+        </form>
+      </div>
 
       {/* Right Sidebar - Fixed Position */}
       <div className="fixed top-18 right-4 w-120 flex flex-col gap-4 z-40">
+        {/* Showing Stats Box */}
+        <div className="w-full rounded-md border border-purple-600/50 bg-neutral-900/60 p-3">
+          <p className="text-xs text-neutral-400 mb-2">Showing stats:</p>
+          <div className="flex flex-wrap gap-2">
+            <a href="/v1/lobby?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+              Current Season
+            </a>
+            <a href="/v1/lobby?scope=overall" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "overall" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+              Overall
+            </a>
+            {availableSeasonIndexes.filter((season) => season !== currentSeasonIndex).map((season) => (
+              <a
+                key={season}
+                href={`/v1/lobby?scope=season&season=${season}`}
+                className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "season" && selectedSeasonIndex === season ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}
+              >
+                {getSeasonLabel(season)}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Levels and Ranks Hover Buttons */}
+        <div className="w-full flex gap-2">
+          {/* Levels Hover Button */}
+          <div className="relative group flex-1">
+            <button
+              type="button"
+              className="w-full px-3 py-1 text-xs text-white/50 rounded-md bg-neutral-800/60 border border-purple-600/40 hover:border-purple-500/60 hover:bg-neutral-700 transition-colors"
+            >
+              Levels
+            </button>
+            {/* POPUP: Levels */}
+            <div className="absolute -left-2 top-full mt-2 w-90 bg-neutral-900/95 border border-purple-600/50 rounded-lg p-4 z-50 shadow-lg text-sm opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150">
+              <h4 className="font-bold mb-2 text-white">Levels & Badges</h4>
+              <div className="space-y-2">
+                {badges.map((b, idx) => (
+                  <div
+                    key={b.name}
+                    className="flex items-center justify-between bg-neutral-800/40 rounded px-2 py-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-26 text-left`}
+                      >
+                        {b.name}
+                      </span>
+                      <div className="text-neutral-200 text-sm">
+                        Level {idx + 1} ({b.minLevel} - {b.maxLevel})
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Ranks Hover Button */}
+          <div className="relative group flex-1">
+            <button
+              type="button"
+              className="w-full px-3 py-1 text-xs text-white/50 rounded-md bg-neutral-800/60 border border-purple-600/40 hover:border-purple-500/60 hover:bg-neutral-700 transition-colors"
+            >
+              Ranks
+            </button>
+            {/* POPUP: Ranks Grid */}
+            <div className="absolute -left-2 top-full mt-2 bg-neutral-900/95 border border-purple-600/50 rounded-lg p-4 z-50 shadow-lg text-sm opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 overflow-y-auto"
+                 style={{ width: '1400px', maxHeight: '85vh' }}>
+              <div className="flex flex-col gap-4">
+                {[
+                  ["zElo", "Bronze", "Silver", "Gold"],
+                  ["Platinum", "Diamond", "Master", "Grandmaster"]
+                ].map((rankRow, rowIdx) => (
+                  <div key={`row-${rowIdx}`} className="flex gap-4">
+                    {rankRow.map((rankName) => {
+                      const tiers = rankTiers.filter(t => t.name.startsWith(rankName));
+                      
+                      if (tiers.length === 0) return null;
+                      
+                      const firstTier = tiers[0];
+                      const rankColors: Record<string, string> = {
+                        'zElo': 'bg-gray-700/30',
+                        'Bronze': 'bg-amber-900/40',
+                        'Silver': 'bg-slate-600/40',
+                        'Gold': 'bg-yellow-700/40',
+                        'Platinum': 'bg-cyan-600/40',
+                        'Diamond': 'bg-blue-600/40',
+                        'Master': 'bg-purple-600/40',
+                        'Grandmaster': 'bg-red-600/40'
+                      };
+
+                      return (
+                        <div key={rankName} 
+                          className={`flex-1 rounded-lg p-3 border-2 ${rankColors[rankName] || 'bg-neutral-800/40'}`}
+                          style={{ 
+                            borderColor: firstTier.textColor.split(' ').pop()
+                          }}>
+                          <div className={`text-lg font-bold text-center mb-3 ${firstTier.textColor}`}>
+                            {rankName === 'zElo' ? '🥬 zElo' : rankName}
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            {tiers.map((tier) => {
+                              const playersInTier = players.filter((p) => getRankInfoFromElo(p.elo).name === tier.name);
+                              const sortedPlayers = playersInTier.sort((a, b) => b.elo - a.elo);
+
+                              return (
+                                <div key={tier.name} className="flex flex-col gap-2 bg-neutral-800/50 rounded p-2">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center gap-1">
+                                      <div className={`w-6 h-2 rounded-full bg-gradient-to-r ${tier.color}`} />
+                                      <div className={`${tier.textColor} text-xs font-bold`}>
+                                        {tier.name.split(" ")[1]}
+                                      </div>
+                                    </div>
+                                    <div className="text-neutral-400 text-xs">
+                                      ({tier.min}-{tier.max})
+                                    </div>
+                                  </div>
+
+                                  {sortedPlayers.length > 0 ? (
+                                    <ul className="text-neutral-300 text-xs list-disc pl-3 max-h-32 overflow-y-auto">
+                                      {sortedPlayers.map((p) => (
+                                        <li key={p.username} className="truncate">
+                                          {p.username} ({p.elo})
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <div className="text-neutral-600 text-xs italic"></div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <SeasonTimerPanel />
         <DailyAchievementsPanel achievements={dailyAchievements} />
         <GlobalStatsPanel globalStats={globalStats} />

@@ -1,6 +1,13 @@
 import { Context } from "hono";
+import { MatchRule } from "../../logic/siteContent";
 
-export function FAQPage({ c }: { c: Context }) {
+export function FAQPage({ c, matchRules }: { c: Context; matchRules?: MatchRule[] }) {
+  const rules = matchRules || [
+    { label: "Players:", value: "4 players per match (2v2)" },
+    { label: "Rounds:", value: "3 rounds total per match" },
+    { label: "Scoring:", value: "Best of 3 rounds" },
+    { label: "Vyrážečka:", value: "Bonus points, +10 XP per" },
+  ];
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
       <div className="max-w-4xl mx-auto">
@@ -57,21 +64,30 @@ export function FAQPage({ c }: { c: Context }) {
             <div className="space-y-3 text-neutral-200">
               <p>Gain XP to unlock badges and advance through 11 levels. Higher levels showcase your skill and dedication to the game.</p>
               <div className="space-y-2 text-sm">
+                <p className="font-semibold text-blue-300">XP Gains:</p>
                 <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
                   <span>Win:</span>
-                  <span className="text-green-400">+15 XP</span>
+                  <span className="text-green-400 font-semibold">+15 XP</span>
                 </div>
                 <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
                   <span>Loss:</span>
-                  <span className="text-blue-400">+5 XP</span>
+                  <span className="text-blue-400 font-semibold">+5 XP</span>
+                </div>
+                <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
+                  <span>Ultimate Winner:</span>
+                  <span className="text-yellow-400 font-semibold">+25 XP</span>
                 </div>
                 <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
                   <span>Perfect Win (10-0):</span>
-                  <span className="text-yellow-400">+50 XP</span>
+                  <span className="text-yellow-400 font-semibold">+50 XP</span>
                 </div>
                 <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
                   <span>Per Goal:</span>
-                  <span className="text-purple-400">+1 XP</span>
+                  <span className="text-purple-400 font-semibold">+1 XP</span>
+                </div>
+                <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
+                  <span>Vyrážečka:</span>
+                  <span className="text-orange-400 font-semibold">+10 XP</span>
                 </div>
               </div>
             </div>
@@ -85,6 +101,28 @@ export function FAQPage({ c }: { c: Context }) {
             <div className="space-y-3 text-neutral-200">
               <p>Climb the ranked ladder from Bronze to Grandmaster. Your ELO reflects your competitive skill.</p>
               <div className="space-y-2 text-sm">
+                <p className="font-semibold text-red-300">ELO Changes:</p>
+                <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
+                  <span>Win:</span>
+                  <span className="text-green-400 font-semibold">+20 ELO</span>
+                </div>
+                <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
+                  <span>Loss:</span>
+                  <span className="text-red-400 font-semibold">-20 ELO</span>
+                </div>
+                <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
+                  <span>Ultimate Winner:</span>
+                  <span className="text-green-400 font-semibold">+6 ELO total</span>
+                </div>
+                <div className="flex justify-between items-center bg-neutral-800/30 px-2 py-1 rounded">
+                  <span>Ultimate Loser:</span>
+                  <span className="text-red-400 font-semibold">-3 ELO total</span>
+                </div>
+                <div className="text-xs text-neutral-400 bg-neutral-800/50 px-2 py-1 rounded mt-2">
+                  <p>ELO difference adjustment: ±min(10, avg elo difference / 25)</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm mt-4">
                 <p className="font-semibold text-red-300">Rank Tiers:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
                   <li><span className="text-amber-400">Bronze</span> (0-199)</li>
@@ -105,22 +143,12 @@ export function FAQPage({ c }: { c: Context }) {
               <h2 className="text-2xl font-bold text-green-300 font-[Orbitron]">⚔️ Match Rules</h2>
             </div>
             <div className="space-y-3 text-neutral-200">
-              <div className="flex items-start gap-3">
-                <span className="text-green-400 font-bold min-w-fit">Players:</span>
-                <span>4 players per match (2v2)</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-green-400 font-bold min-w-fit">Rounds:</span>
-                <span>3 rounds total per match</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-green-400 font-bold min-w-fit">Scoring:</span>
-                <span>Best of 3 rounds</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="text-green-400 font-bold min-w-fit">Vyrážečka:</span>
-                <span>Bonus points, +10 XP per</span>
-              </div>
+              {rules.map((rule, index) => (
+                <div key={index} className="flex items-start gap-3">
+                  <span className="text-green-400 font-bold min-w-fit">{rule.label}</span>
+                  <span>{rule.value}</span>
+                </div>
+              ))}
             </div>
           </div>
 

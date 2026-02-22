@@ -23,6 +23,25 @@ export function AdminPasswordResetPage({
           <p className="text-neutral-400">Logged as {adminUsername}. Reset password for any account.</p>
         </div>
 
+        {/* Admin Tools Navigation */}
+        <div className="bg-neutral-900/60 border border-neutral-800 rounded-lg p-4 shadow-xl mb-6">
+          <h2 className="text-xl font-bold text-white mb-3 font-[Orbitron]">Admin Tools</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <a
+              href="/v1/admin"
+              className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md transition-colors text-center"
+            >
+              🔑 Password Reset
+            </a>
+            <a
+              href="/v1/admin/content"
+              className="px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md transition-colors text-center"
+            >
+              📝 Content Manager
+            </a>
+          </div>
+        </div>
+
         <div className="bg-neutral-900/60 border border-neutral-800 rounded-lg p-6 shadow-xl">
           <form id="adminResetForm" action="/v1/admin/reset-password" method="post" className="space-y-4">
             <div className="space-y-2">
