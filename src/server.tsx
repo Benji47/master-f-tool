@@ -55,6 +55,12 @@ import {
 
 const sdk = require('node-appwrite');
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").trim();
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+
+function buildUserCookie(username: string): string {
+  const encoded = encodeURIComponent(username);
+  return `user=${encoded}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`;
+}
 
 function isAdminUsername(username: string): boolean {
   return username.trim().toLowerCase() === ADMIN_USERNAME.toLowerCase();
@@ -299,6 +305,12 @@ app.get("/v1/match-history/players/:username", async (c) => {
 });
 
 app.get("/", (c) => {
+  const username = getCookie(c, "user") ?? "";
+  if (username) {
+    if (isAdminUsername(username)) return c.redirect("/v1/admin");
+    return c.redirect("/v1/lobby");
+  }
+
   return c.html(
     <MainLayout c={c}>
       <Homepage c={c} />
@@ -308,6 +320,12 @@ app.get("/", (c) => {
 
 // render login page (GET)
 app.get("/v1/auth/login", (c) => {
+  const username = getCookie(c, "user") ?? "";
+  if (username) {
+    if (isAdminUsername(username)) return c.redirect("/v1/admin");
+    return c.redirect("/v1/lobby");
+  }
+
   return c.html(
     <MainLayout c={c}>
       <LoginPage c={c} />
@@ -317,6 +335,12 @@ app.get("/v1/auth/login", (c) => {
 
 // render register page (GET)
 app.get("/v1/auth/register", (c) => {
+  const username = getCookie(c, "user") ?? "";
+  if (username) {
+    if (isAdminUsername(username)) return c.redirect("/v1/admin");
+    return c.redirect("/v1/lobby");
+  }
+
   return c.html(
     <MainLayout c={c}>
       <RegisterPage c={c} />
@@ -325,6 +349,11 @@ app.get("/v1/auth/register", (c) => {
 });
 
 app.get("/v1/auth/admin-login", (c) => {
+  const username = getCookie(c, "user") ?? "";
+  if (username && isAdminUsername(username)) {
+    return c.redirect("/v1/admin");
+  }
+
   return c.html(
     <MainLayout c={c}>
       <AdminLoginPage c={c} />
@@ -556,7 +585,7 @@ app.post("/v1/auth/register", async (c) => {
     await registerUser(username, password);
 
     // set a simple cookie and redirect to lobby
-    c.res.headers.set("Set-Cookie", `user=${encodeURIComponent(username)}; Path=/; HttpOnly; SameSite=Lax`);
+    c.res.headers.set("Set-Cookie", buildUserCookie(username));
     return c.redirect("/v1/lobby");
   } catch (err: any) {
     console.error("register error:", err);
@@ -582,7 +611,7 @@ app.post("/v1/auth/login", async (c) => {
     await loginUser(username, password);
 
     // set a cookie and redirect to lobby
-    c.res.headers.set("Set-Cookie", `user=${encodeURIComponent(username)}; Path=/; HttpOnly; SameSite=Lax`);
+    c.res.headers.set("Set-Cookie", buildUserCookie(username));
     return c.redirect("/v1/lobby");
   } catch (err: any) {
     console.error("login error:", err);
@@ -605,7 +634,7 @@ app.post("/v1/auth/admin-login", async (c) => {
 
     await loginUser(username, password);
 
-    c.res.headers.set("Set-Cookie", `user=${encodeURIComponent(username)}; Path=/; HttpOnly; SameSite=Lax`);
+    c.res.headers.set("Set-Cookie", buildUserCookie(username));
     return c.redirect("/v1/admin");
   } catch (err: any) {
     console.error("admin login error:", err);
@@ -660,7 +689,7 @@ app.post("/v1/admin/reset-password", async (c) => {
 // logout endpoint: clears user cookie and redirects to home
 app.post("/v1/auth/logout", (c) => {
   // clear cookie (Set-Cookie with Max-Age=0)
-  c.res.headers.set("Set-Cookie", "user=; Path=/; Max-Age=0; HttpOnly");
+  c.res.headers.set("Set-Cookie", "user=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
   c.res.headers.set("HX-Redirect", "/");
   return c.redirect("/");
 });
