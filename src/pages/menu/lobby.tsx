@@ -7,20 +7,20 @@ import GlobalStatsPanel from "./GlobalStats";
 import PlayerProfilePanel from "./PlayerProfile";
 import { DailyAchievementsPanel } from "./DailyAchievements";
 import { getDailyAchievements } from "../../logic/dailyAchievements";
+import { getCurrentSeasonIndex, getSeasonLabel, getSeasonWindow } from "../../logic/season";
 
 // Season timer component
 function SeasonTimerPanel() {
-  // Calculate season end date (21 days from a fixed season start)
-  const SEASON_START_DATE = new Date('2026-02-03'); // Adjust this date to control season timing
-  const SEASON_DURATION_DAYS = 21;
-  
-  const seasonEndDate = new Date(SEASON_START_DATE);
-  seasonEndDate.setDate(seasonEndDate.getDate() + SEASON_DURATION_DAYS);
+  const currentSeason = getCurrentSeasonIndex();
+  const seasonWindow = getSeasonWindow(currentSeason);
+  const seasonStartDate = seasonWindow.start;
+  const seasonEndDate = seasonWindow.end;
 
   return (
     <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4">
       <div className="text-center mb-3">
         <h3 className="text-lg font-bold text-white font-[Orbitron] mb-2">⏱️ Season Timer</h3>
+        <div className="text-sm text-green-400 font-semibold">{getSeasonLabel(currentSeason)}</div>
         <div id="season-timer-content" className="space-y-2">
           <div className="text-sm text-neutral-400">Season ends in:</div>
           <div className="grid grid-cols-4 gap-2">
@@ -42,7 +42,7 @@ function SeasonTimerPanel() {
             </div>
           </div>
           <div className="text-xs text-neutral-300 mt-2">
-            Next season starts: {new Date(seasonEndDate.getTime() + 1000).toLocaleDateString()} (3 months duration)
+            Current season: {seasonStartDate.toLocaleDateString()} → {seasonEndDate.toLocaleDateString()} (3 months)
           </div>
         </div>
         <div id="season-ended" className="hidden text-yellow-400 font-bold">
@@ -53,7 +53,25 @@ function SeasonTimerPanel() {
   );
 }
 
-export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context; playerProfile: PlayerProfile | null; globalStats: GlobalStats | null}) {
+export async function LobbyPage({
+  c,
+  playerProfile,
+  globalStats,
+  statsScope = "current",
+  selectedSeasonIndex = 0,
+  currentSeasonIndex = 0,
+  availableSeasonIndexes = [0],
+  walletCoins,
+} : {
+  c: Context;
+  playerProfile: PlayerProfile | null;
+  globalStats: GlobalStats | null;
+  statsScope?: "overall" | "current" | "season";
+  selectedSeasonIndex?: number;
+  currentSeasonIndex?: number;
+  availableSeasonIndexes?: number[];
+  walletCoins?: number;
+}) {
   const players = await getAllPlayerProfiles();
   const dailyAchievements = await getDailyAchievements(24);
 
@@ -71,6 +89,9 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
   const lvl = computeLevel(playerProfile.xp);
   const rank = getRankInfoFromElo(playerProfile.elo);
   const badgeColor = getLevelBadgeColor(lvl.level);
+  const currentSeasonWindow = getSeasonWindow(currentSeasonIndex);
+  const seasonStartDate = currentSeasonWindow.start;
+  const seasonEndDate = currentSeasonWindow.end;
   const winrate = playerProfile.wins + playerProfile.loses > 0 
     ? Math.round((playerProfile.wins / (playerProfile.wins + playerProfile.loses)) * 100) 
     : 0;
@@ -88,16 +109,38 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
           <a href="/v1/achievements" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🎯 Achievements</a>
           <a href="/v1/tournaments" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">🏆 Tournaments</a>
           <a href="/v1/faq" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-green-500 rounded-md font-bold">❓ FAQ</a>
+          <a href="/v1/hall-of-fame" className="px-4 py-2 text-sm text-white bg-transparent border-2 border-neutral-700 hover:border-yellow-400 rounded-md font-bold">🏛️ Hall of Fame</a>
         </nav>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         
         {/* Left Sidebar - Player Profile (moved to component) */}
-        <PlayerProfilePanel playerProfile={playerProfile} players={players} />
+        <PlayerProfilePanel playerProfile={playerProfile} players={players} walletCoins={walletCoins} />
 
         {/* Center - Main Actions */}
         <div className="lg:col-span-2 flex flex-col justify-start items-center gap-6 pt-110">
+          <div className="w-full max-w-sm rounded-md border border-neutral-800 bg-neutral-900/60 p-3">
+            <p className="text-xs text-neutral-400 mb-2">Showing stats:</p>
+            <div className="flex flex-wrap gap-2">
+              <a href="/v1/lobby?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+                Current Season
+              </a>
+              <a href="/v1/lobby?scope=overall" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "overall" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+                Overall
+              </a>
+              {availableSeasonIndexes.filter((season) => season !== currentSeasonIndex).map((season) => (
+                <a
+                  key={season}
+                  href={`/v1/lobby?scope=season&season=${season}`}
+                  className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "season" && selectedSeasonIndex === season ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}
+                >
+                  {getSeasonLabel(season)}
+                </a>
+              ))}
+            </div>
+          </div>
+
           <a href="/v1/match/lobby" className="w-full max-w-sm">
             <button className="w-full py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 cursor-pointer text-white font-bold text-lg rounded-md transition-all">
               ⚔️ PLAY
@@ -129,9 +172,8 @@ export async function LobbyPage({ c, playerProfile, globalStats } : { c: Context
         dangerouslySetInnerHTML={{
           __html: `
 (function() {
-  const SEASON_START = new Date('2026-02-03').getTime();
-  const SEASON_DURATION_DAYS = 21;
-  const SEASON_END = SEASON_START + (SEASON_DURATION_DAYS * 24 * 60 * 60 * 1000);
+  const SEASON_START = new Date('${seasonStartDate.toISOString()}').getTime();
+  const SEASON_END = new Date('${seasonEndDate.toISOString()}').getTime();
 
   function updateTimer() {
     const now = new Date().getTime();

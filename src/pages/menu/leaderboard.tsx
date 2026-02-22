@@ -2,6 +2,7 @@ import { PlayerProfile } from "../../logic/profile";
 import { formatCoins } from "../../logic/format";
 import { badges, eloColor, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 import { levelsXp, getCumulativeThresholds } from "../../static/data";
+import { getSeasonLabel } from "../../logic/season";
 
 type DuoMatch = {
   $id: string;
@@ -51,12 +52,20 @@ export function LeaderboardPage({
   duoMatches = [],
   goldenTeamsScored = [],
   goldenTeamsReceived = [],
+  statsScope = "current",
+  selectedSeasonIndex = 0,
+  currentSeasonIndex = 0,
+  availableSeasonIndexes = [0],
 }: {
   players: PlayerProfile[];
   currentPlayer?: string;
   duoMatches?: DuoMatch[];
   goldenTeamsScored?: GoldenTeamStat[];
   goldenTeamsReceived?: GoldenTeamStat[];
+  statsScope?: "overall" | "current" | "season";
+  selectedSeasonIndex?: number;
+  currentSeasonIndex?: number;
+  availableSeasonIndexes?: number[];
 }) {
   function getRowClass(isEven: boolean, isCurrentPlayer: boolean) {
     if (isCurrentPlayer) {
@@ -130,7 +139,30 @@ export function LeaderboardPage({
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-5xl font-bold text-white font-[Orbitron] mb-2">Leaderboards</h1>
-          <p className="text-neutral-400">Top players across different categories</p>
+          <p className="text-neutral-400">
+            Top players across different categories — {statsScope === "overall" ? "Overall" : getSeasonLabel(selectedSeasonIndex)}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4 items-center">
+          <a href="/v1/leaderboard?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+            Current Season
+          </a>
+          <a href="/v1/leaderboard?scope=overall" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "overall" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+            Overall
+          </a>
+          {availableSeasonIndexes.filter((season) => season !== currentSeasonIndex).map((season) => (
+            <a
+              key={season}
+              href={`/v1/leaderboard?scope=season&season=${season}`}
+              className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "season" && selectedSeasonIndex === season ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}
+            >
+              {getSeasonLabel(season)}
+            </a>
+          ))}
+          <a href="/v1/hall-of-fame" className="px-3 py-1 rounded text-sm font-semibold bg-yellow-700 hover:bg-yellow-600 text-white">
+            🏛️ Hall of Fame
+          </a>
         </div>
 
         {/* Tab Buttons */}

@@ -10,7 +10,7 @@ import { AdminLoginPage } from "./pages/auth/adminLogin";
 import { LobbyPage } from "./pages/menu/lobby";
 import { LeaderboardPage } from "./pages/menu/leaderboard";
 import { GraphsPage } from "./pages/menu/graphs";
-import { getGlobalStats, getLeaderboard, getPlayerProfile, updateGlobalStats, updatePlayerStats } from "./logic/profile";
+import { getAllPlayerProfiles, getGlobalStats, getPlayerProfile, updateGlobalStats, updatePlayerStats } from "./logic/profile";
 import { getAllPlayersEloHistory } from "./logic/graphs";
 import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch, parseDoc, parseMatchHistoryDoc, MatchHistoryDoc, HistoryPlayers, createMatch, joinMatch, listAvailableMatches } from "./logic/match";
 import { MatchLobbyPage } from "./pages/match/matchLobby";
@@ -19,7 +19,7 @@ import { MatchGamePage } from "./pages/match/matchGame";
 import { MatchResultPage } from "./pages/match/matchResult";
 import { findCurrentMatch } from "./logic/match";
 import { MatchHistoryPage } from "./pages/menu/matchHistory";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { FBetPage } from "./pages/menu/f-bet";
 import { AchievementsPage } from "./pages/menu/achievements";
 import { TournamentsPage } from "./pages/tournaments/tournaments";
@@ -33,10 +33,12 @@ import { JoinTeamPage } from "./pages/tournaments/joinTeam";
 import { AdminPasswordResetPage } from "./pages/admin/passwordReset";
 import { ChangesLogPage } from "./pages/menu/changesLog";
 import { FAQPage } from "./pages/menu/faq";
+import { HallOfFamePage } from "./pages/menu/hallOfFame";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { checkAndUnlockMatchAchievements, unlockAchievement, getPlayerAchievements } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
 import { placeBet, getBetsForMatch, resolveBets, MULTIPLIERS, getBetsForPlayer, getRoundOdds, getVyrazackaOdds } from "./logic/betting";
+import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
 import { 
   createTournament, 
   getTournament, 
@@ -51,12 +53,77 @@ import {
   getMatch as getTournamentMatch,
   updateMatchState,
   createTournamentResult,
-  getTournamentResults
+  getTournamentResults,
+  listTournaments
 } from "./logic/tournament";
 
 const sdk = require('node-appwrite');
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").trim();
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+const ELO_SHRINK_FACTOR = Number(process.env.SEASON_ELO_SHRINK_FACTOR ?? 0.85);
+const SEASON_STATE_FILE = "./.season-state.json";
+
+let seasonRolloverInProgress = false;
+
+function applyEloShrinkValue(elo: number): number {
+  const normalized = Number.isFinite(ELO_SHRINK_FACTOR)
+    ? Math.min(0.99, Math.max(0.5, ELO_SHRINK_FACTOR))
+    : 0.85;
+  return Math.max(0, Math.round(500 + (elo - 500) * normalized));
+}
+
+function readLastProcessedSeason(): number {
+  try {
+    if (!existsSync(SEASON_STATE_FILE)) return 0;
+    const raw = readFileSync(SEASON_STATE_FILE, "utf-8");
+    const parsed = JSON.parse(raw);
+    const value = Number(parsed?.lastProcessedSeason ?? 0);
+    return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeLastProcessedSeason(season: number): void {
+  try {
+    writeFileSync(SEASON_STATE_FILE, JSON.stringify({ lastProcessedSeason: season }, null, 2), "utf-8");
+  } catch (error) {
+    console.error("failed writing season state", error);
+  }
+}
+
+async function applySeasonRolloverIfNeeded(): Promise<void> {
+  if (seasonRolloverInProgress) return;
+
+  const currentSeason = getCurrentSeasonIndex();
+  const lastProcessed = readLastProcessedSeason();
+
+  if (currentSeason <= lastProcessed) return;
+
+  seasonRolloverInProgress = true;
+  try {
+    for (let season = lastProcessed + 1; season <= currentSeason; season++) {
+      if (season <= 0) continue;
+
+      const players = await getAllPlayerProfiles();
+      for (const player of players) {
+        const shrunkElo = applyEloShrinkValue(player.elo || 500);
+        if (shrunkElo !== (player.elo || 0)) {
+          try {
+            await updatePlayerStats(player.$id, { elo: shrunkElo });
+          } catch (error) {
+            console.error("failed to shrink elo for player", player.$id, error);
+          }
+        }
+      }
+
+      writeLastProcessedSeason(season);
+      console.log(`season rollover applied for season ${season} with factor ${ELO_SHRINK_FACTOR}`);
+    }
+  } finally {
+    seasonRolloverInProgress = false;
+  }
+}
 
 function buildUserCookie(username: string): string {
   const encoded = encodeURIComponent(username);
@@ -91,6 +158,8 @@ app.get("/icon.jpg", (c) => {
 });
 
 app.use(async (c, next) => {
+  await applySeasonRolloverIfNeeded();
+
   // Allow these routes to skip auth check
   if (
     c.req.path == "/" ||
@@ -366,16 +435,53 @@ app.get("/v1/auth/admin-login", (c) => {
 app.get("/v1/lobby", async (c) => {
   try {
     const username = getCookie(c, "user") ?? "Player";
-    
-    // Try to get player profile from database
-    // In a real app, you'd have userId from session, not just username
-    // For now, we'll use username as a temporary identifier
-    const playerData = await getPlayerProfile(username);
-    const globalStats = await getGlobalStats();
+    const { scope, selectedSeasonIndex, currentSeasonIndex, availableSeasonIndexes } = resolveSeasonSelection(c);
+
+    const overallProfile = await getPlayerProfile(username);
+    const overallGlobalStats = await getGlobalStats();
+
+    let playerData = overallProfile;
+    let globalStats = overallGlobalStats;
+
+    if (overallProfile && scope !== "overall") {
+      const allProfiles = await getAllPlayerProfiles();
+      const allMatches = await listAllMatchHistoryDocs();
+      const seasonMatches = filterMatchesForSeason(allMatches, selectedSeasonIndex);
+      const seasonAggregate = aggregateSeasonStats(seasonMatches, allProfiles);
+
+      const seasonProfile = seasonAggregate.players.find((p) => p.$id === overallProfile.$id);
+      const base = seasonProfile ?? buildEmptySeasonPlayer(overallProfile.$id);
+
+      playerData = {
+        ...overallProfile,
+        wins: base.wins,
+        loses: base.loses,
+        ultimate_wins: base.ultimate_wins,
+        ultimate_loses: base.ultimate_loses,
+        xp: overallProfile.xp,
+        elo: base.elo,
+        vyrazecky: base.vyrazecky,
+        goals_scored: base.goals_scored,
+        goals_conceded: base.goals_conceded,
+        ten_zero_wins: base.ten_zero_wins,
+        ten_zero_loses: base.ten_zero_loses,
+      };
+
+      globalStats = seasonAggregate.globalStats;
+    }
     
     return c.html(
       <MainLayout c={c}>
-        <LobbyPage c={c} playerProfile={playerData} globalStats={globalStats} />
+        <LobbyPage
+          c={c}
+          playerProfile={playerData}
+          globalStats={globalStats}
+          statsScope={scope}
+          selectedSeasonIndex={selectedSeasonIndex}
+          currentSeasonIndex={currentSeasonIndex}
+          availableSeasonIndexes={availableSeasonIndexes}
+          walletCoins={overallProfile?.coins}
+        />
       </MainLayout>,
     );
   } catch (err: any) {
@@ -414,43 +520,82 @@ function addGoldenStat(
   map.set(key, row);
 }
 
+async function listAllMatchHistoryDocs(): Promise<MatchHistoryDoc[]> {
+  const client = new sdk.Client()
+    .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
+    .setProject(process.env.APPWRITE_PROJECT)
+    .setKey(process.env.APPWRITE_KEY);
+  const databases = new sdk.Databases(client);
+
+  let allDocuments: any[] = [];
+  let offset = 0;
+  const limit = 100;
+
+  while (true) {
+    const res = await databases.listDocuments(
+      process.env.APPWRITE_DATABASE_ID,
+      'matches_history',
+      [
+        sdk.Query.orderDesc("$createdAt"),
+        sdk.Query.limit(limit),
+        sdk.Query.offset(offset),
+      ]
+    );
+
+    if (res.documents.length === 0) break;
+
+    allDocuments = allDocuments.concat(res.documents);
+    offset += limit;
+
+    if (allDocuments.length > 10000) break;
+  }
+
+  return allDocuments.map((doc: any) => parseMatchHistoryDoc(doc));
+}
+
+function resolveSeasonSelection(c: any): {
+  scope: StatsScope;
+  selectedSeasonIndex: number;
+  currentSeasonIndex: number;
+  availableSeasonIndexes: number[];
+} {
+  const scope = getScopeFromQuery(c.req.query("scope"));
+  const currentSeasonIndex = getCurrentSeasonIndex();
+  const availableSeasonIndexes = getAvailableSeasonIndexes();
+  const seasonRaw = Number(c.req.query("season"));
+
+  const selectedSeasonIndex = Number.isFinite(seasonRaw)
+    ? Math.max(0, Math.min(currentSeasonIndex, Math.floor(seasonRaw)))
+    : currentSeasonIndex;
+
+  return {
+    scope,
+    selectedSeasonIndex: scope === "current" ? currentSeasonIndex : selectedSeasonIndex,
+    currentSeasonIndex,
+    availableSeasonIndexes,
+  };
+}
+
 // render leaderboard (GET)
 app.get("/v1/leaderboard", async (c) => {
   try {
-    const players = await getLeaderboard(100);
+    const allProfiles = await getAllPlayerProfiles();
     const username = getCookie(c, "user") ?? undefined;
-    const client = new sdk.Client()
-      .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
-      .setProject(process.env.APPWRITE_PROJECT)
-      .setKey(process.env.APPWRITE_KEY);
-    const databases = new sdk.Databases(client);
+    const { scope, selectedSeasonIndex, currentSeasonIndex, availableSeasonIndexes } = resolveSeasonSelection(c);
+    const allMatches = await listAllMatchHistoryDocs();
+    const parsedMatches = scope === "overall"
+      ? allMatches
+      : filterMatchesForSeason(allMatches, selectedSeasonIndex);
 
-    let allDocuments: any[] = [];
-    let offset = 0;
-    const limit = 100;
-
-    while (true) {
-      const res = await databases.listDocuments(
-        process.env.APPWRITE_DATABASE_ID,
-        'matches_history',
-        [
-          sdk.Query.orderDesc("$createdAt"),
-          sdk.Query.limit(limit),
-          sdk.Query.offset(offset),
-        ]
-      );
-
-      if (res.documents.length === 0) break;
-
-      allDocuments = allDocuments.concat(res.documents);
-      offset += limit;
-
-      if (allDocuments.length > 10000) {
-        break;
-      }
-    }
-
-    const parsedMatches = allDocuments.map((doc: any) => parseMatchHistoryDoc(doc));
+    const players = scope === "overall"
+      ? allProfiles
+      : aggregateSeasonStats(parsedMatches, allProfiles).players.map((seasonRow) => {
+          const overall = allProfiles.find((p) => p.$id === seasonRow.$id);
+          return {
+            ...seasonRow,
+            xp: overall?.xp ?? seasonRow.xp,
+          };
+        });
 
     const duoMatches = parsedMatches.map((match: MatchHistoryDoc) => ({
       $id: match.$id,
@@ -526,6 +671,7 @@ app.get("/v1/leaderboard", async (c) => {
       count: row.count,
       scorers: Array.from(row.scorers.values()).sort((a, b) => b.count - a.count),
     })).sort((a, b) => b.count - a.count);
+
     return c.html(
       <MainLayout c={c}>
         <LeaderboardPage
@@ -534,6 +680,10 @@ app.get("/v1/leaderboard", async (c) => {
           duoMatches={duoMatches}
           goldenTeamsScored={goldenTeamsScored}
           goldenTeamsReceived={goldenTeamsReceived}
+          statsScope={scope}
+          selectedSeasonIndex={selectedSeasonIndex}
+          currentSeasonIndex={currentSeasonIndex}
+          availableSeasonIndexes={availableSeasonIndexes}
         />
       </MainLayout>,
     );
@@ -1940,6 +2090,52 @@ app.get("/v1/faq", (c) => {
       <FAQPage c={c} />
     </MainLayout>
   );
+});
+
+app.get("/v1/hall-of-fame", async (c) => {
+  try {
+    const currentSeason = getCurrentSeasonIndex();
+    const seasonRaw = Number(c.req.query("season"));
+    const selectedSeason = Number.isFinite(seasonRaw)
+      ? Math.max(0, Math.min(currentSeason, Math.floor(seasonRaw)))
+      : currentSeason;
+
+    const allProfiles = await getAllPlayerProfiles();
+    const allMatches = await listAllMatchHistoryDocs();
+    const seasonMatches = filterMatchesForSeason(allMatches, selectedSeason);
+    const seasonStats = aggregateSeasonStats(seasonMatches, allProfiles);
+    const topPlayers = [...seasonStats.players]
+      .sort((a, b) => b.elo - a.elo)
+      .slice(0, 10);
+
+    const finishedTournaments = (await listTournaments('finished'))
+      .filter((t) => {
+        const w = getSeasonWindow(selectedSeason);
+        const finishedAt = t.finishedAt ? new Date(t.finishedAt) : null;
+        if (!finishedAt || Number.isNaN(finishedAt.getTime())) return false;
+        return finishedAt >= w.start && finishedAt < w.end;
+      })
+      .sort((a, b) => {
+        const aTime = a.finishedAt ? new Date(a.finishedAt).getTime() : 0;
+        const bTime = b.finishedAt ? new Date(b.finishedAt).getTime() : 0;
+        return bTime - aTime;
+      });
+
+    return c.html(
+      <MainLayout c={c}>
+        <HallOfFamePage
+          selectedSeason={selectedSeason}
+          currentSeason={currentSeason}
+          seasonIndexes={getAvailableSeasonIndexes()}
+          topPlayers={topPlayers}
+          finishedTournaments={finishedTournaments}
+        />
+      </MainLayout>
+    );
+  } catch (error: any) {
+    console.error("Hall of Fame error:", error);
+    return c.text("Failed to load Hall of Fame", 500);
+  }
 });
 
 // Tournament creation
