@@ -13,9 +13,18 @@ export interface PlayerData {
   ten_zero_loses: number;
 }
 
+export interface Badge {
+  name: string;
+  minLevel: number;
+  maxLevel: number;
+  bg: string;
+  text: string;
+  iconUrl?: string;
+}
+
 export const levelsXp = [75, 150, 225, 300, 400, 500, 650, 800, 1000, 1400, 2000];
 
-export const badges = [
+export const badges: Badge[] = [
   { name: "Rookie ♖", minLevel: 0, maxLevel: 75, bg: "bg-red-600", text: "text-red-100" },
   { name: "Šnekpán 🐌", minLevel: 75, maxLevel: 225, bg: "bg-orange-600", text: "text-orange-100" },
   { name: "Cleaner 🧹", minLevel: 225, maxLevel: 450, bg: "bg-yellow-600", text: "text-yellow-100" },
@@ -34,7 +43,7 @@ export const badges = [
       maxLevel: 7500,
       bg: "bg-white",
       text: "text-black",
-    },
+  }
 ];
 
 export const rankTiers = [
@@ -95,17 +104,18 @@ export function computeLevel(xp: number) {
 }
 
 export function getLevelBadgeColor(level: number): { bg: string; text: string, textInLeaderboards: string } {
-  if (level <= 1) return { bg: "bg-red-600", text: "text-red-100", textInLeaderboards: "text-red-500" }; // Bronze
-  if (level <= 2) return { bg: "bg-orange-600", text: "text-orange-100", textInLeaderboards: "text-orange-500" }; // Bronze
-  if (level <= 3) return { bg: "bg-yellow-600", text: "text-yellow-100", textInLeaderboards: "text-yellow-500" }; // Bronze
-  if (level <= 4) return { bg: "bg-lime-600", text: "text-lime-100", textInLeaderboards: "text-lime-500" }; // Bronze
-  if (level <= 5) return { bg: "bg-green-600", text: "text-green-100", textInLeaderboards: "text-green-500" }; // Bronze
-  if (level <= 6) return { bg: "bg-cyan-600", text: "text-cyan-100", textInLeaderboards: "text-cyan-500" }; // Bronze
-  if (level <= 7) return { bg: "bg-blue-600", text: "text-blue-100", textInLeaderboards: "text-blue-500" }; // Bronze
-  if (level <= 8) return { bg: "bg-indigo-600", text: "text-indigo-100", textInLeaderboards: "text-indigo-500" }; // Bronze
-  if (level <= 9) return { bg: "bg-purple-600", text: "text-purple-100", textInLeaderboards: "text-purple-500" }; // Bronze
-  if (level <= 10) return { bg: "bg-black", text: "text-neutral-100", textInLeaderboards: "text-neutral-500" }; // Bronze
-  return { bg: "bg-indigo-600", text: "text-indigo-100", textInLeaderboards: "text-red-500" }; // Diamond+
+  if (level <= 1) return { bg: "bg-red-600", text: "text-red-100", textInLeaderboards: "text-red-500" };
+  if (level <= 2) return { bg: "bg-orange-600", text: "text-orange-100", textInLeaderboards: "text-orange-500" };
+  if (level <= 3) return { bg: "bg-yellow-600", text: "text-yellow-100", textInLeaderboards: "text-yellow-500" };
+  if (level <= 4) return { bg: "bg-lime-600", text: "text-lime-100", textInLeaderboards: "text-lime-500" };
+  if (level <= 5) return { bg: "bg-green-600", text: "text-green-100", textInLeaderboards: "text-green-500" };
+  if (level <= 6) return { bg: "bg-cyan-600", text: "text-cyan-100", textInLeaderboards: "text-cyan-500" };
+  if (level <= 7) return { bg: "bg-blue-600", text: "text-blue-100", textInLeaderboards: "text-blue-500" };
+  if (level <= 8) return { bg: "bg-indigo-600", text: "text-indigo-100", textInLeaderboards: "text-indigo-500" };
+  if (level <= 9) return { bg: "bg-purple-600", text: "text-purple-100", textInLeaderboards: "text-purple-500" };
+  if (level <= 10) return { bg: "bg-black", text: "text-neutral-100", textInLeaderboards: "text-neutral-500" };
+  if (level <= 11) return { bg: "bg-white", text: "text-black", textInLeaderboards: "text-white" };
+  return { bg: "bg-indigo-600", text: "text-indigo-100", textInLeaderboards: "text-red-500" };
 }
 
 export function getRankInfoFromElo(elo: number) {
@@ -126,4 +136,8 @@ export function getRankInfoFromElo(elo: number) {
     prevTierName: prevTier?.name,
     nextTierName: nextTier?.name,
   };
+}
+
+export function eloColor(elo: number): string {
+  return getRankInfoFromElo(elo).colorKey;
 }

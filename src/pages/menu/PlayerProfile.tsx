@@ -23,6 +23,7 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
   const lvl = computeLevel(playerProfile.xp);
   const rank = getRankInfoFromElo(playerProfile.elo);
   const badgeColor = getLevelBadgeColor(lvl.level);
+  const currentBadge = badges[lvl.level - 1];
   const winrate = playerProfile.wins + playerProfile.loses > 0
     ? Math.round((playerProfile.wins / (playerProfile.wins + playerProfile.loses)) * 100)
     : 0;
@@ -65,7 +66,7 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
                         <span
                           className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-26 text-left inline-flex items-center gap-2`}
                         >
-                          {renderBadgeName(b.name, (b as any).iconUrl)}
+                          {renderBadgeName(b.name, b.iconUrl)}
                         </span>
                   
                         <div className="text-neutral-200 text-sm">
@@ -175,7 +176,11 @@ export default function PlayerProfilePanel({ playerProfile, players }: { playerP
         {/* Profile Level Section */}
         <div className="mb-6">
           <div className={`${badgeColor.bg} ${badgeColor.text} px-4 py-2 rounded-md font-bold text-center text-2xl mb-3`}>
-            Level {lvl.level} [{badges[lvl.level - 1]?.name || "Unranked"}]
+            <span className="inline-flex items-center gap-2">
+              <span>Level {lvl.level} [</span>
+              {renderBadgeName(currentBadge?.name || "Unranked", currentBadge?.iconUrl)}
+              <span>]</span>
+            </span>
           </div>
 
           {/* XP Info with Hover */}

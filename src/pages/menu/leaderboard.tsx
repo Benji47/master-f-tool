@@ -1,6 +1,6 @@
 import { PlayerProfile } from "../../logic/profile";
 import { formatCoins } from "../../logic/format";
-import { badges, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
+import { badges, eloColor, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 import { levelsXp, getCumulativeThresholds } from "../../static/data";
 
 type DuoMatch = {
@@ -28,6 +28,23 @@ function PlayerLink({ username, children }: { username: string; children: any })
   );
 }
 
+function renderBadgeName(name: string, iconUrl?: string) {
+  if (!iconUrl) return <span>{name}</span>;
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span>{name}</span>
+      <img
+        src={iconUrl}
+        alt={`${name} icon`}
+        className="w-4 h-4 object-contain drop-shadow-sm align-text-bottom"
+        loading="lazy"
+        decoding="async"
+      />
+    </span>
+  );
+}
+
 export function LeaderboardPage({
   players,
   currentPlayer,
@@ -41,15 +58,6 @@ export function LeaderboardPage({
   goldenTeamsScored?: GoldenTeamStat[];
   goldenTeamsReceived?: GoldenTeamStat[];
 }) {
-  function eloColor(elo: number) {
-    if (elo >= 1000) return "text-red-500";
-    if (elo >= 800) return "text-indigo-500";
-    if (elo >= 600) return "text-sky-500";
-    if (elo >= 400) return "text-amber-500";
-    if (elo >= 200) return "text-gray-400";
-    return "text-yellow-800";
-  }
-
   function getRowClass(isEven: boolean, isCurrentPlayer: boolean) {
     if (isCurrentPlayer) {
       return "bg-green-950/60 border-l-4 border-green-500";
@@ -92,6 +100,17 @@ export function LeaderboardPage({
       .slice(0, 3)
       .map((s) => `${s.username} (${s.count})`)
       .join(', ');
+  }
+
+  function renderPlayerNameWithBadge(player: PlayerProfile) {
+    const badge = badges[computeLevel(player.xp).level - 1];
+    return (
+      <>
+        <span>{player.username} [</span>
+        {renderBadgeName(badge?.name || "Unranked", badge?.iconUrl)}
+        <span>]</span>
+      </>
+    );
   }
 
   // Sort functions for different leaderboards
@@ -165,7 +184,7 @@ export function LeaderboardPage({
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}> <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink></div>
+                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}> <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink></div>
                   <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo} {'->'} {eloRank}</div>
                   <div className="text-blue-400">LVL {computeLevel(player.xp).level} ({player.xp}xp)</div>
                   <div className="text-neutral-400">{player.wins}:{player.loses} ({Math.round(player.wins / player.loses * 100) / 100})</div>
@@ -199,7 +218,7 @@ export function LeaderboardPage({
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
-                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                    <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
 
                   <div className="text-green-400 font-bold">{player.ultimate_wins}</div>
@@ -231,7 +250,7 @@ export function LeaderboardPage({
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
-                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                    <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
 
                   <div className="text-red-400 font-bold">{player.ultimate_loses}</div>
@@ -267,7 +286,7 @@ export function LeaderboardPage({
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
-                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                    <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
 
                   <div className="text-orange-400 font-bold">{player.vyrazecky} ({vyrazeckyPercents}%)</div>
@@ -357,7 +376,7 @@ export function LeaderboardPage({
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
-                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                    <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
 
                   <div className="text-purple-400 font-bold">{player.wins + player.loses}</div>
@@ -390,7 +409,7 @@ export function LeaderboardPage({
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
-                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                    <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{computeLevel(player.xp).level}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{player.xp}</div>
@@ -422,7 +441,7 @@ export function LeaderboardPage({
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
-                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                    <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
                   <div className="text-yellow-400 font-bold">{player.ten_zero_loses}</div>
                 </div>
@@ -452,7 +471,7 @@ export function LeaderboardPage({
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
-                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                    <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
                   <div className="text-yellow-400 font-bold">{player.ten_zero_wins}</div>
                 </div>
@@ -482,7 +501,7 @@ export function LeaderboardPage({
                 >
                   <div className="font-bold text-lg">#{idx + 1}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
-                    <PlayerLink username={player.username}>{player.username} [{badges[computeLevel(player.xp).level - 1]?.name || "Unranked"}]</PlayerLink>
+                    <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
                   <div className="text-yellow-400 font-bold">{formatCoins(player.coins)}</div>
                 </div>

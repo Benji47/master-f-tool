@@ -148,6 +148,15 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     category: 'milestone',
     rarity: 'rare',
     requirement: { type: 'days_played', value: 10 }
+  },
+  {
+    achievementId: 'consistency',
+    name: 'Oh, the irony',
+    description: 'Lost by golden vyrážečka',
+    icon: '📅',
+    category: 'milestone',
+    rarity: 'rare',
+    requirement: { type: 'days_played', value: 10 }
   }
 ];
 
