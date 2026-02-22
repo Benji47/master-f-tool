@@ -40,6 +40,15 @@ export function Homepage({ c }: { c: Context }) {
         </a>
         </div>
 
+        <a href="/v1/auth/admin-login" className="block">
+          <button
+            type="button"
+            className="w-full px-4 py-2 bg-purple-700/70 hover:bg-purple-700 text-white font-bold cursor-pointer rounded-md border border-purple-500/40 transition-all duration-200 font-[Orbitron]"
+          >
+            ADMIN LOGIN
+          </button>
+        </a>
+
         {/* Footer Text */}
         <div className="text-center mt-6">
           <p className="text-neutral-500 text-sm font-[Exo_2]">

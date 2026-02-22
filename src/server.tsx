@@ -3,9 +3,10 @@ import { serveStatic } from "hono/bun";
 import { getCookie } from "hono/cookie";
 import { Homepage } from "./pages/auth/homepage";
 import { MainLayout } from "./main";
-import { registerUser, loginUser } from "./logic/auth";
+import { listAllUsersForAdmin, loginUser, registerUser, resetUserPasswordById } from "./logic/auth";
 import { LoginPage } from "./pages/auth/login";
 import { RegisterPage } from "./pages/auth/register";
+import { AdminLoginPage } from "./pages/auth/adminLogin";
 import { LobbyPage } from "./pages/menu/lobby";
 import { LeaderboardPage } from "./pages/menu/leaderboard";
 import { GraphsPage } from "./pages/menu/graphs";
@@ -29,6 +30,7 @@ import { TournamentMatchPage } from "./pages/tournaments/match";
 import { TournamentResultsPage } from "./pages/tournaments/results";
 import { CreateTeamPage } from "./pages/tournaments/createTeam";
 import { JoinTeamPage } from "./pages/tournaments/joinTeam";
+import { AdminPasswordResetPage } from "./pages/admin/passwordReset";
 import { ChangesLogPage } from "./pages/menu/changesLog";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { checkAndUnlockMatchAchievements, unlockAchievement, getPlayerAchievements } from "./logic/achievements";
@@ -52,6 +54,11 @@ import {
 } from "./logic/tournament";
 
 const sdk = require('node-appwrite');
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").trim();
+
+function isAdminUsername(username: string): boolean {
+  return username.trim().toLowerCase() === ADMIN_USERNAME.toLowerCase();
+}
 
 const app = new Hono<{
   Variables: {
@@ -80,9 +87,7 @@ app.use(async (c, next) => {
   // Allow these routes to skip auth check
   if (
     c.req.path == "/" ||
-    c.req.path == "/v1/auth/login" ||
-    c.req.path == "/v1/auth/register" ||
-    c.req.path == "/v1/auth/logout"
+    c.req.path.startsWith("/v1/auth/")
   ) {
     await next();
     return;
@@ -319,6 +324,14 @@ app.get("/v1/auth/register", (c) => {
   );
 });
 
+app.get("/v1/auth/admin-login", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <AdminLoginPage c={c} />
+    </MainLayout>,
+  );
+});
+
 // render lobby page (GET)
 app.get("/v1/lobby", async (c) => {
   try {
@@ -529,6 +542,9 @@ app.post("/v1/auth/register", async (c) => {
     if (!username || username.length < 3) {
       return c.text("Username must be at least 3 characters", 400);
     }
+    if (isAdminUsername(username)) {
+      return c.text("This username is reserved", 400);
+    }
     if (!password || password.length < 6) {
       return c.text("Password must be at least 6 characters", 400);
     }
@@ -571,6 +587,73 @@ app.post("/v1/auth/login", async (c) => {
   } catch (err: any) {
     console.error("login error:", err);
     return c.text("Invalid credentials", 401);
+  }
+});
+
+app.post("/v1/auth/admin-login", async (c) => {
+  try {
+    const form = await c.req.formData();
+    const username = String(form.get("username") ?? "").trim();
+    const password = String(form.get("password") ?? "").trim();
+
+    if (!username || !password) {
+      return c.text("Username and password required", 400);
+    }
+    if (!isAdminUsername(username)) {
+      return c.text("Only configured admin account can use admin login", 403);
+    }
+
+    await loginUser(username, password);
+
+    c.res.headers.set("Set-Cookie", `user=${encodeURIComponent(username)}; Path=/; HttpOnly; SameSite=Lax`);
+    return c.redirect("/v1/admin");
+  } catch (err: any) {
+    console.error("admin login error:", err);
+    return c.text("Invalid admin credentials", 401);
+  }
+});
+
+app.get("/v1/admin", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? "";
+    if (!username || !isAdminUsername(username)) {
+      return c.redirect("/v1/auth/admin-login");
+    }
+
+    const users = await listAllUsersForAdmin();
+
+    return c.html(
+      <MainLayout c={c}>
+        <AdminPasswordResetPage c={c} adminUsername={username} users={users} />
+      </MainLayout>,
+    );
+  } catch (err: any) {
+    console.error("admin panel error:", err);
+    return c.text("Failed to load admin panel", 500);
+  }
+});
+
+app.post("/v1/admin/reset-password", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? "";
+    if (!username || !isAdminUsername(username)) {
+      return c.redirect("/v1/auth/admin-login");
+    }
+
+    const form = await c.req.formData();
+    const targetUserId = String(form.get("targetUserId") ?? "").trim();
+    const newPassword = String(form.get("newPassword") ?? "").trim();
+    const confirmPassword = String(form.get("confirmPassword") ?? "").trim();
+
+    if (!targetUserId) return c.text("User is required", 400);
+    if (!newPassword || newPassword.length < 6) return c.text("Password must be at least 6 characters", 400);
+    if (newPassword !== confirmPassword) return c.text("Passwords do not match", 400);
+
+    await resetUserPasswordById(targetUserId, newPassword);
+    return c.redirect("/v1/admin");
+  } catch (err: any) {
+    console.error("admin reset password error:", err);
+    return c.text("Failed to reset password", 500);
   }
 });
 

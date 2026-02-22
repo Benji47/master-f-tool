@@ -49,6 +49,10 @@ export function LoginPage({ c }: { c: Context }) {
             </button>
           </form>
 
+          <a href="/v1/auth/admin-login" className="mt-3 block text-center text-sm text-purple-400 hover:text-purple-300">
+            Login as admin
+          </a>
+
           <div className="mt-4 text-center">
             <a href="/" className="text-sm text-neutral-400 hover:text-neutral-200">
               Back to home
