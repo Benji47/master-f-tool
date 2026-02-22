@@ -60,16 +60,30 @@ import {
 const sdk = require('node-appwrite');
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").trim();
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
-const ELO_SHRINK_FACTOR = Number(process.env.SEASON_ELO_SHRINK_FACTOR ?? 0.85);
 const SEASON_STATE_FILE = "./.season-state.json";
+const MAX_TIMEOUT_MS = 2_147_000_000;
 
 let seasonRolloverInProgress = false;
+let seasonRolloverTimer: Timer | null = null;
 
-function applyEloShrinkValue(elo: number): number {
-  const normalized = Number.isFinite(ELO_SHRINK_FACTOR)
-    ? Math.min(0.99, Math.max(0.5, ELO_SHRINK_FACTOR))
-    : 0.85;
-  return Math.max(0, Math.round(500 + (elo - 500) * normalized));
+function applyEloSeasonReset(elo: number): number {
+  const value = Number(elo || 0);
+  const delta = value - 500;
+  const sign = delta >= 0 ? 1 : -1;
+  const dist = Math.abs(delta);
+
+  let compressedDist = 0;
+  if (dist <= 300) {
+    compressedDist = dist * 0.8;
+  } else if (dist <= 500) {
+    compressedDist = 240 + (dist - 300) * 0.7;
+  } else if (dist <= 700) {
+    compressedDist = 380 + (dist - 500) * 0.6;
+  } else {
+    compressedDist = 500 + (dist - 700) * 0.5;
+  }
+
+  return Math.max(0, Math.round(500 + sign * compressedDist));
 }
 
 function readLastProcessedSeason(): number {
@@ -107,7 +121,7 @@ async function applySeasonRolloverIfNeeded(): Promise<void> {
 
       const players = await getAllPlayerProfiles();
       for (const player of players) {
-        const shrunkElo = applyEloShrinkValue(player.elo || 500);
+        const shrunkElo = applyEloSeasonReset(player.elo || 500);
         if (shrunkElo !== (player.elo || 0)) {
           try {
             await updatePlayerStats(player.$id, { elo: shrunkElo });
@@ -118,11 +132,36 @@ async function applySeasonRolloverIfNeeded(): Promise<void> {
       }
 
       writeLastProcessedSeason(season);
-      console.log(`season rollover applied for season ${season} with factor ${ELO_SHRINK_FACTOR}`);
+      console.log(`season rollover applied for season ${season} using tiered soft reset`);
     }
   } finally {
     seasonRolloverInProgress = false;
   }
+}
+
+function scheduleSeasonRolloverTimer(): void {
+  if (seasonRolloverTimer) {
+    clearTimeout(seasonRolloverTimer);
+    seasonRolloverTimer = null;
+  }
+
+  const now = Date.now();
+  const currentSeason = getCurrentSeasonIndex(new Date(now));
+  const nextBoundary = getSeasonWindow(currentSeason).end.getTime();
+  let delay = nextBoundary - now + 1000;
+
+  if (!Number.isFinite(delay) || delay < 1000) delay = 1000;
+  if (delay > MAX_TIMEOUT_MS) delay = MAX_TIMEOUT_MS;
+
+  seasonRolloverTimer = setTimeout(async () => {
+    try {
+      await applySeasonRolloverIfNeeded();
+    } catch (error) {
+      console.error("season rollover timer error", error);
+    } finally {
+      scheduleSeasonRolloverTimer();
+    }
+  }, delay);
 }
 
 function buildUserCookie(username: string): string {
@@ -138,6 +177,9 @@ const app = new Hono<{
   Variables: {
   };
 }>();
+
+void applySeasonRolloverIfNeeded();
+scheduleSeasonRolloverTimer();
 
 app.use("/static/*", serveStatic({ root: "./" }));
 // app.get('/favicon.ico', serveStatic({ root: './public' }));
