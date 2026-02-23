@@ -217,7 +217,7 @@ function parseBetDoc(doc: any): Bet {
     (predictions?.match2 ? 1 : 0) +
     (predictions?.match3 ? 1 : 0) +
     (predictions?.vyrazackaOutcome ? 1 : 0) +
-    (Number.isFinite(Number(predictions?.totalGoals)) ? 1 : 0) +
+    (Number.isFinite(Number(predictions?.totalGoals)) && predictions?.totalGoals != 0 ? 1 : 0) +
     legacyVyrazackaLegs;
 
   return {
