@@ -56,7 +56,7 @@ import { recordAchievement } from "./logic/dailyAchievements";
 import { checkAndUnlockMatchAchievements, unlockAchievement, getPlayerAchievements } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
 import { placeBet, getAllBets, getBetsForMatch, resolveBets, getBetsForPlayer, getRoundOdds, getTotalGoalsOdds, getVyrazackaOutcomeOdds, VyrazackaOutcome } from "./logic/betting";
-import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getForcedSeasonEndDate, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
+import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
 import { 
   createTournament, 
   getTournament, 
@@ -170,7 +170,8 @@ function scheduleSeasonRolloverTimer(): void {
   }
 
   const now = Date.now();
-  const nextBoundary = getForcedSeasonEndDate().getTime();
+  const currentSeason = getCurrentSeasonIndex(new Date(now));
+  const nextBoundary = getSeasonWindow(currentSeason).end.getTime();
   let delay = nextBoundary - now + 1000;
 
   if (!Number.isFinite(delay) || delay < 1000) delay = 1000;
@@ -2323,7 +2324,7 @@ app.post("/v1/bet/place", async (c) => {
       predictions.vyrazackaOutcome = vyrazackaOutcome;
       predictionCount++;
     }
-    if (Number.isFinite(Number(totalGoals))) {
+    if (hasTotalGoals) {
       predictions.totalGoals = Number(totalGoals);
       predictionCount++;
     }
@@ -2495,8 +2496,9 @@ app.get("/v1/f-bet", async (c) => {
           (outcome === 'gte3' && totalVyrazacky >= 3);
         rows.push({ key: "vyrazackaOutcome", label: "Vyrazecka", result: ok ? "correct" : "wrong" });
       }
-      if (Number.isFinite(Number(predictions.totalGoals))) {
-        rows.push({ key: "totalGoals", label: "Total Goals", result: Number(predictions.totalGoals) === totalGoals ? "correct" : "wrong" });
+      const totalGoalsPrediction = Number(predictions.totalGoals);
+      if (Number.isFinite(totalGoalsPrediction) && totalGoalsPrediction >= 30) {
+        rows.push({ key: "totalGoals", label: "Total Goals", result: totalGoalsPrediction === totalGoals ? "correct" : "wrong" });
       }
       if (predictions?.vyrazacka?.playerCounts && typeof predictions.vyrazacka.playerCounts === 'object') {
         Object.entries(predictions.vyrazacka.playerCounts).forEach(([playerId, minCount]: [string, any]) => {

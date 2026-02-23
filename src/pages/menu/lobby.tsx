@@ -6,14 +6,14 @@ import GlobalStatsPanel from "./GlobalStats";
 import PlayerProfilePanel from "./PlayerProfile";
 import { DailyAchievementsPanel } from "./DailyAchievements";
 import { getDailyAchievements } from "../../logic/dailyAchievements";
-import { getCurrentSeasonIndex, getForcedSeasonEndDate, getSeasonLabel, getSeasonWindow } from "../../logic/season";
+import { getCurrentSeasonIndex, getSeasonLabel, getSeasonWindow } from "../../logic/season";
 
 // Season timer component
 function SeasonTimerPanel() {
   const currentSeason = getCurrentSeasonIndex();
   const seasonWindow = getSeasonWindow(currentSeason);
   const seasonStartDate = seasonWindow.start;
-  const seasonEndDate = getForcedSeasonEndDate();
+  const seasonEndDate = seasonWindow.end;
 
   return (
     <div className="bg-neutral-900/50 rounded-lg border border-purple-600/50 p-4">
@@ -90,7 +90,7 @@ export async function LobbyPage({
   const badgeColor = getLevelBadgeColor(lvl.level);
   const currentSeasonWindow = getSeasonWindow(currentSeasonIndex);
   const seasonStartDate = currentSeasonWindow.start;
-  const seasonEndDate = getForcedSeasonEndDate();
+  const seasonEndDate = currentSeasonWindow.end;
   const winrate = playerProfile.wins + playerProfile.loses > 0
     ? Math.round((playerProfile.wins / (playerProfile.wins + playerProfile.loses)) * 100)
     : 0;

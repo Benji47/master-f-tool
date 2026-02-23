@@ -392,12 +392,26 @@ export async function resolveBets(matchId: string, scores: any[]): Promise<void>
     if (won) {
       try {
         const { getPlayerProfile, updatePlayerStats } = await import('./profile');
+        const { recordAchievement } = await import('./dailyAchievements');
         const profile = await getPlayerProfile(bet.playerId);
         if (profile) {
           await updatePlayerStats(profile.$id, {
             coins: (profile.coins || 0) + winnings,
           });
         }
+
+        await recordAchievement({
+          timestamp: Date.now(),
+          type: 'bet_win',
+          playerId: bet.playerId,
+          username: bet.username,
+          data: {
+            matchId,
+            betAmount: bet.betAmount,
+            totalOdds,
+            winnings,
+          },
+        });
       } catch (e) {
         console.error('failed awarding winnings', e);
       }

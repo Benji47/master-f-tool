@@ -1,4 +1,5 @@
 import { getRankInfoFromElo } from '../../static/data';
+import { formatCoins } from '../../logic/format';
 
 interface Achievement {
   $id?: string;
@@ -12,6 +13,9 @@ interface Achievement {
     vyrazeckaCount?: number;
     matchId?: string;
     details?: string;
+    betAmount?: number;
+    totalOdds?: number;
+    winnings?: number;
   };
 }
 
@@ -42,6 +46,8 @@ function getAchievementIcon(type: string): string {
       return '⚡';
     case 'podlézání':
       return '🐍';
+    case 'bet_win':
+      return '💰';
     default:
       return '🎯';
   }
@@ -82,6 +88,13 @@ function getAchievementText(achievement: Achievement): string {
       return `${username} scored ${data.vyrazeckaCount} vyrážečky!`;
     case 'podlézání':
       return `${username} engaged in some sneaky behavior!`;
+    case 'bet_win': {
+      const betAmount = Number(data.betAmount || 0);
+      const totalOdds = Number(data.totalOdds || 0);
+      const winnings = Number(data.winnings || 0);
+      const oddsLabel = totalOdds ? `x${totalOdds.toFixed(2)}` : 'n/a';
+      return `${username} won a bet: ${formatCoins(betAmount)} at ${oddsLabel} → +${formatCoins(winnings)}`;
+    }
     default:
       return `${username} achieved something!`;
   }
@@ -103,6 +116,8 @@ function getAchievementColor(type: string): string {
       return 'border-blue-500 bg-blue-950/30';
     case 'podlézání':
       return 'border-gray-500 bg-gray-950/30';  
+    case 'bet_win':
+      return 'border-amber-500 bg-amber-950/30';
     default:
       return 'border-neutral-500 bg-neutral-950/30';
   }

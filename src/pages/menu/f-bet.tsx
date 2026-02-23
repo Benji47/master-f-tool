@@ -65,9 +65,10 @@ function buildPredictionLines(
     lines.push({ type: "text", label: `Vyrazecka: ${label} | Odds: ${partOdds ? `x${partOdds}` : 'n/a'}` });
   }
 
-  if (Number.isFinite(Number(predictions?.totalGoals))) {
+  const totalGoalsValue = Number(predictions?.totalGoals);
+  if (Number.isFinite(totalGoalsValue) && totalGoalsValue >= 30) {
     const partOdds = Number(odds?.totalGoals || 0);
-    lines.push({ type: "text", label: `Total Goals: ${Number(predictions.totalGoals)} | Odds: ${partOdds ? `x${partOdds}` : 'n/a'}` });
+    lines.push({ type: "text", label: `Total Goals: ${totalGoalsValue} | Odds: ${partOdds ? `x${partOdds}` : 'n/a'}` });
   }
 
   if (predictions?.vyrazacka?.playerCounts && typeof predictions.vyrazacka.playerCounts === 'object') {

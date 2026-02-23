@@ -1,3 +1,5 @@
+import { badges, computeLevel } from "../static/data";
+
 const sdk = require('node-appwrite');
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
@@ -337,9 +339,12 @@ export async function selectBadge(
     const ownedBadges: string[] = profile.ownedBadges 
       ? (typeof profile.ownedBadges === 'string' ? JSON.parse(profile.ownedBadges) : profile.ownedBadges)
       : [];
+
+    const level = computeLevel(profile.xp || 0).level;
+    const earnedLevelBadges = badges.slice(0, Math.max(0, level)).map((b) => b.name);
     
     // Check if player owns the badge
-    if (!ownedBadges.includes(badgeName)) {
+    if (!ownedBadges.includes(badgeName) && !earnedLevelBadges.includes(badgeName)) {
       return { success: false, message: 'You do not own this badge!' };
     }
     
