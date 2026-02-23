@@ -56,7 +56,7 @@ import { recordAchievement } from "./logic/dailyAchievements";
 import { checkAndUnlockMatchAchievements, unlockAchievement, getPlayerAchievements } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
 import { placeBet, getAllBets, getBetsForMatch, resolveBets, getBetsForPlayer, getRoundOdds, getTotalGoalsOdds, getVyrazackaOutcomeOdds, VyrazackaOutcome } from "./logic/betting";
-import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
+import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getForcedSeasonEndDate, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
 import { 
   createTournament, 
   getTournament, 
@@ -170,8 +170,7 @@ function scheduleSeasonRolloverTimer(): void {
   }
 
   const now = Date.now();
-  const currentSeason = getCurrentSeasonIndex(new Date(now));
-  const nextBoundary = getSeasonWindow(currentSeason).end.getTime();
+  const nextBoundary = getForcedSeasonEndDate().getTime();
   let delay = nextBoundary - now + 1000;
 
   if (!Number.isFinite(delay) || delay < 1000) delay = 1000;

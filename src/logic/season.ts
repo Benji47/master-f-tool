@@ -6,6 +6,7 @@ export type StatsScope = "overall" | "current" | "season";
 const SEASON_ZERO_START = new Date(process.env.SEASON_ZERO_START_DATE ?? "2025-11-24T00:00:00");
 const SEASON_ONE_START = new Date(process.env.SEASON_ONE_START_DATE ?? "2026-02-24T00:00:00");
 const SEASON_DURATION_MONTHS = 3;
+const FORCED_SEASON_END = new Date(Date.now() + 40 * 60 * 1000);
 
 export type SeasonWindow = {
   index: number;
@@ -23,6 +24,10 @@ export function getSeasonDurationMonths(): number {
 
 export function getSeasonOneStartDate(): Date {
   return new Date(SEASON_ONE_START);
+}
+
+export function getForcedSeasonEndDate(): Date {
+  return new Date(FORCED_SEASON_END);
 }
 
 export function addMonths(date: Date, months: number): Date {
