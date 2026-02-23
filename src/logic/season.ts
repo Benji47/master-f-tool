@@ -3,8 +3,61 @@ import { MatchHistoryDoc } from "./match";
 
 export type StatsScope = "overall" | "current" | "season";
 
-const SEASON_ZERO_START = new Date(process.env.SEASON_ZERO_START_DATE ?? "2025-11-24T00:00:00");
-const SEASON_ONE_START = new Date(process.env.SEASON_ONE_START_DATE ?? "2026-02-24T00:00:00");
+function getTimeZoneOffsetMinutes(timeZone: string, date: Date): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const parts = dtf.formatToParts(date);
+  const lookup: Record<string, string> = {};
+  for (const part of parts) {
+    if (part.type !== "literal") lookup[part.type] = part.value;
+  }
+  const asUtc = Date.UTC(
+    Number(lookup.year),
+    Number(lookup.month) - 1,
+    Number(lookup.day),
+    Number(lookup.hour),
+    Number(lookup.minute),
+    Number(lookup.second),
+  );
+  return Math.round((asUtc - date.getTime()) / 60000);
+}
+
+function parseDatePragueFallback(raw: string): Date {
+  const value = String(raw || "").trim();
+  const hasTimezone = /z$|[+-]\d{2}:?\d{2}$/i.test(value);
+  if (hasTimezone) {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date(value) : parsed;
+  }
+
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6] || "0");
+
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  const offsetMinutes = getTimeZoneOffsetMinutes("Europe/Prague", utcGuess);
+  return new Date(utcGuess.getTime() - offsetMinutes * 60000);
+}
+
+const SEASON_ZERO_START = parseDatePragueFallback(process.env.SEASON_ZERO_START_DATE ?? "2025-11-24T00:00:00");
+const SEASON_ONE_START = parseDatePragueFallback(process.env.SEASON_ONE_START_DATE ?? "2026-02-24T00:00:00");
 const SEASON_DURATION_MONTHS = 3;
 
 export type SeasonWindow = {
