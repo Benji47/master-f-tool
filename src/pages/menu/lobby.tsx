@@ -107,7 +107,10 @@ export async function LobbyPage({
         <PlayerProfilePanel playerProfile={playerProfile} players={players} walletCoins={walletCoins} />
 
         {/* Center - 3x4 Grid with PLAY in Middle */}
-        <div className="lg:col-span-2 flex flex-col justify-center items-center gap-6 pt-8">
+        <div className="lg:col-span-2 flex flex-col justify-center items-center gap-6 pt-6">
+          <div className="w-full max-w-2xl">
+            <SeasonTimerPanel />
+          </div>
           <div className="grid grid-cols-3 gap-8 w-fit">
             {/* Row 1 */}
             <a href="/v1/leaderboard" className="group relative">
@@ -204,11 +207,11 @@ export async function LobbyPage({
       </div>
 
       {/* Right Sidebar - Fixed Position */}
-      <div className="fixed top-18 right-4 w-120 flex flex-col gap-4 z-40">
+      <div className="fixed top-4 right-4 w-120 flex flex-col gap-4 z-40">
         {/* Showing Stats Box */}
         <div className="w-full rounded-md border border-purple-600/50 bg-neutral-900/60 p-3">
-          <p className="text-xs text-neutral-400 mb-2">Showing stats:</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="text-xs text-neutral-400 mb-2 text-center">Showing stats:</p>
+          <div className="flex flex-wrap gap-2 justify-center">
             <a href="/v1/lobby?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
               Current Season
             </a>
@@ -245,7 +248,6 @@ export async function LobbyPage({
           </button>
         </div>
 
-        <SeasonTimerPanel />
         <DailyAchievementsPanel achievements={dailyAchievements} />
         <GlobalStatsPanel globalStats={globalStats} />
       </div>
