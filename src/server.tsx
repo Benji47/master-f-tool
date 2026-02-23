@@ -85,23 +85,29 @@ let seasonRolloverInProgress = false;
 let seasonRolloverTimer: Timer | null = null;
 
 function applyEloSeasonReset(elo: number): number {
-  const value = Number(elo || 0);
-  const delta = value - 500;
-  const sign = delta >= 0 ? 1 : -1;
-  const dist = Math.abs(delta);
+  const mapRange = (
+    value: number,
+    inMin: number,
+    inMax: number,
+    outMin: number,
+    outMax: number,
+  ): number => {
+    if (inMax === inMin) return outMin;
+    const clamped = Math.min(inMax, Math.max(inMin, value));
+    const ratio = (clamped - inMin) / (inMax - inMin);
+    return outMin + ratio * (outMax - outMin);
+  };
 
-  let compressedDist = 0;
-  if (dist <= 300) {
-    compressedDist = dist * 0.8;
-  } else if (dist <= 500) {
-    compressedDist = 240 + (dist - 300) * 0.7;
-  } else if (dist <= 700) {
-    compressedDist = 380 + (dist - 500) * 0.6;
-  } else {
-    compressedDist = 500 + (dist - 700) * 0.5;
-  }
+  if (elo < 0) return Math.round(mapRange(elo, -1000, 0, 325, 375));
+  if (elo <= 200) return Math.round(mapRange(elo, 0, 200, 375, 425));
+  if (elo <= 400) return Math.round(mapRange(elo, 200, 400, 425, 475));
+  if (elo <= 600) return Math.round(mapRange(elo, 400, 600, 475, 525));
+  if (elo <= 800) return Math.round(mapRange(elo, 600, 800, 525, 575));
+  if (elo <= 1000) return Math.round(mapRange(elo, 800, 1000, 575, 625));
+  if (elo <= 1200) return Math.round(mapRange(elo, 1000, 1200, 625, 675));
+  if (elo <= 2000) return Math.round(mapRange(elo, 1200, 2200, 675, 750));
 
-  return Math.max(0, Math.round(500 + sign * compressedDist));
+  return 750;
 }
 
 function readLastProcessedSeason(): number {
