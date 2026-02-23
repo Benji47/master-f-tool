@@ -525,7 +525,7 @@ app.get("/v1/lobby", async (c) => {
         ultimate_wins: base.ultimate_wins,
         ultimate_loses: base.ultimate_loses,
         xp: overallProfile.xp,
-        elo: base.elo,
+        elo: scope === "current" ? overallProfile.elo : base.elo,
         vyrazecky: base.vyrazecky,
         goals_scored: base.goals_scored,
         goals_conceded: base.goals_conceded,
@@ -655,14 +655,22 @@ app.get("/v1/leaderboard", async (c) => {
 
     const players = scope === "overall"
       ? allProfiles
-      : aggregateSeasonStats(parsedMatches, allProfiles).players.map((seasonRow) => {
-          const overall = allProfiles.find((p) => p.$id === seasonRow.$id);
-          return {
-            ...seasonRow,
-            xp: overall?.xp ?? seasonRow.xp,
-            coins: overall?.coins ?? seasonRow.coins,
-          };
-        });
+      : (() => {
+          const seasonAggregate = aggregateSeasonStats(parsedMatches, allProfiles);
+          const seasonById = new Map(seasonAggregate.players.map((p) => [p.$id, p]));
+          return allProfiles.map((profile) => {
+            const seasonRow = seasonById.get(profile.$id) ?? buildEmptySeasonPlayer(profile.$id);
+            return {
+              ...seasonRow,
+              $id: profile.$id,
+              userId: profile.userId,
+              username: profile.username,
+              xp: profile.xp ?? seasonRow.xp,
+              elo: scope === "current" ? profile.elo : seasonRow.elo,
+              coins: profile.coins ?? seasonRow.coins,
+            };
+          });
+        })();
 
     const duoMatches = parsedMatches.map((match: MatchHistoryDoc) => ({
       $id: match.$id,
