@@ -86,7 +86,7 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
         <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-neutral-400 uppercase tracking-wider">Rank Progress</span>
-            <span className="text-sm font-semibold text-white">{rank.name}</span>
+            <span className={`text-sm font-semibold bg-gradient-to-r ${rank.color} bg-clip-text text-transparent`}>{rank.name}</span>
           </div>
           <div className="text-xs text-neutral-400 mb-2">{playerProfile.elo} ELO • {rank.min}-{rank.max}</div>
           <div className="w-full bg-neutral-700 rounded-full h-1.5 overflow-hidden border border-purple-600/20">
