@@ -185,7 +185,7 @@ export function aggregateSeasonStats(matches: MatchHistoryDoc[], allPlayers: Pla
       const bScore = Number(r?.scoreB || 0);
       globalStats.totalGoals += aScore + bScore;
       if ((aScore === 10 && bScore === 0) || (bScore === 10 && aScore === 0)) {
-        globalStats.totalPodlezani += 0.5;
+        globalStats.totalPodlezani += 1;
       }
       globalStats.totalVyrazecka += sumVyrazackyInRound(r);
     }

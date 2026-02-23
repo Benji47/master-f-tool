@@ -22,6 +22,8 @@ export interface PlayerProfile {
   ten_zero_wins: number;
   ten_zero_loses: number;
   coins: number;
+  ownedBadges?: string; // JSON array of badge names
+  selectedBadge?: string; // Currently equipped badge name
 }
 
 export interface GlobalStats {
@@ -268,5 +270,130 @@ export async function getBetsForPlayer(playerId: string): Promise<any[]> {
   } catch (err: any) {
     console.error('Get player bets error:', err);
     return [];
+  }
+}
+
+/**
+ * Get owned badges for a player
+ */
+export async function getOwnedBadges(username: string): Promise<string[]> {
+  if (!projectId || !apiKey) {
+    throw new Error('Appwrite credentials not configured');
+  }
+
+  const client = new sdk.Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
+
+  const databases = new sdk.Databases(client);
+
+  try {
+    const profile = await databases.getDocument(databaseId, collectionId, username);
+    
+    if (!profile.ownedBadges) {
+      return [];
+    }
+    
+    return typeof profile.ownedBadges === 'string' 
+      ? JSON.parse(profile.ownedBadges) 
+      : profile.ownedBadges;
+  } catch (err: any) {
+    console.error('Get owned badges error:', err);
+    return [];
+  }
+}
+
+/**
+ * Select/equip a badge for display
+ */
+export async function selectBadge(
+  username: string,
+  badgeName: string | null
+): Promise<{ success: boolean; message: string }> {
+  if (!projectId || !apiKey) {
+    throw new Error('Appwrite credentials not configured');
+  }
+
+  const client = new sdk.Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
+
+  const databases = new sdk.Databases(client);
+
+  try {
+    const profile = await databases.getDocument(databaseId, collectionId, username);
+    
+    // If badgeName is null, unequip badge
+    if (badgeName === null) {
+      await databases.updateDocument(databaseId, collectionId, username, {
+        selectedBadge: null,
+      });
+      return { success: true, message: 'Badge unequipped' };
+    }
+    
+    // Get owned badges
+    const ownedBadges: string[] = profile.ownedBadges 
+      ? (typeof profile.ownedBadges === 'string' ? JSON.parse(profile.ownedBadges) : profile.ownedBadges)
+      : [];
+    
+    // Check if player owns the badge
+    if (!ownedBadges.includes(badgeName)) {
+      return { success: false, message: 'You do not own this badge!' };
+    }
+    
+    // Update selected badge
+    await databases.updateDocument(databaseId, collectionId, username, {
+      selectedBadge: badgeName,
+    });
+    
+    return { success: true, message: `Badge "${badgeName}" equipped!` };
+  } catch (err: any) {
+    console.error('Select badge error:', err);
+    return { success: false, message: err.message || 'Failed to select badge' };
+  }
+}
+
+/**
+ * Add a badge to player's owned badges (used when leveling up)
+ */
+export async function addOwnedBadge(
+  username: string,
+  badgeName: string
+): Promise<boolean> {
+  if (!projectId || !apiKey) {
+    throw new Error('Appwrite credentials not configured');
+  }
+
+  const client = new sdk.Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
+
+  const databases = new sdk.Databases(client);
+
+  try {
+    const profile = await databases.getDocument(databaseId, collectionId, username);
+    
+    const ownedBadges: string[] = profile.ownedBadges 
+      ? (typeof profile.ownedBadges === 'string' ? JSON.parse(profile.ownedBadges) : profile.ownedBadges)
+      : [];
+    
+    // Don't add if already owned
+    if (ownedBadges.includes(badgeName)) {
+      return true;
+    }
+    
+    ownedBadges.push(badgeName);
+    
+    await databases.updateDocument(databaseId, collectionId, username, {
+      ownedBadges: JSON.stringify(ownedBadges),
+    });
+    
+    return true;
+  } catch (err: any) {
+    console.error('Add owned badge error:', err);
+    return false;
   }
 }

@@ -5,10 +5,31 @@ export function MatchResultPage({ c, result, username, bets = [] }: { c: Context
   const players = result.players || [];
   const scores = result.scores || [];
   const formatPrediction = (predictions: any) => {
-    const parts = [];
+    const parts: string[] = [];
     if (predictions?.match1) parts.push(`M1:${predictions.match1.toUpperCase()}`);
     if (predictions?.match2) parts.push(`M2:${predictions.match2.toUpperCase()}`);
     if (predictions?.match3) parts.push(`M3:${predictions.match3.toUpperCase()}`);
+    if (predictions?.vyrazackaOutcome) {
+      const vy = predictions.vyrazackaOutcome === 'zero'
+        ? 'VYR:0'
+        : predictions.vyrazackaOutcome === 'gte1'
+          ? 'VYR:1+'
+          : predictions.vyrazackaOutcome === 'gte2'
+            ? 'VYR:2+'
+            : predictions.vyrazackaOutcome === 'gte3'
+              ? 'VYR:3+'
+              : '';
+      if (vy) parts.push(vy);
+    }
+    if (predictions?.vyrazacka?.playerCounts && typeof predictions.vyrazacka.playerCounts === 'object') {
+      const legacy = Object.entries(predictions.vyrazacka.playerCounts)
+        .map(([playerId, count]) => `VYR:${playerId}>=${count}`)
+        .join(' + ');
+      if (legacy) parts.push(legacy);
+    }
+    if (Number.isFinite(Number(predictions?.totalGoals))) {
+      parts.push(`GOALS:${Number(predictions.totalGoals)}`);
+    }
     return parts.join(" ");
   };
 
@@ -129,7 +150,8 @@ export function MatchResultPage({ c, result, username, bets = [] }: { c: Context
                       </div>
                       <div className="text-xs text-neutral-300">Bet: {formatCoins(bet.betAmount || 0)} coins • Matches: {bet.numMatches}</div>
                       <div className="text-xs text-neutral-400">Prediction: {formatPrediction(bet.predictions) || '—'}</div>
-                      <div className="text-xs text-neutral-400">Correct: {bet.correctPredictions || 0}</div>
+                      <div className="text-xs text-neutral-400">Odds: {bet.odds?.total ? `x${bet.odds.total}` : 'n/a'} • Legs: {bet.totalLegs ?? bet.numMatches ?? 0}</div>
+                      <div className="text-xs text-neutral-400">Correct: {bet.correctPredictions || 0}/{bet.totalLegs ?? bet.numMatches ?? 0}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-neutral-400">Winnings</div>

@@ -1,8 +1,7 @@
 import { Context } from "hono";
 import { getCookie } from "hono/cookie";
 import { getAllPlayerProfiles, GlobalStats, PlayerProfile } from "../../logic/profile";
-import { useEffect, useState } from "hono/jsx";
-import { levelsXp, badges, rankTiers, PlayerData, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from '../../static/data'; // Import static data
+import { badges, rankTiers, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 import GlobalStatsPanel from "./GlobalStats";
 import PlayerProfilePanel from "./PlayerProfile";
 import { DailyAchievementsPanel } from "./DailyAchievements";
@@ -62,7 +61,7 @@ export async function LobbyPage({
   currentSeasonIndex = 0,
   availableSeasonIndexes = [0],
   walletCoins,
-} : {
+}: {
   c: Context;
   playerProfile: PlayerProfile | null;
   globalStats: GlobalStats | null;
@@ -92,8 +91,8 @@ export async function LobbyPage({
   const currentSeasonWindow = getSeasonWindow(currentSeasonIndex);
   const seasonStartDate = currentSeasonWindow.start;
   const seasonEndDate = currentSeasonWindow.end;
-  const winrate = playerProfile.wins + playerProfile.loses > 0 
-    ? Math.round((playerProfile.wins / (playerProfile.wins + playerProfile.loses)) * 100) 
+  const winrate = playerProfile.wins + playerProfile.loses > 0
+    ? Math.round((playerProfile.wins / (playerProfile.wins + playerProfile.loses)) * 100)
     : 0;
 
   return (
@@ -104,12 +103,11 @@ export async function LobbyPage({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        
-        {/* Left Sidebar - Player Profile (moved to component) */}
+        {/* Left Sidebar - Player Profile */}
         <PlayerProfilePanel playerProfile={playerProfile} players={players} walletCoins={walletCoins} />
 
-        {/* Center - 3x3 Grid with PLAY in Middle */}
-        <div className="lg:col-span-2 flex flex-col justify-center items-center gap-6 pt-20">
+        {/* Center - 3x4 Grid with PLAY in Middle */}
+        <div className="lg:col-span-2 flex flex-col justify-center items-center gap-6 pt-8">
           <div className="grid grid-cols-3 gap-8 w-fit">
             {/* Row 1 */}
             <a href="/v1/leaderboard" className="group relative">
@@ -141,7 +139,6 @@ export async function LobbyPage({
               <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Changes & Fixes</span>
             </a>
 
-            {/* PLAY Button in Center */}
             <a href="/v1/match/lobby" className="group relative">
               <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-green-700 hover:from-green-400 hover:to-green-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-green-500/50">
                 ⚔️
@@ -171,37 +168,39 @@ export async function LobbyPage({
               <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Tournaments</span>
             </a>
 
+            <a href="/v1/shop" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-amber-500/50">
+                🛒
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Shop</span>
+            </a>
+
+            {/* Row 4 */}
             <a href="/v1/hall-of-fame" className="group relative">
               <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-amber-500/50">
                 🏛️
               </div>
               <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Hall of Fame</span>
             </a>
+
+            <a href="/v1/faq" className="group relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-400 hover:to-pink-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-pink-500/50">
+                ?
+              </div>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">FAQ</span>
+            </a>
+
+            <form action="/v1/auth/logout" method="post" className="group relative">
+              <button
+                type="submit"
+                className="w-24 h-24 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 rounded-lg flex items-center justify-center text-4xl transition-all transform hover:scale-110 shadow-lg hover:shadow-red-500/50 text-white"
+              >
+                🚪
+              </button>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Logout</span>
+            </form>
           </div>
         </div>
-
-      </div>
-
-      {/* Top-right buttons - FAG and Logout */}
-      <div className="fixed top-4 right-4 z-50 flex gap-3 items-center">
-        {/* FAG Button */}
-        <a href="/v1/faq" className="group relative">
-          <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-400 hover:to-pink-600 rounded-lg flex items-center justify-center text-3xl transition-all transform hover:scale-110 shadow-lg hover:shadow-pink-500/50">
-            ?
-          </div>
-          <span className="absolute top-14 -left-2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">FAQ</span>
-        </a>
-
-        {/* Logout Button */}
-        <form action="/v1/auth/logout" method="post" className="group relative">
-          <button
-            type="submit"
-            className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 rounded-lg flex items-center justify-center text-xl transition-all transform hover:scale-110 shadow-lg hover:shadow-red-500/50 text-white cursor-pointer"
-          >
-            🚪
-          </button>
-          <span className="absolute top-14 -left-3 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Logout</span>
-        </form>
       </div>
 
       {/* Right Sidebar - Fixed Position */}
@@ -228,133 +227,158 @@ export async function LobbyPage({
           </div>
         </div>
 
-        {/* Levels and Ranks Hover Buttons */}
+        {/* Levels and Ranks Buttons */}
         <div className="w-full flex gap-2">
-          {/* Levels Hover Button */}
-          <div className="relative group flex-1">
-            <button
-              type="button"
-              className="w-full px-3 py-1 text-xs text-white/50 rounded-md bg-neutral-800/60 border border-purple-600/40 hover:border-purple-500/60 hover:bg-neutral-700 transition-colors"
-            >
-              Levels
-            </button>
-            {/* POPUP: Levels */}
-            <div className="absolute -left-2 top-full mt-2 w-90 bg-neutral-900/95 border border-purple-600/50 rounded-lg p-4 z-50 shadow-lg text-sm opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150">
-              <h4 className="font-bold mb-2 text-white">Levels & Badges</h4>
-              <div className="space-y-2">
-                {badges.map((b, idx) => (
-                  <div
-                    key={b.name}
-                    className="flex items-center justify-between bg-neutral-800/40 rounded px-2 py-1"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-26 text-left`}
-                      >
-                        {b.name}
-                      </span>
-                      <div className="text-neutral-200 text-sm">
-                        Level {idx + 1} ({b.minLevel} - {b.maxLevel})
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Ranks Hover Button */}
-          <div className="relative group flex-1">
-            <button
-              type="button"
-              className="w-full px-3 py-1 text-xs text-white/50 rounded-md bg-neutral-800/60 border border-purple-600/40 hover:border-purple-500/60 hover:bg-neutral-700 transition-colors"
-            >
-              Ranks
-            </button>
-            {/* POPUP: Ranks Grid */}
-            <div className="absolute -left-2 top-full mt-2 bg-neutral-900/95 border border-purple-600/50 rounded-lg p-4 z-50 shadow-lg text-sm opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 overflow-y-auto"
-                 style={{ width: '1400px', maxHeight: '85vh' }}>
-              <div className="flex flex-col gap-4">
-                {[
-                  ["zElo", "Bronze", "Silver", "Gold"],
-                  ["Platinum", "Diamond", "Master", "Grandmaster"]
-                ].map((rankRow, rowIdx) => (
-                  <div key={`row-${rowIdx}`} className="flex gap-4">
-                    {rankRow.map((rankName) => {
-                      const tiers = rankTiers.filter(t => t.name.startsWith(rankName));
-                      
-                      if (tiers.length === 0) return null;
-                      
-                      const firstTier = tiers[0];
-                      const rankColors: Record<string, string> = {
-                        'zElo': 'bg-gray-700/30',
-                        'Bronze': 'bg-amber-900/40',
-                        'Silver': 'bg-slate-600/40',
-                        'Gold': 'bg-yellow-700/40',
-                        'Platinum': 'bg-cyan-600/40',
-                        'Diamond': 'bg-blue-600/40',
-                        'Master': 'bg-purple-600/40',
-                        'Grandmaster': 'bg-red-600/40'
-                      };
-
-                      return (
-                        <div key={rankName} 
-                          className={`flex-1 rounded-lg p-3 border-2 ${rankColors[rankName] || 'bg-neutral-800/40'}`}
-                          style={{ 
-                            borderColor: firstTier.textColor.split(' ').pop()
-                          }}>
-                          <div className={`text-lg font-bold text-center mb-3 ${firstTier.textColor}`}>
-                            {rankName === 'zElo' ? '🥬 zElo' : rankName}
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-3">
-                            {tiers.map((tier) => {
-                              const playersInTier = players.filter((p) => getRankInfoFromElo(p.elo).name === tier.name);
-                              const sortedPlayers = playersInTier.sort((a, b) => b.elo - a.elo);
-
-                              return (
-                                <div key={tier.name} className="flex flex-col gap-2 bg-neutral-800/50 rounded p-2">
-                                  <div className="flex items-center justify-between gap-1">
-                                    <div className="flex items-center gap-1">
-                                      <div className={`w-6 h-2 rounded-full bg-gradient-to-r ${tier.color}`} />
-                                      <div className={`${tier.textColor} text-xs font-bold`}>
-                                        {tier.name.split(" ")[1]}
-                                      </div>
-                                    </div>
-                                    <div className="text-neutral-400 text-xs">
-                                      ({tier.min}-{tier.max})
-                                    </div>
-                                  </div>
-
-                                  {sortedPlayers.length > 0 ? (
-                                    <ul className="text-neutral-300 text-xs list-disc pl-3 max-h-32 overflow-y-auto">
-                                      {sortedPlayers.map((p) => (
-                                        <li key={p.username} className="truncate">
-                                          {p.username} ({p.elo})
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <div className="text-neutral-600 text-xs italic"></div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            onclick="document.getElementById('levels-modal')?.showModal()"
+            className="flex-1 px-3 py-1 text-xs text-white/70 rounded-md bg-neutral-800/60 border border-purple-600/40 hover:border-purple-500/60 hover:bg-neutral-700 transition-colors"
+          >
+            Levels
+          </button>
+          <button
+            type="button"
+            onclick="document.getElementById('ranks-modal')?.showModal()"
+            className="flex-1 px-3 py-1 text-xs text-white/70 rounded-md bg-neutral-800/60 border border-purple-600/40 hover:border-purple-500/60 hover:bg-neutral-700 transition-colors"
+          >
+            Ranks
+          </button>
         </div>
 
         <SeasonTimerPanel />
         <DailyAchievementsPanel achievements={dailyAchievements} />
         <GlobalStatsPanel globalStats={globalStats} />
       </div>
+
+      {/* Levels Modal */}
+      <dialog
+        id="levels-modal"
+        className="backdrop:bg-black/60 rounded-lg bg-neutral-900/95 border border-purple-600/50 p-0 w-full max-w-xl"
+      >
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-lg font-bold text-white font-[Orbitron]">Levels & Badges</h4>
+            <button
+              type="button"
+              onclick="document.getElementById('levels-modal')?.close()"
+              className="text-neutral-400 hover:text-white"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-2">
+            {badges.map((b, idx) => (
+              <div
+                key={b.name}
+                className="flex items-center justify-between bg-neutral-800/40 rounded px-3 py-2"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-28 text-left`}>
+                    {b.name}
+                  </span>
+                  <div className="text-neutral-200 text-sm">
+                    Level {idx + 1} ({b.minLevel} - {b.maxLevel})
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </dialog>
+
+      {/* Ranks Modal */}
+      <dialog
+        id="ranks-modal"
+        className="backdrop:bg-black/60 rounded-lg bg-neutral-900/95 border border-purple-600/50 p-0 w-full max-w-6xl"
+      >
+        <div className="p-5 max-h-[85vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-lg font-bold text-white font-[Orbitron]">Ranks</h4>
+            <button
+              type="button"
+              onclick="document.getElementById('ranks-modal')?.close()"
+              className="text-neutral-400 hover:text-white"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex flex-col gap-4">
+            {[
+              ["zElo", "Bronze", "Silver", "Gold"],
+              ["Platinum", "Diamond", "Master", "Grandmaster"],
+            ].map((rankRow, rowIdx) => (
+              <div key={`row-${rowIdx}`} className="flex gap-4">
+                {rankRow.map((rankName) => {
+                  const tiers = rankTiers.filter((t) => t.name.startsWith(rankName));
+
+                  if (tiers.length === 0) return null;
+
+                  const firstTier = tiers[0];
+                  const rankColors: Record<string, string> = {
+                    zElo: "bg-gray-700/30",
+                    Bronze: "bg-amber-900/40",
+                    Silver: "bg-slate-600/40",
+                    Gold: "bg-yellow-700/40",
+                    Platinum: "bg-cyan-600/40",
+                    Diamond: "bg-blue-600/40",
+                    Master: "bg-purple-600/40",
+                    Grandmaster: "bg-red-600/40",
+                  };
+
+                  return (
+                    <div
+                      key={rankName}
+                      className={`flex-1 rounded-lg p-3 border-2 ${rankColors[rankName] || "bg-neutral-800/40"}`}
+                      style={{ borderColor: firstTier.textColor.split(" ").pop() }}
+                    >
+                      <div className={`text-lg font-bold text-center mb-3 ${firstTier.textColor}`}>
+                        {rankName === "zElo" ? "🥬 zElo" : rankName}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {tiers.map((tier) => {
+                          const playersInTier = players.filter((p) => getRankInfoFromElo(p.elo).name === tier.name);
+                          const sortedPlayers = playersInTier.sort((a, b) => b.elo - a.elo);
+
+                          return (
+                            <div key={tier.name} className="flex flex-col gap-2 bg-neutral-800/50 rounded p-2">
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1">
+                                  <div className={`w-6 h-2 rounded-full bg-gradient-to-r ${tier.color}`} />
+                                  <div className={`${tier.textColor} text-xs font-bold`}>
+                                    {tier.name.split(" ")[1]}
+                                  </div>
+                                </div>
+                                <div className="text-neutral-400 text-xs">
+                                  ({tier.min}-{tier.max})
+                                </div>
+                              </div>
+
+                              {sortedPlayers.length > 0 ? (
+                                <ul className="text-neutral-300 text-xs list-disc pl-3 max-h-32 overflow-y-auto">
+                                  {sortedPlayers.map((p) => (
+                                    <li key={p.username} className="truncate">
+                                      {p.username} ({p.elo})
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div className="text-neutral-600 text-xs italic"></div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </dialog>
 
       {/* Season Timer Script */}
       <script

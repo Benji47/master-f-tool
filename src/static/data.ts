@@ -46,6 +46,21 @@ export const badges: Badge[] = [
   }
 ];
 
+// Shop-exclusive badges (not earned by leveling)
+export const shopBadges: Badge[] = [
+  { name: "Millionaire 💰", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-yellow-400 to-amber-500", text: "text-black" },
+];
+
+// Get all available badges (level-based + shop)
+export function getAllBadges(): Badge[] {
+  return [...badges, ...shopBadges];
+}
+
+// Get badge by name
+export function getBadgeByName(name: string): Badge | undefined {
+  return getAllBadges().find(b => b.name === name);
+}
+
 export const rankTiers = [
   { name: "zElo", min: -1000, max: -1, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },
   { name: "Bronze I", min: 0, max: 49, color: "from-amber-900 to-amber-700", textColor: "text-amber-800" },

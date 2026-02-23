@@ -364,6 +364,90 @@
         ]
       },
       {
+        "name": "shop_orders",
+        "collectionId": "shop_orders",
+        "description": "Shop purchase orders - tracks all player purchases",
+        "attributes": [
+          {
+            "key": "userId",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Player who made the purchase"
+          },
+          {
+            "key": "username",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "itemId",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Item identifier (e.g., 'lunch', 'tshirt', 'badge_millionaire')"
+          },
+          {
+            "key": "itemName",
+            "type": "string",
+            "size": 256,
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          },
+          {
+            "key": "price",
+            "type": "integer",
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false,
+            "note": "Price in coins at time of purchase"
+          },
+          {
+            "key": "status",
+            "type": "string",
+            "size": 50,
+            "required": true,
+            "default": "pending",
+            "encrypted": false,
+            "array": false,
+            "note": "Values: pending, fulfilled, cancelled"
+          },
+          {
+            "key": "purchasedAt",
+            "type": "datetime",
+            "required": true,
+            "default": null,
+            "encrypted": false,
+            "array": false
+          }
+        ],
+        "indexes": [
+          {
+            "key": "userId",
+            "type": "key",
+            "name": "userId_index"
+          },
+          {
+            "key": "purchasedAt",
+            "type": "key",
+            "name": "purchasedAt_index"
+          }
+        ]
+      },
+      {
         "name": "site_content",
         "collectionId": "site_content",
         "description": "Site content configuration (editable by admin) - supports FAQ, announcements, rules, and other text sections",
@@ -402,6 +486,32 @@
             "key": "key",
             "type": "unique",
             "name": "key_unique"
+          }
+        ]
+      }
+    ],
+    "notes": [
+      {
+        "collection": "players-profile",
+        "update": "Add two new attributes for badge system:",
+        "attributes": [
+          {
+            "key": "ownedBadges",
+            "type": "string",
+            "size": 5000,
+            "required": false,
+            "default": "[]",
+            "array": false,
+            "note": "JSON array of badge names player owns (from leveling or shop)"
+          },
+          {
+            "key": "selectedBadge",
+            "type": "string",
+            "size": 256,
+            "required": false,
+            "default": null,
+            "array": false,
+            "note": "Currently equipped badge name (must be in ownedBadges)"
           }
         ]
       }

@@ -10,7 +10,9 @@ import { AdminLoginPage } from "./pages/auth/adminLogin";
 import { LobbyPage } from "./pages/menu/lobby";
 import { LeaderboardPage } from "./pages/menu/leaderboard";
 import { GraphsPage } from "./pages/menu/graphs";
-import { getAllPlayerProfiles, getGlobalStats, getPlayerProfile, updateGlobalStats, updatePlayerStats } from "./logic/profile";
+import { ShopPage } from "./pages/menu/shop";
+import { getAllPlayerProfiles, getGlobalStats, getPlayerProfile, updateGlobalStats, updatePlayerStats, selectBadge } from "./logic/profile";
+import { purchaseItem, SHOP_ITEMS } from "./logic/shop";
 import { getAllPlayersEloHistory } from "./logic/graphs";
 import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch, parseDoc, parseMatchHistoryDoc, MatchHistoryDoc, HistoryPlayers, createMatch, joinMatch, listAvailableMatches } from "./logic/match";
 import { MatchLobbyPage } from "./pages/match/matchLobby";
@@ -53,7 +55,7 @@ import { HallOfFamePage } from "./pages/menu/hallOfFame";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { checkAndUnlockMatchAchievements, unlockAchievement, getPlayerAchievements } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
-import { placeBet, getBetsForMatch, resolveBets, MULTIPLIERS, getBetsForPlayer, getRoundOdds, getVyrazackaOdds } from "./logic/betting";
+import { placeBet, getAllBets, getBetsForMatch, resolveBets, getBetsForPlayer, getRoundOdds, getTotalGoalsOdds, getVyrazackaOutcomeOdds, VyrazackaOutcome } from "./logic/betting";
 import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
 import { 
   createTournament, 
@@ -1069,6 +1071,98 @@ app.post("/v1/coins/send", async (c) => {
   }
 });
 
+// Shop page (GET)
+app.get("/v1/shop", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.redirect("/v1/auth/login");
+
+    const profile = await getPlayerProfile(username);
+    if (!profile) return c.redirect("/v1/auth/login");
+
+    return c.html(
+      <MainLayout c={c}>
+        <ShopPage c={c} profile={profile} />
+      </MainLayout>
+    );
+  } catch (err: any) {
+    console.error("Shop page error:", err);
+    return c.text("Failed to load shop", 500);
+  }
+});
+
+// Purchase item from shop (POST)
+app.post("/v1/shop/purchase", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.redirect("/v1/auth/login");
+
+    const profile = await getPlayerProfile(username);
+    if (!profile) return c.redirect("/v1/auth/login");
+
+    const form = await c.req.formData();
+    const itemId = String(form.get("itemId") ?? "").trim();
+
+    if (!itemId) {
+      return c.html(
+        <MainLayout c={c}>
+          <ShopPage c={c} profile={profile} message={{ type: "error", text: "No item selected" }} />
+        </MainLayout>
+      );
+    }
+
+    const result = await purchaseItem(profile.userId, profile.username, itemId);
+
+    // Reload profile to get updated coins
+    const updatedProfile = await getPlayerProfile(username);
+    if (!updatedProfile) return c.redirect("/v1/auth/login");
+
+    return c.html(
+      <MainLayout c={c}>
+        <ShopPage
+          c={c}
+          profile={updatedProfile}
+          message={{ type: result.success ? "success" : "error", text: result.message }}
+        />
+      </MainLayout>
+    );
+  } catch (err: any) {
+    console.error("Shop purchase error:", err);
+    const profile = await getPlayerProfile(getCookie(c, "user") ?? "");
+    if (!profile) return c.redirect("/v1/auth/login");
+    
+    return c.html(
+      <MainLayout c={c}>
+        <ShopPage
+          c={c}
+          profile={profile}
+          message={{ type: "error", text: "Failed to complete purchase" }}
+        />
+      </MainLayout>
+    );
+  }
+});
+
+// Select/equip a badge (POST)
+app.post("/v1/profile/select-badge", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.redirect("/v1/auth/login");
+
+    const form = await c.req.formData();
+    const badgeName = String(form.get("badgeName") ?? "").trim();
+
+    // If empty string, unequip badge (set to null)
+    const result = await selectBadge(username, badgeName || null);
+
+    // Always redirect back to lobby
+    return c.redirect("/v1/lobby");
+  } catch (err: any) {
+    console.error("Select badge error:", err);
+    return c.redirect("/v1/lobby");
+  }
+});
+
 // Join match (create or join existing) and redirect to match lobby
 app.post("/v1/match/join", async (c) => {
   try {
@@ -1421,6 +1515,57 @@ function buildPlayerEloMap(match: MatchDoc): Record<string, number> {
   return map;
 }
 
+function buildRecentFormMap(match: MatchDoc, history: MatchHistoryDoc[], lookback: number = 12): Record<string, { winRate: number; samples: number }> {
+  const targetIds = new Set((match.players || []).map((p: MatchPlayer) => p.id));
+  const rows: Record<string, { wins: number; samples: number }> = {};
+  targetIds.forEach((id) => {
+    rows[id] = { wins: 0, samples: 0 };
+  });
+
+  const sortedHistory = [...history].sort((a, b) => {
+    const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return tB - tA;
+  });
+
+  for (const pastMatch of sortedHistory) {
+    const rounds = Array.isArray(pastMatch.scores) ? pastMatch.scores : [];
+    for (const round of rounds) {
+      const a = Array.isArray(round?.a) ? round.a : [];
+      const b = Array.isArray(round?.b) ? round.b : [];
+      const aScore = Number(round?.scoreA || 0);
+      const bScore = Number(round?.scoreB || 0);
+      if (aScore === bScore) continue;
+
+      const winnerSide: 'a' | 'b' = aScore > bScore ? 'a' : 'b';
+      targetIds.forEach((playerId) => {
+        const row = rows[playerId];
+        if (!row || row.samples >= lookback) return;
+        const inA = a.includes(playerId);
+        const inB = b.includes(playerId);
+        if (!inA && !inB) return;
+        const won = winnerSide === 'a' ? inA : inB;
+        row.samples += 1;
+        if (won) row.wins += 1;
+      });
+    }
+
+    const complete = Array.from(targetIds).every((id) => (rows[id]?.samples || 0) >= lookback);
+    if (complete) break;
+  }
+
+  const result: Record<string, { winRate: number; samples: number }> = {};
+  targetIds.forEach((id) => {
+    const row = rows[id] || { wins: 0, samples: 0 };
+    result[id] = {
+      samples: row.samples,
+      winRate: row.samples > 0 ? row.wins / row.samples : 0.5,
+    };
+  });
+
+  return result;
+}
+
 async function buildPlayerStatsMap(match: MatchDoc): Promise<Record<string, { vyrazecky: number; wins: number; loses: number }>> {
   const map: Record<string, { vyrazecky: number; wins: number; loses: number }> = {};
   for (const p of match.players || []) {
@@ -1446,25 +1591,30 @@ async function buildPlayerStatsMap(match: MatchDoc): Promise<Record<string, { vy
   return map;
 }
 
-function buildRoundOdds(match: MatchDoc, playerElosById: Record<string, number>): { a: number; b: number }[] {
-  return (match.scores || []).map((s: any) => getRoundOdds(s.a || [], s.b || [], playerElosById));
+function buildRoundOdds(
+  match: MatchDoc,
+  playerElosById: Record<string, number>,
+  recentFormById?: Record<string, { winRate: number; samples: number }>
+): { a: number; b: number }[] {
+  return (match.scores || []).map((s: any) => getRoundOdds(s.a || [], s.b || [], playerElosById, recentFormById));
 }
 
-function buildVyrazackaOdds(
+function buildVyrazackaOutcomeOdds(
   match: MatchDoc,
-  statsById: Record<string, { vyrazecky: number; wins: number; loses: number }>,
-  minCounts: number[]
-): Record<string, Record<number, number>> {
+  statsById: Record<string, { vyrazecky: number; wins: number; loses: number }>
+): Record<VyrazackaOutcome, number> {
   const rounds = (match.scores || []).length || 3;
-  const oddsByPlayer: Record<string, Record<number, number>> = {};
+  const rows: Record<string, { vyrazecky: number; wins: number; loses: number }> = {};
   (match.players || []).forEach((p: MatchPlayer) => {
-    const stats = statsById[p.id] || { vyrazecky: 0, wins: 0, loses: 0 };
-    oddsByPlayer[p.id] = {};
-    minCounts.forEach((minCount) => {
-      oddsByPlayer[p.id][minCount] = getVyrazackaOdds(stats, minCount, rounds);
-    });
+    rows[p.id] = statsById[p.id] || { vyrazecky: 0, wins: 0, loses: 0 };
   });
-  return oddsByPlayer;
+  return getVyrazackaOutcomeOdds(rows, rounds);
+}
+
+function buildTotalGoalsOdds(match: MatchDoc, roundOdds: { a: number; b: number }[]): Record<number, number> {
+  const rounds = Math.max(1, (match.scores || []).length || 3);
+  const sourceOdds = roundOdds.length ? roundOdds : Array.from({ length: rounds }, () => ({ a: 2, b: 2 }));
+  return getTotalGoalsOdds(sourceOdds);
 }
 
 export async function getMatchFromHistory(matchId: string): Promise<MatchHistoryDoc | null> {
@@ -2108,14 +2258,24 @@ app.post("/v1/bet/place", async (c) => {
 
     const matchId = String(form.get("matchId") ?? "");
     const betAmount = Number(form.get("betAmount") ?? 0);
-    const numMatches = Number(form.get("numMatches") ?? 1);
     const match1 = String(form.get("match1") ?? "");
     const match2 = String(form.get("match2") ?? "");
     const match3 = String(form.get("match3") ?? "");
-    const vyrazackaMin = Number(form.get("vyrazackaMin") ?? 0);
+    const vyrazackaOutcomeRaw = String(form.get("vyrazackaOutcome") ?? "");
+    const totalGoalsRaw = form.get("totalGoals");
 
-    if (!matchId || betAmount < 1 || ![0,1,2,3].includes(numMatches)) {
+    if (!matchId || !Number.isFinite(betAmount) || betAmount < 1) {
       return c.text("Invalid bet parameters", 400);
+    }
+
+    const vyrazackaOutcome = (["zero", "gte1", "gte2", "gte3"].includes(vyrazackaOutcomeRaw)
+      ? vyrazackaOutcomeRaw
+      : "") as VyrazackaOutcome | "";
+    const hasTotalGoals = totalGoalsRaw !== null && String(totalGoalsRaw).trim().length > 0;
+    const totalGoals = hasTotalGoals ? Number(totalGoalsRaw) : null;
+
+    if (hasTotalGoals && (!Number.isInteger(totalGoals) || Number(totalGoals) < 30 || Number(totalGoals) > 57)) {
+      return c.text("Total goals must be between 30 and 57", 400);
     }
 
     const predictions: any = {};
@@ -2123,38 +2283,21 @@ app.post("/v1/bet/place", async (c) => {
     if (match1) { predictions.match1 = match1; predictionCount++; }
     if (match2) { predictions.match2 = match2; predictionCount++; }
     if (match3) { predictions.match3 = match3; predictionCount++; }
-
-    if (predictionCount !== numMatches) {
-      return c.text(`Please select ${numMatches} predictions`, 400);
+    if (vyrazackaOutcome) {
+      predictions.vyrazackaOutcome = vyrazackaOutcome;
+      predictionCount++;
+    }
+    if (Number.isFinite(Number(totalGoals))) {
+      predictions.totalGoals = Number(totalGoals);
+      predictionCount++;
     }
 
-    const vyrazackaPlayerCounts: Record<string, number> = {};
-    for (const [key, value] of Array.from(form.entries())) {
-      if (!key.startsWith("vyrazackaCount_")) continue;
-      const playerId = key.replace("vyrazackaCount_", "");
-      const count = Number(value || 0);
-      if (playerId && count > 0) {
-        vyrazackaPlayerCounts[playerId] = count;
-      }
-    }
-
-    if (Object.keys(vyrazackaPlayerCounts).length === 0 && numMatches === 0) {
-      return c.text("Select matches or a vyrazacka bet", 400);
+    if (predictionCount === 0) {
+      return c.text("Select at least one bet option", 400);
     }
 
     const match = await getMatch(matchId);
     if (!match) return c.text("Match not found", 404);
-
-    if (Object.keys(vyrazackaPlayerCounts).length) {
-      const matchPlayerIds = new Set((match.players || []).map((p: MatchPlayer) => p.id));
-      const allInMatch = Object.keys(vyrazackaPlayerCounts).every((id) => matchPlayerIds.has(id));
-      if (!allInMatch) return c.text("Vyrazacka player not in match", 400);
-      const invalidCount = Object.values(vyrazackaPlayerCounts).some((count) => !Number.isFinite(count) || count < 1);
-      if (invalidCount) {
-        return c.text("Invalid vyrazacka count", 400);
-      }
-      predictions.vyrazacka = { playerCounts: vyrazackaPlayerCounts };
-    }
 
     const profile = await getPlayerProfile(username);
     if (!profile || (profile.coins || 0) < betAmount) {
@@ -2162,39 +2305,46 @@ app.post("/v1/bet/place", async (c) => {
     }
 
     const playerElosById = buildPlayerEloMap(match);
-    const roundOdds = buildRoundOdds(match, playerElosById);
+    const allHistory = await listAllMatchHistoryDocs();
+    const recentFormById = buildRecentFormMap(match, allHistory);
+    const roundOdds = buildRoundOdds(match, playerElosById, recentFormById);
     const statsById = await buildPlayerStatsMap(match);
+    const vyrazackaOutcomeOdds = buildVyrazackaOutcomeOdds(match, statsById);
+    const totalGoalsOdds = buildTotalGoalsOdds(match, roundOdds);
 
     const odds: any = {};
     const oddsValues: number[] = [];
     if (match1) {
-      const oddsValue = roundOdds[0]?.[match1 as keyof typeof roundOdds[0]] ?? MULTIPLIERS[1];
+      const oddsValue = roundOdds[0]?.[match1 as keyof typeof roundOdds[0]] ?? 1.05;
       odds.match1 = oddsValue;
       oddsValues.push(oddsValue);
     }
     if (match2) {
-      const oddsValue = roundOdds[1]?.[match2 as keyof typeof roundOdds[1]] ?? MULTIPLIERS[1];
+      const oddsValue = roundOdds[1]?.[match2 as keyof typeof roundOdds[1]] ?? 1.05;
       odds.match2 = oddsValue;
       oddsValues.push(oddsValue);
     }
     if (match3) {
-      const oddsValue = roundOdds[2]?.[match3 as keyof typeof roundOdds[2]] ?? MULTIPLIERS[1];
+      const oddsValue = roundOdds[2]?.[match3 as keyof typeof roundOdds[2]] ?? 1.05;
       odds.match3 = oddsValue;
       oddsValues.push(oddsValue);
     }
-    if (predictions.vyrazacka) {
-      let vyProduct = 1;
-      Object.entries(predictions.vyrazacka.playerCounts).forEach(([playerId, minCount]) => {
-        const vyStats = statsById[playerId] || { vyrazecky: 0, wins: 0, loses: 0 };
-        const vyOdds = getVyrazackaOdds(vyStats, Number(minCount), roundOdds.length || 3);
-        vyProduct *= vyOdds;
-      });
-      odds.vyrazacka = Number(vyProduct.toFixed(2));
-      oddsValues.push(odds.vyrazacka);
+
+    if (predictions.vyrazackaOutcome) {
+      const value = vyrazackaOutcomeOdds[predictions.vyrazackaOutcome as VyrazackaOutcome] ?? 1.05;
+      odds.vyrazackaOutcome = value;
+      oddsValues.push(value);
     }
 
-    const totalLegs = numMatches + (predictions.vyrazacka ? Object.keys(predictions.vyrazacka.playerCounts).length : 0);
+    if (Number.isFinite(Number(predictions.totalGoals))) {
+      const value = totalGoalsOdds[Number(predictions.totalGoals)] ?? 1.05;
+      odds.totalGoals = value;
+      oddsValues.push(value);
+    }
+
+    const totalLegs = predictionCount;
     odds.total = Number((oddsValues.reduce((sum, value) => sum * value, 1)).toFixed(2));
+
     predictions._odds = odds;
     predictions._totalLegs = totalLegs;
 
@@ -2208,7 +2358,7 @@ app.post("/v1/bet/place", async (c) => {
       matchId,
       predictions,
       betAmount,
-      numMatches,
+      numMatches: [match1, match2, match3].filter(Boolean).length,
     });
 
     return c.redirect("/v1/f-bet");
@@ -2225,19 +2375,157 @@ app.get("/v1/f-bet", async (c) => {
     const profile = username ? await getPlayerProfile(username) : null;
 
     const allMatches = await listAvailableMatches();
+    const allHistory = await listAllMatchHistoryDocs();
     // enrich with bets for each match and only keep 'playing' matches
     const playingMatches: any[] = [];
     for (const m of allMatches) {
       const bets = await getBetsForMatch(m.$id);
       const playerElosById = buildPlayerEloMap(m);
-      const roundOdds = buildRoundOdds(m, playerElosById);
+      const recentFormById = buildRecentFormMap(m, allHistory);
+      const roundOdds = buildRoundOdds(m, playerElosById, recentFormById);
       const statsById = await buildPlayerStatsMap(m);
-      const vyrazackaOdds = buildVyrazackaOdds(m, statsById, [1, 2, 3, 4, 5]);
-      const enriched = { ...m, bets, bettingOdds: roundOdds, vyrazackaOdds };
+      const vyrazackaOutcomeOdds = buildVyrazackaOutcomeOdds(m, statsById);
+      const totalGoalsOdds = buildTotalGoalsOdds(m, roundOdds);
+      const enriched = { ...m, bets, bettingOdds: roundOdds, vyrazackaOutcomeOdds, totalGoalsOdds };
       if (m.state === 'playing') playingMatches.push(enriched);
     }
 
     const playerBets = profile ? await getBetsForPlayer(profile.$id) : [];
+    const allBetsHistory = await getAllBets(200);
+
+    const historyByMatchId = new Map<string, MatchHistoryDoc>();
+    allHistory.forEach((h) => {
+      const key = h.matchId || h.$id;
+      if (key) historyByMatchId.set(key, h);
+    });
+
+    const evaluateSubBets = (bet: any): Array<{ key: string; label: string; result: "correct" | "wrong" | "pending" }> => {
+      const predictions = bet?.predictions || {};
+      const history = historyByMatchId.get(bet?.matchId);
+      if (!history) {
+        const pendingRows: Array<{ key: string; label: string; result: "pending" }> = [];
+        if (predictions.match1) pendingRows.push({ key: "match1", label: "Match 1", result: "pending" });
+        if (predictions.match2) pendingRows.push({ key: "match2", label: "Match 2", result: "pending" });
+        if (predictions.match3) pendingRows.push({ key: "match3", label: "Match 3", result: "pending" });
+        if (predictions.vyrazackaOutcome) pendingRows.push({ key: "vyrazackaOutcome", label: "Vyrazecka", result: "pending" });
+        if (Number.isFinite(Number(predictions.totalGoals))) pendingRows.push({ key: "totalGoals", label: "Total Goals", result: "pending" });
+        if (predictions?.vyrazacka?.playerCounts && typeof predictions.vyrazacka.playerCounts === 'object') {
+          Object.keys(predictions.vyrazacka.playerCounts).forEach((playerId) => {
+            pendingRows.push({ key: `legacy-${playerId}`, label: `Legacy Vyrazecka ${playerId}`, result: "pending" });
+          });
+        }
+        return pendingRows;
+      }
+
+      const scores = Array.isArray(history.scores) ? history.scores : [];
+      const winners: ('a'|'b'|'tie')[] = scores.map((s: any) => {
+        const a = Number(s?.scoreA || 0);
+        const b = Number(s?.scoreB || 0);
+        if (a > b) return 'a';
+        if (b > a) return 'b';
+        return 'tie';
+      });
+
+      const totalGoals = scores.reduce((sum: number, s: any) => sum + Number(s?.scoreA || 0) + Number(s?.scoreB || 0), 0);
+      const totalVyrazacky = scores.reduce((sum: number, s: any) => {
+        if (!s?.vyrazacka || typeof s.vyrazacka !== 'object') return sum;
+        return sum + Object.values(s.vyrazacka).reduce((acc: number, v: any) => acc + Number(v || 0), 0);
+      }, 0);
+      const vyrazackyByPlayer: Record<string, number> = {};
+      scores.forEach((s: any) => {
+        if (!s?.vyrazacka || typeof s.vyrazacka !== 'object') return;
+        Object.entries(s.vyrazacka).forEach(([playerId, count]: [string, any]) => {
+          vyrazackyByPlayer[playerId] = (vyrazackyByPlayer[playerId] || 0) + Number(count || 0);
+        });
+      });
+
+      const rows: Array<{ key: string; label: string; result: "correct" | "wrong" | "pending" }> = [];
+
+      if (predictions.match1) {
+        rows.push({ key: "match1", label: "Match 1", result: winners[0] === predictions.match1 ? "correct" : "wrong" });
+      }
+      if (predictions.match2) {
+        rows.push({ key: "match2", label: "Match 2", result: winners[1] === predictions.match2 ? "correct" : "wrong" });
+      }
+      if (predictions.match3) {
+        rows.push({ key: "match3", label: "Match 3", result: winners[2] === predictions.match3 ? "correct" : "wrong" });
+      }
+      if (predictions.vyrazackaOutcome) {
+        const outcome = predictions.vyrazackaOutcome;
+        const ok =
+          (outcome === 'zero' && totalVyrazacky === 0) ||
+          (outcome === 'gte1' && totalVyrazacky >= 1) ||
+          (outcome === 'gte2' && totalVyrazacky >= 2) ||
+          (outcome === 'gte3' && totalVyrazacky >= 3);
+        rows.push({ key: "vyrazackaOutcome", label: "Vyrazecka", result: ok ? "correct" : "wrong" });
+      }
+      if (Number.isFinite(Number(predictions.totalGoals))) {
+        rows.push({ key: "totalGoals", label: "Total Goals", result: Number(predictions.totalGoals) === totalGoals ? "correct" : "wrong" });
+      }
+      if (predictions?.vyrazacka?.playerCounts && typeof predictions.vyrazacka.playerCounts === 'object') {
+        Object.entries(predictions.vyrazacka.playerCounts).forEach(([playerId, minCount]: [string, any]) => {
+          const ok = (vyrazackyByPlayer[playerId] || 0) >= Number(minCount || 0);
+          rows.push({ key: `legacy-${playerId}`, label: `Legacy Vyrazecka ${playerId}`, result: ok ? "correct" : "wrong" });
+        });
+      }
+
+      return rows;
+    };
+
+    const playerBetsEvaluated = playerBets.map((bet: any) => ({
+      ...bet,
+      subBetResults: evaluateSubBets(bet),
+    }));
+
+    const allBetsHistoryEvaluated = allBetsHistory.map((bet: any) => ({
+      ...bet,
+      subBetResults: evaluateSubBets(bet),
+    }));
+
+    const matchTeamInfoByMatchId: Record<string, { match1?: { a: string[]; b: string[] }; match2?: { a: string[]; b: string[] }; match3?: { a: string[]; b: string[] } }> = {};
+
+    for (const m of allMatches) {
+      const nameById = new Map<string, string>();
+      (m.players || []).forEach((p: MatchPlayer) => {
+        nameById.set(p.id, p.username || p.id);
+      });
+
+      const rounds = (m.scores || []).slice(0, 3);
+      const rows: any = {};
+      rounds.forEach((round: any, idx: number) => {
+        const key = `match${idx + 1}`;
+        rows[key] = {
+          a: (Array.isArray(round?.a) ? round.a : []).map((id: string) => nameById.get(id) || id),
+          b: (Array.isArray(round?.b) ? round.b : []).map((id: string) => nameById.get(id) || id),
+        };
+      });
+      if (Object.keys(rows).length > 0) {
+        matchTeamInfoByMatchId[m.$id] = rows;
+      }
+    }
+
+    for (const h of allHistory) {
+      const key = h.matchId || h.$id;
+      if (!key || matchTeamInfoByMatchId[key]) continue;
+
+      const nameById = new Map<string, string>();
+      (h.players || []).forEach((p: any) => {
+        nameById.set(p.id, p.username || p.id);
+      });
+
+      const rounds = (h.scores || []).slice(0, 3);
+      const rows: any = {};
+      rounds.forEach((round: any, idx: number) => {
+        const rowKey = `match${idx + 1}`;
+        rows[rowKey] = {
+          a: (Array.isArray(round?.a) ? round.a : []).map((id: string) => nameById.get(id) || id),
+          b: (Array.isArray(round?.b) ? round.b : []).map((id: string) => nameById.get(id) || id),
+        };
+      });
+      if (Object.keys(rows).length > 0) {
+        matchTeamInfoByMatchId[key] = rows;
+      }
+    }
 
     return c.html(
       <MainLayout c={c}>
@@ -2246,7 +2534,9 @@ app.get("/v1/f-bet", async (c) => {
           currentUser={username}
           currentUserProfile={profile}
           availableMatches={playingMatches}
-          playerBets={playerBets}
+          playerBets={playerBetsEvaluated}
+          allBetsHistory={allBetsHistoryEvaluated}
+          matchTeamInfoByMatchId={matchTeamInfoByMatchId}
         />
       </MainLayout>
     );
@@ -2254,7 +2544,7 @@ app.get("/v1/f-bet", async (c) => {
     console.error("f-bet page error:", err);
     return c.html(
       <MainLayout c={c}>
-        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} />
+        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} allBetsHistory={[]} matchTeamInfoByMatchId={{}} />
       </MainLayout>
     );
   }
