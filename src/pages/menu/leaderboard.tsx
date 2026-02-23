@@ -122,6 +122,26 @@ export function LeaderboardPage({
     );
   }
 
+  function buildRankLabels<T>(items: T[], getValue: (item: T) => number): string[] {
+    const labels: string[] = new Array(items.length).fill("");
+    let i = 0;
+    while (i < items.length) {
+      const value = getValue(items[i]);
+      let j = i;
+      while (j + 1 < items.length && getValue(items[j + 1]) === value) {
+        j += 1;
+      }
+      const start = i + 1;
+      const end = j + 1;
+      const label = start === end ? `#${start}` : `#${start}-${end}`;
+      for (let k = i; k <= j; k += 1) {
+        labels[k] = label;
+      }
+      i = j + 1;
+    }
+    return labels;
+  }
+
   // Sort functions for different leaderboards
   const sortedByElo = [...players].sort((a, b) => b.elo - a.elo);
   const sortedByUltimateWins = [...players].sort((a, b) => b.ultimate_wins - a.ultimate_wins);
@@ -133,6 +153,18 @@ export function LeaderboardPage({
   const sortedTenZeroWins = [...players].sort((a, b) => b.ten_zero_wins - a.ten_zero_wins);
   const sortedCoins = [...players].sort((a, b) => b.coins - a.coins);
   const duoPlayers = players.map((p) => ({ id: p.$id, username: p.username }));
+
+  const rankLabelsElo = buildRankLabels(sortedByElo, (p) => p.elo);
+  const rankLabelsUltimateWins = buildRankLabels(sortedByUltimateWins, (p) => p.ultimate_wins);
+  const rankLabelsUltimateLoses = buildRankLabels(sortedByUltimateLoses, (p) => p.ultimate_loses);
+  const rankLabelsVyrazacka = buildRankLabels(sortedByVyrazacka, (p) => p.vyrazecky);
+  const rankLabelsTotalGames = buildRankLabels(sortedByTotalGames, (p) => p.wins + p.loses);
+  const rankLabelsLevels = buildRankLabels(sortedLevels, (p) => p.xp);
+  const rankLabelsTenZeroLoses = buildRankLabels(sortedTenZeroLoses, (p) => p.ten_zero_loses);
+  const rankLabelsTenZeroWins = buildRankLabels(sortedTenZeroWins, (p) => p.ten_zero_wins);
+  const rankLabelsCoins = buildRankLabels(sortedCoins, (p) => p.coins);
+  const rankLabelsGoldenScored = buildRankLabels(goldenTeamsScored, (t) => t.count);
+  const rankLabelsGoldenReceived = buildRankLabels(goldenTeamsReceived, (t) => t.count);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
@@ -215,7 +247,7 @@ export function LeaderboardPage({
                     ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsElo[idx]}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}> <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink></div>
                   <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo} {'->'} {eloRank}</div>
                   <div className="text-blue-400">LVL {computeLevel(player.xp).level} ({player.xp}xp)</div>
@@ -248,7 +280,7 @@ export function LeaderboardPage({
                     ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsUltimateWins[idx]}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -280,7 +312,7 @@ export function LeaderboardPage({
                     ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsUltimateLoses[idx]}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -316,7 +348,7 @@ export function LeaderboardPage({
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsVyrazacka[idx]}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -347,7 +379,7 @@ export function LeaderboardPage({
                     ${idx % 2 === 0 ? 'bg-neutral-900/40' : 'bg-neutral-800/40'}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsGoldenScored[idx]}</div>
                   <div className="col-span-2 font-semibold">{team.teamNames.join(' / ')}</div>
                   <div className="text-yellow-400 font-bold">{team.count}</div>
                   <div className="col-span-2 text-neutral-300">{formatScorers(team.scorers)}</div>
@@ -376,7 +408,7 @@ export function LeaderboardPage({
                     ${idx % 2 === 0 ? 'bg-neutral-900/40' : 'bg-neutral-800/40'}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsGoldenReceived[idx]}</div>
                   <div className="col-span-2 font-semibold">{team.teamNames.join(' / ')}</div>
                   <div className="text-red-400 font-bold">{team.count}</div>
                   <div className="col-span-2 text-neutral-300">{formatScorers(team.scorers)}</div>
@@ -406,7 +438,7 @@ export function LeaderboardPage({
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsTotalGames[idx]}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -439,7 +471,7 @@ export function LeaderboardPage({
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsLevels[idx]}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -471,7 +503,7 @@ export function LeaderboardPage({
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsTenZeroLoses[idx]}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -501,7 +533,7 @@ export function LeaderboardPage({
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsTenZeroWins[idx]}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -531,7 +563,7 @@ export function LeaderboardPage({
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">#{idx + 1}</div>
+                  <div className="font-bold text-lg">{rankLabelsCoins[idx]}</div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -775,6 +807,29 @@ export function LeaderboardPage({
     return b.wins - a.wins;
   });
 
+  const buildRankLabels = (items, getValue) => {
+    const labels = new Array(items.length).fill('');
+    let i = 0;
+    while (i < items.length) {
+      const value = getValue(items[i]);
+      let j = i;
+      while (j + 1 < items.length && getValue(items[j + 1]) === value) {
+        j += 1;
+      }
+      const start = i + 1;
+      const end = j + 1;
+      const label = start === end ? '#' + start : '#' + start + '-' + end;
+      for (let k = i; k <= j; k += 1) {
+        labels[k] = label;
+      }
+      i = j + 1;
+    }
+    return labels;
+  };
+
+  const duosRankLabels = buildRankLabels(duoRows, (row) => row.winRatePercent);
+  const duosMatchesRankLabels = buildRankLabels(duoRowsByMatches, (row) => row.matches);
+
   const duosLeaderboardBody = document.getElementById('duos-leaderboard-body');
   if (duosLeaderboardBody) {
     if (duoRows.length === 0) {
@@ -792,7 +847,7 @@ export function LeaderboardPage({
           : 'inf';
         return (
           '<div class="grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 ' + rowClass + ' hover:bg-neutral-700/40 transition-colors">' +
-            '<div class="font-bold text-lg">#' + (idx + 1) + '</div>' +
+            '<div class="font-bold text-lg">' + duosRankLabels[idx] + '</div>' +
             '<div class="col-span-2 font-semibold text-white">' + row.duoNames + '</div>' +
             '<div class="text-purple-400 font-bold">' + row.matches + '</div>' +
             '<div class="text-neutral-400">' + row.wins + '-' + row.losses + '</div>' +
@@ -821,7 +876,7 @@ export function LeaderboardPage({
           : 'inf';
         return (
           '<div class="grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 ' + rowClass + ' hover:bg-neutral-700/40 transition-colors">' +
-            '<div class="font-bold text-lg">#' + (idx + 1) + '</div>' +
+            '<div class="font-bold text-lg">' + duosMatchesRankLabels[idx] + '</div>' +
             '<div class="col-span-2 font-semibold text-white">' + row.duoNames + '</div>' +
             '<div class="text-purple-400 font-bold">' + row.matches + '</div>' +
             '<div class="text-neutral-400">' + row.wins + '-' + row.losses + '</div>' +

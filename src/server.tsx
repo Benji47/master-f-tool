@@ -659,6 +659,7 @@ app.get("/v1/leaderboard", async (c) => {
           return {
             ...seasonRow,
             xp: overall?.xp ?? seasonRow.xp,
+            coins: overall?.coins ?? seasonRow.coins,
           };
         });
 
@@ -902,6 +903,33 @@ app.post("/v1/admin/reset-password", async (c) => {
   } catch (err: any) {
     console.error("admin reset password error:", err);
     return c.text("Failed to reset password", 500);
+  }
+});
+
+app.post("/v1/admin/reset-coins", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? "";
+    if (!username || !isAdminUsername(username)) {
+      return c.redirect("/v1/auth/admin-login");
+    }
+
+    const form = await c.req.formData();
+    const amountRaw = Number(form.get("amount") ?? 10000);
+    const amount = Math.max(0, Math.floor(amountRaw));
+
+    const players = await getAllPlayerProfiles();
+    for (const player of players) {
+      try {
+        await updatePlayerStats(player.$id, { coins: amount });
+      } catch (error) {
+        console.error("failed to reset coins for player", player.$id, error);
+      }
+    }
+
+    return c.redirect("/v1/admin");
+  } catch (err: any) {
+    console.error("admin reset coins error:", err);
+    return c.text("Failed to reset coins", 500);
   }
 });
 
