@@ -31,7 +31,7 @@ export function ShopPage({
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-4xl font-bold font-[Orbitron] text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">
-                🛒 Mars Shop
+                🛒 F Shop
               </h1>
               <p className="text-neutral-400 mt-2">Spend your hard-earned coins!</p>
             </div>
@@ -41,7 +41,7 @@ export function ShopPage({
               </div>
               <a
                 href="/v1/lobby"
-                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors text-sm"
+                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors text-sm text-white"
               >
                 ← Back to Lobby
               </a>
@@ -70,7 +70,7 @@ export function ShopPage({
 
           {/* Info Section */}
           <div className="mt-12 bg-neutral-900/60 border border-neutral-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold font-[Orbitron] mb-4">ℹ️ Shop Information</h2>
+            <h2 className="text-xl font-bold font-[Orbitron] mb-4 text-white">ℹ️ Shop Information</h2>
             <div className="space-y-2 text-neutral-300">
               <p>• All purchases are final and will be recorded in the order history</p>
               <p>• Badges will be automatically added to your profile after purchase</p>
@@ -101,22 +101,22 @@ function ShopItemCard({
   return (
     <div className="bg-neutral-900/60 border border-neutral-800 rounded-lg overflow-hidden hover:border-neutral-700 transition-all hover:scale-105">
       {/* Item Type Badge */}
-      <div className={`bg-gradient-to-r ${itemTypeColors[item.type]} px-4 py-2 text-center text-sm font-semibold`}>
+      <div className={`bg-gradient-to-r ${itemTypeColors[item.type]} px-4 py-2 text-center text-sm font-semibold text-white`}>
         {item.type.toUpperCase()}
       </div>
 
       {/* Item Content */}
       <div className="p-6">
         <div className="text-6xl text-center mb-4">{item.icon}</div>
-        <h3 className="text-xl font-bold font-[Orbitron] text-center mb-2">{item.name}</h3>
-        <p className="text-neutral-400 text-sm text-center mb-4">{item.description}</p>
+        <h3 className="text-xl font-bold font-[Orbitron] text-center mb-2 text-white">{item.name}</h3>
+        <p className="text-neutral-300 text-sm text-center mb-4">{item.description}</p>
 
         {/* Price */}
         <div className="text-center mb-4">
           <div className="text-2xl font-bold text-yellow-400 font-[Orbitron]">
             💰 {item.price.toLocaleString()}
           </div>
-          <div className="text-xs text-neutral-500">coins</div>
+          <div className="text-xs text-neutral-400">coins</div>
         </div>
 
         {/* Purchase Button */}

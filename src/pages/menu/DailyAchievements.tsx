@@ -111,7 +111,7 @@ function getAchievementColor(type: string): string {
 export function DailyAchievementsPanel({ achievements }: { achievements: Achievement[] }) {
   if (!achievements || achievements.length === 0) {
     return (
-      <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4">
+      <div className="bg-neutral-900/50 rounded-lg border border-purple-600/50 p-4">
         <h2 className="text-lg font-bold text-white mb-3">🏆 Daily Log</h2>
         <p className="text-neutral-400 text-sm">No logs in the last 24 hours</p>
       </div>
@@ -119,7 +119,7 @@ export function DailyAchievementsPanel({ achievements }: { achievements: Achieve
   }
 
   return (
-    <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4">
+    <div className="bg-neutral-900/50 rounded-lg border border-purple-600/50 p-4">
       <h2 className="text-lg font-bold text-white mb-3">🏆 Daily Log</h2>
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {achievements.map((achievement) => (

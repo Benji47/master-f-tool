@@ -11,7 +11,7 @@ function renderBadgeName(name: string, iconUrl?: string) {
       <img
         src={iconUrl}
         alt={`${name} icon`}
-        className="w-5 h-5 object-contain drop-shadow-sm align-text-bottom"
+        className="w-8 h-8 object-contain drop-shadow-sm align-text-bottom"
         loading="lazy"
         decoding="async"
       />
@@ -57,21 +57,19 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
 
         {/* Level Card */}
         <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-neutral-400 uppercase tracking-wider">Level</span>
-                <span className="text-lg font-bold text-white">{lvl.level}</span>
-              </div>
-              <div className="text-xs text-neutral-400 mb-2">{lvl.xpInCurrentLevel}/{lvl.xpNeededForNext} XP</div>
+          <div className="space-y-3">
+            <span className={`${badgeToShow?.bg || badgeColor.bg} ${badgeToShow?.text || badgeColor.text} w-full mx-auto min-h-[92px] px-5 py-3 rounded text-lg font-bold inline-flex items-center justify-center text-center`}>
+              {renderBadgeName(`Level ${lvl.level} • ${badgeToShow?.name || "Unranked"}`, badgeToShow?.iconUrl)}
+            </span>
+
+            <div className="space-y-2">
+              <div className="text-xs text-neutral-400">{lvl.xpInCurrentLevel}/{lvl.xpNeededForNext} XP</div>
               <div className="w-full bg-neutral-700 rounded-full h-1.5 overflow-hidden border border-purple-600/20">
                 <div className="h-1.5 bg-gradient-to-r from-blue-500 to-purple-500" style={{ width: `${lvl.progress}%` }} />
               </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <span className={`${badgeToShow?.bg || badgeColor.bg} ${badgeToShow?.text || badgeColor.text} px-3 py-2 rounded text-sm font-semibold`}>
-                {renderBadgeName(badgeToShow?.name || "Unranked", badgeToShow?.iconUrl)}
-              </span>
+
+            <div className="flex justify-end">
               <button
                 type="button"
                 onclick="document.getElementById('badge-modal')?.showModal()"
@@ -98,22 +96,22 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-neutral-800/50 rounded-lg border border-neutral-700/30 p-2">
+          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-2">
             <div className="text-xs text-neutral-400 mb-1">Matches</div>
             <div className="text-lg font-bold text-white">{playerProfile.wins + playerProfile.loses}</div>
             <div className="text-xs text-neutral-500">({(playerProfile.wins + playerProfile.loses)/3} games)</div>
           </div>
-          <div className="bg-neutral-800/50 rounded-lg border border-neutral-700/30 p-2">
+          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-2">
             <div className="text-xs text-neutral-400 mb-1">Winrate</div>
             <div className="text-lg font-bold text-green-400">{winrate}%</div>
             <div className="text-xs text-neutral-500">{playerProfile.wins}W-{playerProfile.loses}L</div>
           </div>
-          <div className="bg-neutral-800/50 rounded-lg border border-neutral-700/30 p-2">
+          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-2">
             <div className="text-xs text-neutral-400 mb-1">Goals</div>
             <div className="text-lg font-bold text-white">{playerProfile.goals_scored}:{playerProfile.goals_conceded}</div>
             <div className="text-xs text-neutral-500">Scored:Conceded</div>
           </div>
-          <div className="bg-neutral-800/50 rounded-lg border border-neutral-700/30 p-2">
+          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-2">
             <div className="text-xs text-neutral-400 mb-1">Vyrážečka</div>
             <div className="text-lg font-bold text-orange-400">{playerProfile.vyrazecky}</div>
             <div className="text-xs text-neutral-500">{playerProfile.goals_scored > 0 ? Math.round(playerProfile.vyrazecky / playerProfile.goals_scored * 10000) / 100 : 0}%</div>
@@ -201,7 +199,7 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
         <form action="/v1/profile/select-badge" method="post" className="space-y-3">
           <select
             name="badgeName"
-            className="w-full bg-neutral-800 border border-neutral-600 text-neutral-100 rounded px-3 py-2 text-sm"
+            className="w-full bg-neutral-800 border border-neutral-600 text-white rounded px-3 py-2 text-sm"
           >
             <option value="">No badge (default)</option>
             {allOwnedBadges.map((badgeName) => (

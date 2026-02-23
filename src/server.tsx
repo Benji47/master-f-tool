@@ -13,7 +13,7 @@ import { GraphsPage } from "./pages/menu/graphs";
 import { ShopPage } from "./pages/menu/shop";
 import { getAllPlayerProfiles, getGlobalStats, getPlayerProfile, updateGlobalStats, updatePlayerStats, selectBadge } from "./logic/profile";
 import { purchaseItem, SHOP_ITEMS } from "./logic/shop";
-import { getAllPlayersEloHistory } from "./logic/graphs";
+import { getAllPlayersEloHistory, getAllPlayersXPHistory, getAllPlayersVyrazeckaHistory, getAllPlayersGamesHistory } from "./logic/graphs";
 import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch, parseDoc, parseMatchHistoryDoc, MatchHistoryDoc, HistoryPlayers, createMatch, joinMatch, listAvailableMatches } from "./logic/match";
 import { MatchLobbyPage } from "./pages/match/matchLobby";
 import { updateGameScores } from "./logic/match";
@@ -757,10 +757,13 @@ app.get("/v1/leaderboard", async (c) => {
 app.get("/v1/graphs", async (c) => {
   try {
     const eloHistories = await getAllPlayersEloHistory();
+    const xpHistories = await getAllPlayersXPHistory();
+    const vyrazeckaHistories = await getAllPlayersVyrazeckaHistory();
+    const gamesHistories = await getAllPlayersGamesHistory();
     
     return c.html(
       <MainLayout c={c}>
-        <GraphsPage c={c} eloHistories={eloHistories} />
+        <GraphsPage c={c} eloHistories={eloHistories} xpHistories={xpHistories} vyrazeckaHistories={vyrazeckaHistories} gamesHistories={gamesHistories} />
       </MainLayout>
     );
   } catch (err: any) {

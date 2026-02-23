@@ -33,7 +33,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'lunch',
     name: 'Lunch',
-    description: 'Delicious lunch at the office cafeteria',
+    description: 'Delicious lunch of your choice',
     price: 10000000,
     icon: '🍔',
     type: 'physical',
@@ -41,7 +41,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'tshirt',
     name: 'Foosball T-Shirt',
-    description: 'Official Mars Empire foosball team t-shirt',
+    description: 'Official F t-shirt',
     price: 1000000000,
     icon: '👕',
     type: 'physical',

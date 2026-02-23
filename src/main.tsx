@@ -34,6 +34,21 @@ export function MainLayout({ children, c }: { children: Child, c: Context }) {
           href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <style>{`
+          dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            margin: 0;
+          }
+          dialog::backdrop {
+            background-color: rgba(0, 0, 0, 0.7);
+          }
+          select {
+            color-scheme: dark;
+          }
+        `}</style>
       </head>
       <body class="m-0 p-0 min-h-screen bg-neutral-950">
         <GameContextProvider>

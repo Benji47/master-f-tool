@@ -16,27 +16,27 @@ function SeasonTimerPanel() {
   const seasonEndDate = seasonWindow.end;
 
   return (
-    <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4">
+    <div className="bg-neutral-900/50 rounded-lg border border-purple-600/50 p-4">
       <div className="text-center mb-3">
         <h3 className="text-lg font-bold text-white font-[Orbitron] mb-2">⏱️ Season Timer</h3>
-        <div className="text-sm text-green-400 font-semibold">{getSeasonLabel(currentSeason)}</div>
+        <div className="text-sm text-purple-400 font-semibold">{getSeasonLabel(currentSeason)}</div>
         <div id="season-timer-content" className="space-y-2">
           <div className="text-sm text-neutral-400">Season ends in:</div>
           <div className="grid grid-cols-4 gap-2">
             <div className="bg-neutral-800/60 rounded p-2">
-              <div id="timer-days" className="text-2xl font-bold text-green-400">0</div>
+              <div id="timer-days" className="text-2xl font-bold text-purple-400">0</div>
               <div className="text-xs text-neutral-400">DAYS</div>
             </div>
             <div className="bg-neutral-800/60 rounded p-2">
-              <div id="timer-hours" className="text-2xl font-bold text-green-400">00</div>
+              <div id="timer-hours" className="text-2xl font-bold text-purple-400">00</div>
               <div className="text-xs text-neutral-400">HOURS</div>
             </div>
             <div className="bg-neutral-800/60 rounded p-2">
-              <div id="timer-minutes" className="text-2xl font-bold text-green-400">00</div>
+              <div id="timer-minutes" className="text-2xl font-bold text-purple-400">00</div>
               <div className="text-xs text-neutral-400">MINS</div>
             </div>
             <div className="bg-neutral-800/60 rounded p-2">
-              <div id="timer-seconds" className="text-2xl font-bold text-green-400">00</div>
+              <div id="timer-seconds" className="text-2xl font-bold text-purple-400">00</div>
               <div className="text-xs text-neutral-400">SECS</div>
             </div>
           </div>
@@ -184,8 +184,8 @@ export async function LobbyPage({
             </a>
 
             <a href="/v1/faq" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-400 hover:to-pink-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-pink-500/50">
-                ?
+              <div className="w-24 h-24 bg-gradient-to-br from-cyan-500 to-cyan-700 hover:from-cyan-400 hover:to-cyan-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-cyan-500/50">
+                ❓
               </div>
               <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">FAQ</span>
             </a>
@@ -209,17 +209,17 @@ export async function LobbyPage({
         <div className="w-full rounded-md border border-purple-600/50 bg-neutral-900/60 p-3">
           <p className="text-xs text-neutral-400 mb-2">Showing stats:</p>
           <div className="flex flex-wrap gap-2">
-            <a href="/v1/lobby?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+            <a href="/v1/lobby?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
               Current Season
             </a>
-            <a href="/v1/lobby?scope=overall" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "overall" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+            <a href="/v1/lobby?scope=overall" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "overall" ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
               Overall
             </a>
             {availableSeasonIndexes.filter((season) => season !== currentSeasonIndex).map((season) => (
               <a
                 key={season}
                 href={`/v1/lobby?scope=season&season=${season}`}
-                className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "season" && selectedSeasonIndex === season ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}
+                className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "season" && selectedSeasonIndex === season ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}
               >
                 {getSeasonLabel(season)}
               </a>

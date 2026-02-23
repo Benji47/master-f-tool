@@ -145,17 +145,17 @@ export function LeaderboardPage({
         </div>
 
         <div className="flex flex-wrap gap-2 mb-4 items-center">
-          <a href="/v1/leaderboard?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+          <a href="/v1/leaderboard?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
             Current Season
           </a>
-          <a href="/v1/leaderboard?scope=overall" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "overall" ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+          <a href="/v1/leaderboard?scope=overall" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "overall" ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
             Overall
           </a>
           {availableSeasonIndexes.filter((season) => season !== currentSeasonIndex).map((season) => (
             <a
               key={season}
               href={`/v1/leaderboard?scope=season&season=${season}`}
-              className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "season" && selectedSeasonIndex === season ? "bg-green-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}
+              className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "season" && selectedSeasonIndex === season ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}
             >
               {getSeasonLabel(season)}
             </a>
@@ -167,7 +167,7 @@ export function LeaderboardPage({
 
         {/* Tab Buttons */}
         <div className="flex gap-2 mb-6 flex-wrap">
-          <button data-tab="elo" className="tab-btn active px-4 py-2 bg-green-600 hover:bg-green-700 cursor-pointer text-white rounded-md font-semibold transition-colors">ELO</button>
+          <button data-tab="elo" className="tab-btn active px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 cursor-pointer text-white rounded-md font-semibold transition-colors">ELO</button>
           <button data-tab="ultimate_wins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Ultimate Wins</button>
           <button data-tab="ultimate_loses" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Ultimate Loses</button>
           <button data-tab="vyrazacka" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Vyrážečky</button>
@@ -845,7 +845,7 @@ export function LeaderboardPage({
       
       // Remove active state from all buttons
       tabButtons.forEach(b => {
-        b.classList.remove('bg-green-600');
+        b.classList.remove('bg-gradient-to-r', 'from-purple-600', 'to-violet-600');
         b.classList.add('bg-neutral-700');
       });
       
@@ -858,7 +858,7 @@ export function LeaderboardPage({
       
       // Highlight active button
       this.classList.remove('bg-neutral-700');
-      this.classList.add('bg-green-600');
+      this.classList.add('bg-gradient-to-r', 'from-purple-600', 'to-violet-600');
     });
   });
 
