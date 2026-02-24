@@ -12,6 +12,7 @@ interface AchievementDefinition {
   description: string;
   icon: string;
   category: string;
+  rewardCoins: number;
   requirement?: {
     type: string;
     value?: number;
@@ -35,17 +36,46 @@ interface PlayerAchievement {
 
 interface PlayerAchievementWithDef extends PlayerAchievement {
   definition?: AchievementDefinition;
+  claimed?: boolean;
 }
 
 export interface MatchAchievementStats {
-  wins: number;
-  elo: number;
-  level: number;
-  vyrazecky: number;
-  tenZeroWins: number;
-  winsAdded: number;
+  matchWon: boolean;
+  matchLost: boolean;
+  matchUltimateWin: boolean;
+  matchUltimateLose: boolean;
   hadShutoutWin: boolean;
-  hasGoldenVyrazecka: boolean;
+  lostByGoldenVyrazecka: boolean;
+  vyrazeckyAdded: number;
+  newLevel: number;
+  newElo: number;
+  newCoins: number;
+}
+
+interface PlayerAchievementProgress {
+  $id?: string;
+  playerId: string;
+  username: string;
+  createdAt: number;
+  updatedAt: number;
+  baselineLevel: number;
+  baselineElo: number;
+  baselineCoins: number;
+  maxLevel: number;
+  maxElo: number;
+  maxCoins: number;
+  matchesPlayed: number;
+  winStreak: number;
+  maxWinStreak: number;
+  totalVyrazecky: number;
+}
+
+interface PlayerAchievementClaim {
+  $id?: string;
+  playerId: string;
+  achievementId: string;
+  claimedAt: string;
+  rewardCoins: number;
 }
 
 const getClient = () => {
@@ -60,105 +90,169 @@ const getClient = () => {
 
 export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
-    achievementId: 'first_match',
-    name: 'Nova Start',
-    description: 'Win your first foosball match',
-    icon: '🎮',
-    category: 'milestone',
+    achievementId: 'level_5',
+    name: 'Rookie Ascension',
+    description: 'Reach level 5',
+    icon: '⭐',
+    category: 'level',
     rarity: 'common',
-    requirement: { type: 'win_match', value: 1 }
+    rewardCoins: 500,
+    requirement: { type: 'level', value: 5, description: 'Reach level 5' }
   },
   {
-    achievementId: 'shutout_master',
-    name: 'Shut Them Down',
-    description: 'Win a match with a perfect 10-0 score',
-    icon: '🔥',
-    category: 'skill',
-    rarity: 'rare',
-    requirement: { type: 'shutout_win', value: 1 }
-  },
-  {
-    achievementId: 'golden_vyrazecka',
-    name: 'Golden Touch',
-    description: 'Achieve a golden vyrážečka (perfect defense)',
+    achievementId: 'level_8',
+    name: 'Rising Force',
+    description: 'Reach level 8',
     icon: '✨',
-    category: 'skill',
-    rarity: 'epic',
-    requirement: { type: 'golden_vyrazecka', value: 1 }
-  },
-  {
-    achievementId: 'win_streak_5',
-    name: 'On Fire',
-    description: 'Win 5 consecutive matches',
-    icon: '🔥',
-    category: 'milestone',
+    category: 'level',
     rarity: 'rare',
-    requirement: { type: 'win_streak', value: 5 }
+    rewardCoins: 2000,
+    requirement: { type: 'level', value: 8, description: 'Reach level 8' }
   },
   {
     achievementId: 'level_10',
-    name: 'Maximum Level',
+    name: 'Tenfold',
     description: 'Reach level 10',
-    icon: '⭐',
-    category: 'milestone',
+    icon: '🏅',
+    category: 'level',
     rarity: 'epic',
-    requirement: { type: 'level', value: 10 }
+    rewardCoins: 5000,
+    requirement: { type: 'level', value: 10, description: 'Reach level 10' }
   },
   {
-    achievementId: 'elo_500',
-    name: 'Rising Star',
-    description: 'Reach 500 Elo rating',
-    icon: '📈',
+    achievementId: 'shutout_10_0',
+    name: 'No Mercy',
+    description: 'Win a match 10-0',
+    icon: '🔥',
+    category: 'match',
+    rarity: 'epic',
+    rewardCoins: 10000,
+    requirement: { type: 'shutout_win', value: 1, description: 'Win a match 10-0' }
+  },
+  {
+    achievementId: 'coins_100k',
+    name: 'Pocket Change',
+    description: 'Reach 100,000 coins',
+    icon: '🪙',
+    category: 'economy',
+    rarity: 'rare',
+    rewardCoins: 1,
+    requirement: { type: 'coins', value: 100000, description: 'Reach 100,000 coins' }
+  },
+  {
+    achievementId: 'golden_loss',
+    name: 'Oh, the irony.',
+    description: 'Lose against a golden vyrážečka',
+    icon: '🫠',
+    category: 'match',
+    rarity: 'legendary',
+    rewardCoins: 15000,
+    requirement: { type: 'golden_loss', value: 1, description: 'Lose against a golden vyrážečka' }
+  },
+  {
+    achievementId: 'vyrazecka_1',
+    name: 'First Wall',
+    description: 'Score 1 vyrážečka',
+    icon: '🛡️',
+    category: 'match',
+    rarity: 'epic',
+    rewardCoins: 10000,
+    requirement: { type: 'vyrazecky', value: 1, description: 'Score 1 vyrážečka' }
+  },
+  {
+    achievementId: 'play_1',
+    name: 'Kickoff',
+    description: 'Play 1 match',
+    icon: '🎯',
+    category: 'milestone',
+    rarity: 'common',
+    rewardCoins: 100,
+    requirement: { type: 'matches_played', value: 1, description: 'Play 1 match' }
+  },
+  {
+    achievementId: 'play_10',
+    name: 'On the Board',
+    description: 'Play 10 matches',
+    icon: '🎮',
     category: 'milestone',
     rarity: 'rare',
-    requirement: { type: 'elo', value: 500 }
+    rewardCoins: 500,
+    requirement: { type: 'matches_played', value: 10, description: 'Play 10 matches' }
   },
   {
-    achievementId: 'elo_1000',
-    name: 'Master Player',
-    description: 'Reach 1000 Elo rating',
-    icon: '👑',
-    category: 'milestone',
-    rarity: 'epic',
-    requirement: { type: 'elo', value: 1000 }
-  },
-  {
-    achievementId: 'win_100',
-    name: 'Century Player',
-    description: 'Win 100 matches',
+    achievementId: 'play_100',
+    name: 'Centurion',
+    description: 'Play 100 matches',
     icon: '🏆',
     category: 'milestone',
     rarity: 'legendary',
-    requirement: { type: 'wins', value: 100 }
+    rewardCoins: 15000,
+    requirement: { type: 'matches_played', value: 100, description: 'Play 100 matches' }
   },
   {
-    achievementId: 'vyrrazecka_artist',
-    name: 'Vyrážečka Artist',
-    description: 'Score 10 vyrážečky in total',
-    icon: '⚡',
-    category: 'skill',
+    achievementId: 'elo_600',
+    name: 'Climber',
+    description: 'Reach 600 ELO',
+    icon: '📈',
+    category: 'rank',
     rarity: 'rare',
-    requirement: { type: 'vyrazecky', value: 10 }
+    rewardCoins: 5000,
+    requirement: { type: 'elo', value: 600, description: 'Reach 600 ELO' }
   },
   {
-    achievementId: 'consistency',
-    name: 'The Steady One',
-    description: 'Win matches across 10 days',
-    icon: '📅',
+    achievementId: 'elo_800',
+    name: 'Challenger',
+    description: 'Reach 800 ELO',
+    icon: '⚔️',
+    category: 'rank',
+    rarity: 'epic',
+    rewardCoins: 15000,
+    requirement: { type: 'elo', value: 800, description: 'Reach 800 ELO' }
+  },
+  {
+    achievementId: 'elo_1000',
+    name: 'Master Rank',
+    description: 'Reach 1000 ELO',
+    icon: '👑',
+    category: 'rank',
+    rarity: 'legendary',
+    rewardCoins: 50000,
+    requirement: { type: 'elo', value: 1000, description: 'Reach 1000 ELO' }
+  },
+  {
+    achievementId: 'win_streak_5',
+    name: 'Hot Streak',
+    description: 'Win 5 matches in a row',
+    icon: '🔥',
     category: 'milestone',
-    rarity: 'rare',
-    requirement: { type: 'days_played', value: 10 }
+    rarity: 'epic',
+    rewardCoins: 12000,
+    requirement: { type: 'win_streak', value: 5, description: 'Win 5 matches in a row' }
   },
   {
-    achievementId: 'consistency',
-    name: 'Oh, the irony',
-    description: 'Lost by golden vyrážečka',
-    icon: '📅',
-    category: 'milestone',
+    achievementId: 'ultimate_winner',
+    name: 'Clean Sweep',
+    description: 'Win all 3 games in a match',
+    icon: '🧹',
+    category: 'match',
     rarity: 'rare',
-    requirement: { type: 'days_played', value: 10 }
+    rewardCoins: 1500,
+    requirement: { type: 'ultimate_win', value: 1, description: 'Win all 3 games' }
+  },
+  {
+    achievementId: 'ultimate_loser',
+    name: 'Rough Night',
+    description: 'Lose all 3 games in a match',
+    icon: '🌧️',
+    category: 'match',
+    rarity: 'common',
+    rewardCoins: 500,
+    requirement: { type: 'ultimate_lose', value: 1, description: 'Lose all 3 games' }
   }
 ];
+
+const progressCollectionId = 'player-achievement-progress';
+const claimsCollectionId = 'player-achievement-claims';
 
 // ============ DATABASE OPERATIONS ============
 
@@ -232,19 +326,41 @@ export async function getPlayerAchievements(
       ]
     );
 
-    return res.documents.map(doc => {
-      const definition = ACHIEVEMENT_DEFINITIONS.find(
-        d => d.achievementId === doc.achievementId
-      );
-      return {
-        ...doc,
-        data: typeof doc.data === 'string' ? JSON.parse(doc.data) : doc.data,
-        definition
-      };
-    }) as unknown as PlayerAchievementWithDef[];
+    return res.documents
+      .map(doc => {
+        const definition = ACHIEVEMENT_DEFINITIONS.find(
+          d => d.achievementId === doc.achievementId
+        );
+        if (!definition) return null;
+        return {
+          ...doc,
+          data: typeof doc.data === 'string' ? JSON.parse(doc.data) : doc.data,
+          definition
+        };
+      })
+      .filter(Boolean) as unknown as PlayerAchievementWithDef[];
   } catch (error) {
     console.error('Error fetching player achievements:', error);
     return [];
+  }
+}
+
+async function getAchievementClaims(playerId: string): Promise<Set<string>> {
+  try {
+    const client = getClient();
+    const databases = new sdk.Databases(client);
+    const res = await databases.listDocuments(
+      databaseId,
+      claimsCollectionId,
+      [
+        sdk.Query.equal('playerId', playerId),
+        sdk.Query.limit(200)
+      ]
+    );
+    return new Set(res.documents.map(doc => String(doc.achievementId)));
+  } catch (error) {
+    console.error('Error fetching achievement claims:', error);
+    return new Set();
   }
 }
 
@@ -256,62 +372,132 @@ export async function getAllAchievementsForPlayer(
 }> {
   try {
     const unlocked = await getPlayerAchievements(playerId);
+    const claimed = await getAchievementClaims(playerId);
+    const unlockedWithClaims = unlocked.map((row) => ({
+      ...row,
+      claimed: claimed.has(row.achievementId)
+    }));
     const unlockedIds = new Set(unlocked.map(a => a.achievementId));
     const locked = ACHIEVEMENT_DEFINITIONS.filter(
       def => !unlockedIds.has(def.achievementId)
     );
-
-    return { unlocked, locked };
+    return { unlocked: unlockedWithClaims, locked };
   } catch (error) {
     console.error('Error getting all achievements:', error);
     return { unlocked: [], locked: ACHIEVEMENT_DEFINITIONS };
   }
 }
 
-export async function checkAndUnlockMatchAchievements(
+async function getOrCreateProgress(
+  playerId: string,
+  username: string,
+  baseline: { level: number; elo: number; coins: number }
+): Promise<PlayerAchievementProgress> {
+  const client = getClient();
+  const databases = new sdk.Databases(client);
+  try {
+    const doc = await databases.getDocument(databaseId, progressCollectionId, playerId);
+    return doc as unknown as PlayerAchievementProgress;
+  } catch {
+    const now = Date.now();
+    const doc = await databases.createDocument(
+      databaseId,
+      progressCollectionId,
+      playerId,
+      {
+        playerId,
+        username,
+        createdAt: now,
+        updatedAt: now,
+        baselineLevel: baseline.level,
+        baselineElo: baseline.elo,
+        baselineCoins: baseline.coins,
+        maxLevel: baseline.level,
+        maxElo: baseline.elo,
+        maxCoins: baseline.coins,
+        matchesPlayed: 0,
+        winStreak: 0,
+        maxWinStreak: 0,
+        totalVyrazecky: 0,
+      }
+    );
+    return doc as unknown as PlayerAchievementProgress;
+  }
+}
+
+export async function updateAchievementProgressAndUnlock(
   playerId: string,
   username: string,
   matchId: string,
   stats: MatchAchievementStats
-): Promise<void> {
-  const checks = ACHIEVEMENT_DEFINITIONS.filter(def => def.requirement);
+): Promise<AchievementDefinition[]> {
+  const progress = await getOrCreateProgress(playerId, username, {
+    level: stats.newLevel,
+    elo: stats.newElo,
+    coins: stats.newCoins,
+  });
 
-  for (const def of checks) {
+  const nextMatchesPlayed = Number(progress.matchesPlayed || 0) + 1;
+  const nextWinStreak = stats.matchWon ? Number(progress.winStreak || 0) + 1 : 0;
+  const nextMaxWinStreak = Math.max(Number(progress.maxWinStreak || 0), nextWinStreak);
+  const nextTotalVyrazecky = Number(progress.totalVyrazecky || 0) + Number(stats.vyrazeckyAdded || 0);
+
+  const nextMaxLevel = Math.max(Number(progress.maxLevel || 0), Number(stats.newLevel || 0));
+  const nextMaxElo = Math.max(Number(progress.maxElo || 0), Number(stats.newElo || 0));
+  const nextMaxCoins = Math.max(Number(progress.maxCoins || 0), Number(stats.newCoins || 0));
+
+  const client = getClient();
+  const databases = new sdk.Databases(client);
+  await databases.updateDocument(databaseId, progressCollectionId, progress.playerId, {
+    matchesPlayed: nextMatchesPlayed,
+    winStreak: nextWinStreak,
+    maxWinStreak: nextMaxWinStreak,
+    totalVyrazecky: nextTotalVyrazecky,
+    maxLevel: nextMaxLevel,
+    maxElo: nextMaxElo,
+    maxCoins: nextMaxCoins,
+    updatedAt: Date.now(),
+  });
+
+  const unlocked: AchievementDefinition[] = [];
+
+  for (const def of ACHIEVEMENT_DEFINITIONS) {
     const requirement = def.requirement;
     if (!requirement) continue;
 
     const value = requirement.value ?? 1;
     let shouldUnlock = false;
-    let data: Record<string, unknown> | undefined;
 
     switch (requirement.type) {
-      case 'win_match':
-        shouldUnlock = stats.winsAdded > 0 && stats.wins >= value;
-        data = { matchId, value: stats.wins };
+      case 'level':
+        shouldUnlock = nextMaxLevel >= value && Number(progress.baselineLevel || 0) < value;
+        break;
+      case 'elo':
+        shouldUnlock = nextMaxElo >= value && Number(progress.baselineElo || 0) < value;
+        break;
+      case 'coins':
+        shouldUnlock = nextMaxCoins >= value && Number(progress.baselineCoins || 0) < value;
+        break;
+      case 'matches_played':
+        shouldUnlock = nextMatchesPlayed >= value;
+        break;
+      case 'win_streak':
+        shouldUnlock = nextMaxWinStreak >= value;
+        break;
+      case 'vyrazecky':
+        shouldUnlock = nextTotalVyrazecky >= value;
         break;
       case 'shutout_win':
         shouldUnlock = stats.hadShutoutWin;
-        data = { matchId };
         break;
-      case 'golden_vyrazecka':
-        shouldUnlock = stats.hasGoldenVyrazecka;
-        data = { matchId };
+      case 'golden_loss':
+        shouldUnlock = stats.lostByGoldenVyrazecka;
         break;
-      case 'level':
-        shouldUnlock = stats.level >= value;
-        data = { matchId, value: stats.level };
+      case 'ultimate_win':
+        shouldUnlock = stats.matchUltimateWin;
         break;
-      case 'elo':
-        shouldUnlock = stats.elo >= value;
-        data = { matchId, value: stats.elo };
-        break;
-      case 'wins':
-        shouldUnlock = stats.wins >= value;
-        data = { matchId, value: stats.wins };
-        break;
-      case 'vyrazecky':
-        shouldUnlock = stats.vyrazecky >= value;
-        data = { matchId, value: stats.vyrazecky };
+      case 'ultimate_lose':
+        shouldUnlock = stats.matchUltimateLose;
         break;
       default:
         shouldUnlock = false;
@@ -319,9 +505,68 @@ export async function checkAndUnlockMatchAchievements(
     }
 
     if (shouldUnlock) {
-      await unlockAchievement(playerId, username, def.achievementId, data);
+      const res = await unlockAchievement(playerId, username, def.achievementId, {
+        matchId,
+        value,
+      });
+      if (res) unlocked.push(def);
     }
   }
+
+  return unlocked;
+}
+
+export async function claimAchievementReward(
+  playerId: string,
+  achievementId: string
+): Promise<{ rewardCoins: number; status: 'claimed' | 'already-claimed' | 'not-unlocked' | 'not-found' }> {
+  const def = ACHIEVEMENT_DEFINITIONS.find((row) => row.achievementId === achievementId);
+  if (!def) return { rewardCoins: 0, status: 'not-found' };
+
+  const client = getClient();
+  const databases = new sdk.Databases(client);
+
+  const unlocked = await databases.listDocuments(
+    databaseId,
+    'player-achievements',
+    [
+      sdk.Query.equal('playerId', playerId),
+      sdk.Query.equal('achievementId', achievementId),
+      sdk.Query.limit(1)
+    ]
+  );
+
+  if (!unlocked.documents.length) {
+    return { rewardCoins: 0, status: 'not-unlocked' };
+  }
+
+  const claims = await databases.listDocuments(
+    databaseId,
+    claimsCollectionId,
+    [
+      sdk.Query.equal('playerId', playerId),
+      sdk.Query.equal('achievementId', achievementId),
+      sdk.Query.limit(1)
+    ]
+  );
+
+  if (claims.documents.length) {
+    return { rewardCoins: 0, status: 'already-claimed' };
+  }
+
+  await databases.createDocument(
+    databaseId,
+    claimsCollectionId,
+    sdk.ID.unique(),
+    {
+      playerId,
+      achievementId,
+      claimedAt: new Date().toISOString(),
+      rewardCoins: def.rewardCoins,
+    }
+  );
+
+  return { rewardCoins: def.rewardCoins, status: 'claimed' };
 }
 
 export function getAchievementColorClass(rarity: string): {

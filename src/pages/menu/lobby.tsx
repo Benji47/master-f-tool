@@ -6,6 +6,7 @@ import GlobalStatsPanel from "./GlobalStats";
 import PlayerProfilePanel from "./PlayerProfile";
 import { DailyAchievementsPanel } from "./DailyAchievements";
 import { getDailyAchievements } from "../../logic/dailyAchievements";
+import { getAllAchievementsForPlayer } from "../../logic/achievements";
 import { getCurrentSeasonIndex, getSeasonLabel, getSeasonWindow } from "../../logic/season";
 
 // Season timer component
@@ -85,6 +86,8 @@ export async function LobbyPage({
     );
   }
 
+  const achievementsView = await getAllAchievementsForPlayer(playerProfile.$id);
+
   const lvl = computeLevel(playerProfile.xp);
   const rank = getRankInfoFromElo(playerProfile.elo);
   const badgeColor = getLevelBadgeColor(lvl.level);
@@ -96,7 +99,7 @@ export async function LobbyPage({
     : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-purple-950 p-4">
       {/* Top-center nav - Empty placeholder */}
       <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
         <nav className="flex gap-3 items-center"></nav>
@@ -104,7 +107,7 @@ export async function LobbyPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Left Sidebar - Player Profile */}
-        <PlayerProfilePanel playerProfile={playerProfile} players={players} walletCoins={walletCoins} />
+        <PlayerProfilePanel playerProfile={playerProfile} players={players} walletCoins={walletCoins} achievements={achievementsView} />
 
         {/* Center - 3x4 Grid with PLAY in Middle */}
         <div className="lg:col-span-2 flex flex-col justify-center items-center gap-6 pt-6">
@@ -157,13 +160,6 @@ export async function LobbyPage({
             </a>
 
             {/* Row 3 */}
-            <a href="/v1/achievements" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-red-500/50">
-                🎯
-              </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Achievements</span>
-            </a>
-
             <a href="/v1/tournaments" className="group relative">
               <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-orange-700 hover:from-orange-400 hover:to-orange-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-orange-500/50">
                 🏆

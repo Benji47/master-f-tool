@@ -9,7 +9,7 @@ const collectionId = 'daily-achievements';
 interface DailyAchievement {
   $id?: string;
   timestamp: number;
-  type: 'elo_rank_up' | 'elo_rank_down' | 'level_up' | 'shutout_win' | 'vyrazecka' | 'golden_vyrazecka' | 'podlézání' | 'bet_win';
+  type: 'elo_rank_up' | 'elo_rank_down' | 'level_up' | 'shutout_win' | 'vyrazecka' | 'golden_vyrazecka' | 'podlézání' | 'bet_win' | 'achievement_unlocked';
   playerId: string;
   username: string;
   data: {
@@ -21,6 +21,9 @@ interface DailyAchievement {
     betAmount?: number;
     totalOdds?: number;
     winnings?: number;
+    achievementId?: string;
+    achievementName?: string;
+    rewardCoins?: number;
   };
 }
 

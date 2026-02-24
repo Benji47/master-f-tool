@@ -16,6 +16,8 @@ interface Achievement {
     betAmount?: number;
     totalOdds?: number;
     winnings?: number;
+    rewardCoins?: number;
+    achievementName?: string;
   };
 }
 
@@ -48,6 +50,8 @@ function getAchievementIcon(type: string): string {
       return '🐍';
     case 'bet_win':
       return '💰';
+    case 'achievement_unlocked':
+      return '🏆';
     default:
       return '🎯';
   }
@@ -95,6 +99,11 @@ function getAchievementText(achievement: Achievement): string {
       const oddsLabel = totalOdds ? `x${totalOdds.toFixed(2)}` : 'n/a';
       return `${username} won a bet: ${formatCoins(betAmount)} at ${oddsLabel} → +${formatCoins(winnings)}`;
     }
+    case 'achievement_unlocked': {
+      const reward = Number(data.rewardCoins || 0);
+      const name = data.achievementName || 'Achievement';
+      return `${username} unlocked ${name} (+${formatCoins(reward)} coins)`;
+    }
     default:
       return `${username} achieved something!`;
   }
@@ -118,6 +127,8 @@ function getAchievementColor(type: string): string {
       return 'border-gray-500 bg-gray-950/30';  
     case 'bet_win':
       return 'border-amber-500 bg-amber-950/30';
+    case 'achievement_unlocked':
+      return 'border-purple-500 bg-purple-950/30';
     default:
       return 'border-neutral-500 bg-neutral-950/30';
   }

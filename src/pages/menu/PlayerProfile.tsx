@@ -1,6 +1,30 @@
 import { PlayerProfile } from "../../logic/profile";
 import { formatCoins } from "../../logic/format";
 import { badges, getBadgeByName, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
+import { getAchievementColorClass } from "../../logic/achievements";
+
+type AchievementView = {
+  unlocked: Array<{
+    achievementId: string;
+    unlockedAt: string;
+    claimed?: boolean;
+    definition?: {
+      name: string;
+      description: string;
+      icon: string;
+      rarity: string;
+      rewardCoins: number;
+    };
+  }>;
+  locked: Array<{
+    achievementId: string;
+    name: string;
+    description: string;
+    icon: string;
+    rarity: string;
+    rewardCoins: number;
+  }>;
+};
 
 function renderBadgeName(name: string, iconUrl?: string) {
   if (!iconUrl) return <span>{name}</span>;
@@ -19,7 +43,7 @@ function renderBadgeName(name: string, iconUrl?: string) {
   );
 }
 
-export default function PlayerProfilePanel({ playerProfile, players, walletCoins }: { playerProfile: PlayerProfile; players: PlayerProfile[]; walletCoins?: number }) {
+export default function PlayerProfilePanel({ playerProfile, players, walletCoins, achievements }: { playerProfile: PlayerProfile; players: PlayerProfile[]; walletCoins?: number; achievements?: AchievementView }) {
   const lvl = computeLevel(playerProfile.xp);
   const rank = getRankInfoFromElo(playerProfile.elo);
   const badgeColor = getLevelBadgeColor(lvl.level);
@@ -120,7 +144,16 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
 
         {/* Achievements Row */}
         <div className="bg-neutral-800/30 rounded-lg border border-purple-600/20 p-3">
-          <div className="text-xs text-neutral-400 uppercase tracking-wider mb-2">Achievements</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs text-neutral-400 uppercase tracking-wider">Achievements</div>
+            <button
+              type="button"
+              onclick="document.getElementById('profile-achievements-modal')?.showModal()"
+              className="px-2 py-1 text-[10px] uppercase tracking-wide rounded bg-purple-900/40 border border-purple-600/50 text-purple-200 hover:bg-purple-800/50"
+            >
+              View
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="flex justify-between">
               <span className="text-neutral-400">Ultimate Wins:</span>
@@ -228,6 +261,91 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
             </button>
           </div>
         </form>
+      </div>
+    </dialog>
+
+    <dialog
+      id="profile-achievements-modal"
+      onclick="if (event.target === this) this.close()"
+      className="backdrop:bg-black/70 rounded-lg bg-neutral-900/95 border border-purple-600/50 p-0 w-full max-w-3xl"
+    >
+      <div className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white font-[Orbitron]">Achievements</h3>
+          <button
+            type="button"
+            onclick="document.getElementById('profile-achievements-modal')?.close()"
+            className="text-neutral-400 hover:text-white"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="text-sm font-semibold text-green-300 mb-2">Unlocked</h4>
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {(achievements?.unlocked || []).length === 0 ? (
+                <div className="text-xs text-neutral-400">No achievements unlocked yet.</div>
+              ) : (
+                (achievements?.unlocked || []).map((row) => {
+                  const colors = getAchievementColorClass(row.definition?.rarity || 'common');
+                  return (
+                  <div key={row.achievementId} className={`border ${colors.border} rounded-md p-3 ${colors.bg}`}>
+                    <div className="flex items-start gap-3">
+                      <div className="text-xl">{row.definition?.icon}</div>
+                      <div className="flex-1">
+                        <div className={`text-sm font-semibold ${colors.text}`}>{row.definition?.name}</div>
+                        <div className="text-xs text-neutral-400 mb-2">{row.definition?.description}</div>
+                        <div className="text-xs text-amber-300">Reward: +{formatCoins(row.definition?.rewardCoins || 0)} coins</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {row.claimed ? (
+                          <span className="text-xs px-2 py-1 rounded bg-green-900/40 border border-green-700 text-green-200">Claimed</span>
+                        ) : (
+                          <form action="/v1/achievements/claim" method="post">
+                            <input type="hidden" name="achievementId" value={row.achievementId} />
+                            <button type="submit" className="text-xs px-2 py-1 rounded bg-purple-700/60 border border-purple-500 text-white hover:bg-purple-600/70">
+                              Claim
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-neutral-300 mb-2">Locked</h4>
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {(achievements?.locked || []).length === 0 ? (
+                <div className="text-xs text-green-300">All achievements unlocked.</div>
+              ) : (
+                (achievements?.locked || []).map((row) => {
+                  const colors = getAchievementColorClass(row.rarity || 'common');
+                  return (
+                  <div key={row.achievementId} className={`border ${colors.border} rounded-md p-3 ${colors.bg} opacity-70`}>
+                    <div className="flex items-start gap-3">
+                      <div className="text-xl">{row.icon}</div>
+                      <div className="flex-1">
+                        <div className={`text-sm font-semibold ${colors.text}`}>{row.name}</div>
+                        <div className="text-xs text-neutral-400 mb-2">{row.description}</div>
+                        <div className="text-xs text-amber-300">Reward: +{formatCoins(row.rewardCoins || 0)} coins</div>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-300">Locked</span>
+                    </div>
+                  </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </dialog>
     </>

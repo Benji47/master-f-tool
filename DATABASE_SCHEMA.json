@@ -86,6 +86,45 @@
           },
           {
             "key": "creatorId",
+      {
+        "name": "player-achievement-progress",
+        "collectionId": "player-achievement-progress",
+        "description": "Tracks achievement progress from a reset point",
+        "attributes": [
+          { "key": "playerId", "type": "string", "size": 256, "required": true, "default": null, "encrypted": false, "array": false },
+          { "key": "username", "type": "string", "size": 256, "required": true, "default": null, "encrypted": false, "array": false },
+          { "key": "createdAt", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "updatedAt", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "baselineLevel", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "baselineElo", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "baselineCoins", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "maxLevel", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "maxElo", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "maxCoins", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "matchesPlayed", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "winStreak", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "maxWinStreak", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false },
+          { "key": "totalVyrazecky", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false }
+        ],
+        "indexes": [
+          { "key": "playerId", "type": "key", "name": "playerId_index" }
+        ]
+      },
+      {
+        "name": "player-achievement-claims",
+        "collectionId": "player-achievement-claims",
+        "description": "Tracks achievement reward claims",
+        "attributes": [
+          { "key": "playerId", "type": "string", "size": 256, "required": true, "default": null, "encrypted": false, "array": false },
+          { "key": "achievementId", "type": "string", "size": 256, "required": true, "default": null, "encrypted": false, "array": false },
+          { "key": "claimedAt", "type": "datetime", "required": true, "default": null, "encrypted": false, "array": false },
+          { "key": "rewardCoins", "type": "integer", "required": true, "default": 0, "encrypted": false, "array": false }
+        ],
+        "indexes": [
+          { "key": "playerId", "type": "key", "name": "playerId_index" },
+          { "key": "achievementId", "type": "key", "name": "achievementId_index" }
+        ]
+      },
             "type": "key",
             "name": "creatorId_index"
           }

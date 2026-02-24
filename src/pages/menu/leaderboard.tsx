@@ -228,7 +228,7 @@ export function LeaderboardPage({
 
         {/* ELO Leaderboard */}
         <div id="elo" className="leaderboard-tab active bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-[0.7fr_1.35fr_1.35fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.6fr_1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr_0.9fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-2">Player</div>
             <div>ELO</div>
@@ -236,6 +236,7 @@ export function LeaderboardPage({
             <div><span className="text-green-400">W</span> : <span className="text-red-400">L</span></div>
             <div>Goals</div>
             <div>Avg Goals/Match</div>
+            <div>Profile</div>
           </div>
           <div className="divide-y divide-neutral-800">
             {sortedByElo.map((player, idx) => {
@@ -246,7 +247,7 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.7fr_1.35fr_1.35fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.6fr_1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr_0.9fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
@@ -257,6 +258,16 @@ export function LeaderboardPage({
                   <div className="text-neutral-400">{player.wins}:{player.loses} ({Math.round(player.wins / player.loses * 100) / 100})</div>
                   <div className="text-neutral-400">{player.goals_scored}:{player.goals_conceded} ({Math.round(player.goals_scored / player.goals_conceded * 100) / 100})</div>
                   <div className="text-neutral-400">{Math.round(((player.goals_scored) / (player.wins + player.loses)) * 100) / 100}</div>
+                  <div>
+                    <button
+                      type="button"
+                      data-profile-username={player.username}
+                      onclick="window.openProfileViewer(this)"
+                      className="px-2 py-1 text-xs rounded border border-purple-600/60 bg-neutral-900/60 hover:bg-purple-900/40 text-purple-200"
+                    >
+                      Show profile
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -697,6 +708,175 @@ export function LeaderboardPage({
             </div>
           </div>
         </div>
+
+        <dialog
+          id="profile-viewer-modal"
+          onclick="if (event.target === this) this.close()"
+          className="backdrop:bg-black/70 rounded-lg bg-neutral-900/95 border border-purple-600/50 p-0 w-full max-w-6xl"
+        >
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white font-[Orbitron]">Player Profile</h3>
+              <button
+                type="button"
+                onclick="document.getElementById('profile-viewer-modal')?.close()"
+                className="text-neutral-400 hover:text-white text-lg"
+              >
+                ✕
+              </button>
+            </div>
+            <div id="profile-viewer-content" className="text-sm text-neutral-300">Loading...</div>
+          </div>
+        </dialog>
+
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function() {
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function getRarityColors(rarity) {
+    switch (rarity) {
+      case 'legendary':
+        return { border: 'border-red-500', bg: 'bg-red-950/30', text: 'text-red-300' };
+      case 'epic':
+        return { border: 'border-purple-500', bg: 'bg-purple-950/30', text: 'text-purple-300' };
+      case 'rare':
+        return { border: 'border-blue-500', bg: 'bg-blue-950/30', text: 'text-blue-300' };
+      case 'common':
+      default:
+        return { border: 'border-neutral-500', bg: 'bg-neutral-950/30', text: 'text-neutral-300' };
+    }
+  }
+
+  function renderAchievementRow(row, isUnlocked, canClaim) {
+    const name = escapeHtml(row.name || row.definition?.name);
+    const desc = escapeHtml(row.description || row.definition?.description);
+    const icon = escapeHtml(row.icon || row.definition?.icon || '🏆');
+    const reward = Number(row.rewardCoins || row.definition?.rewardCoins || 0);
+    const rarity = row.rarity || row.definition?.rarity || 'common';
+    const claimed = !!row.claimed;
+    const status = isUnlocked ? (claimed ? 'Claimed' : 'Unlocked') : 'Locked';
+    const statusClass = isUnlocked ? (claimed ? 'bg-green-900/40 border-green-700 text-green-200' : 'bg-purple-900/40 border-purple-600 text-purple-200') : 'bg-neutral-800 border-neutral-700 text-neutral-300';
+    const colors = getRarityColors(rarity);
+    const opacity = isUnlocked ? '' : ' opacity-70';
+
+    const claimButton = isUnlocked && canClaim && !claimed
+      ? '<form method="post" action="/v1/achievements/claim"><input type="hidden" name="achievementId" value="' + escapeHtml(row.achievementId) + '" /><button type="submit" class="text-xs px-2 py-1 rounded bg-purple-700/70 border border-purple-500 text-white hover:bg-purple-600/70">Claim</button></form>'
+      : '<span class="text-[11px] px-2 py-1 rounded border ' + statusClass + '">' + status + '</span>';
+
+    return [
+      '<div class="border ' + colors.border + ' rounded-md p-3 ' + colors.bg + opacity + '">',
+      '<div class="flex items-start gap-3">',
+      '<div class="text-xl">' + icon + '</div>',
+      '<div class="flex-1">',
+      '<div class="text-sm font-semibold ' + colors.text + '">' + name + '</div>',
+      '<div class="text-xs text-neutral-400">' + desc + '</div>',
+      '<div class="text-xs text-amber-300 mt-1">Reward: +' + reward + ' coins</div>',
+      '</div>',
+      '<div>' + claimButton + '</div>',
+      '</div>',
+      '</div>'
+    ].join('');
+  }
+
+  function renderRecentMatch(row) {
+    const outcomeClass = row.outcome === 'win'
+      ? 'text-green-300'
+      : row.outcome === 'loss'
+        ? 'text-red-300'
+        : 'text-neutral-300';
+    return [
+      '<div class="flex items-center justify-between text-xs border border-neutral-800 rounded px-3 py-2 bg-neutral-950/60">',
+      '<span class="text-neutral-300">' + escapeHtml(row.matchId) + '</span>',
+      '<span class="' + outcomeClass + '">' + escapeHtml(row.outcome.toUpperCase()) + ' ' + escapeHtml(row.scoreLine) + '</span>',
+      '</div>'
+    ].join('');
+  }
+
+  window.openProfileViewer = async function(el) {
+    const username = el.getAttribute('data-profile-username');
+    const modal = document.getElementById('profile-viewer-modal');
+    const content = document.getElementById('profile-viewer-content');
+    if (!username || !modal || !content) return;
+
+    content.innerHTML = 'Loading...';
+    modal.showModal();
+
+    try {
+      const res = await fetch('/v1/profile/summary/' + encodeURIComponent(username));
+      if (!res.ok) {
+        content.innerHTML = 'Failed to load profile.';
+        return;
+      }
+      const data = await res.json();
+      const profile = data.profile || {};
+      const achievements = data.achievements || { unlocked: [], locked: [] };
+      const canClaim = !!data.canClaim;
+      const recentMatches = data.recentMatches || [];
+
+      const left = [
+        '<div class="bg-neutral-950/70 border border-purple-700/50 rounded-lg p-4">',
+        '<div class="text-xl font-bold text-white mb-1">' + escapeHtml(profile.username) + '</div>',
+        '<div class="text-sm text-neutral-400 mb-3">' + escapeHtml(profile.rank?.name || '') + ' • ' + escapeHtml(profile.elo) + ' ELO</div>',
+        '<div class="grid grid-cols-2 gap-2 text-xs">',
+        '<div class="bg-neutral-900/70 border border-purple-700/40 rounded p-2">Level: <span class="text-purple-200 font-semibold">' + escapeHtml(profile.level) + '</span></div>',
+        '<div class="bg-neutral-900/70 border border-purple-700/40 rounded p-2">Coins: <span class="text-amber-200 font-semibold">' + escapeHtml(profile.coins) + '</span></div>',
+        '<div class="bg-neutral-900/70 border border-purple-700/40 rounded p-2">Wins: <span class="text-green-300 font-semibold">' + escapeHtml(profile.wins) + '</span></div>',
+        '<div class="bg-neutral-900/70 border border-purple-700/40 rounded p-2">Loses: <span class="text-red-300 font-semibold">' + escapeHtml(profile.loses) + '</span></div>',
+        '<div class="bg-neutral-900/70 border border-purple-700/40 rounded p-2">Goals: <span class="text-neutral-100 font-semibold">' + escapeHtml(profile.goals_scored) + ':' + escapeHtml(profile.goals_conceded) + '</span></div>',
+        '<div class="bg-neutral-900/70 border border-purple-700/40 rounded p-2">Vyrazecky: <span class="text-cyan-300 font-semibold">' + escapeHtml(profile.vyrazecky) + '</span></div>',
+        '</div>',
+        '</div>'
+      ].join('');
+
+      const unlockedHtml = achievements.unlocked.map((row) => renderAchievementRow({
+        achievementId: row.achievementId,
+        name: row.definition?.name,
+        description: row.definition?.description,
+        icon: row.definition?.icon,
+        rewardCoins: row.definition?.rewardCoins,
+        claimed: row.claimed
+      }, true, canClaim)).join('') || '<div class="text-xs text-neutral-400">No achievements unlocked yet.</div>';
+
+      const lockedHtml = achievements.locked.map((row) => renderAchievementRow(row, false, false)).join('') || '<div class="text-xs text-green-300">All achievements unlocked.</div>';
+
+      const matchesHtml = recentMatches.map(renderRecentMatch).join('') || '<div class="text-xs text-neutral-400">No recent matches.</div>';
+
+      const right = [
+        '<div class="space-y-4">',
+        '<div class="bg-neutral-950/70 border border-purple-700/50 rounded-lg p-4">',
+        '<div class="text-sm font-semibold text-white mb-2">Achievements</div>',
+        '<div class="space-y-2">',
+        unlockedHtml,
+        lockedHtml,
+        '</div>',
+        '</div>',
+        '<div class="bg-neutral-950/70 border border-purple-700/50 rounded-lg p-4">',
+        '<div class="text-sm font-semibold text-white mb-2">Last 5 Matches</div>',
+        '<div class="space-y-2">',
+        matchesHtml,
+        '</div>',
+        '</div>',
+        '</div>'
+      ].join('');
+
+      content.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-[1fr_1.2fr] gap-4">' + left + right + '</div>';
+    } catch (err) {
+      content.innerHTML = 'Failed to load profile.';
+    }
+  };
+})();
+            `,
+          }}
+        />
       </div>
 
       <script

@@ -23,7 +23,6 @@ import { findCurrentMatch } from "./logic/match";
 import { MatchHistoryPage } from "./pages/menu/matchHistory";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { FBetPage } from "./pages/menu/f-bet";
-import { AchievementsPage } from "./pages/menu/achievements";
 import { TournamentsPage } from "./pages/tournaments/tournaments";
 import { CreateTournamentPage } from "./pages/tournaments/create";
 import { TournamentDetailPage } from "./pages/tournaments/detail";
@@ -53,7 +52,7 @@ import {
 } from "./logic/siteContent";
 import { HallOfFamePage } from "./pages/menu/hallOfFame";
 import { recordAchievement } from "./logic/dailyAchievements";
-import { checkAndUnlockMatchAchievements, unlockAchievement, getPlayerAchievements } from "./logic/achievements";
+import { updateAchievementProgressAndUnlock, claimAchievementReward, getAllAchievementsForPlayer, getPlayerAchievements, unlockAchievement } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
 import { placeBet, getAllBets, getBetsForMatch, resolveBets, getBetsForPlayer, getRoundOdds, getTotalGoalsOdds, getVyrazackaOutcomeOdds, VyrazackaOutcome } from "./logic/betting";
 import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
@@ -821,6 +820,124 @@ app.get("/v1/leaderboard", async (c) => {
   } catch (err: any) {
     console.error("Leaderboard error:", err);
     return c.text("Failed to load leaderboard", 500);
+  }
+});
+
+app.get("/v1/profile/summary/:username", async (c) => {
+  try {
+    const username = c.req.param("username");
+    const viewer = getCookie(c, "user") ?? "";
+    const profile = await getPlayerProfile(username);
+    if (!profile) return c.json({ error: "Player not found" }, 404);
+
+    const levelInfo = computeLevel(profile.xp || 0);
+    const rankInfo = getRankInfoFromElo(profile.elo || 0);
+    const achievements = await getAllAchievementsForPlayer(profile.$id);
+
+    const client = new sdk.Client()
+      .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
+      .setProject(process.env.APPWRITE_PROJECT)
+      .setKey(process.env.APPWRITE_KEY);
+    const databases = new sdk.Databases(client);
+
+    const recentMatches: Array<{ matchId: string; createdAt?: string; outcome: string; scoreLine: string }> = [];
+    let offset = 0;
+    const limit = 100;
+    while (recentMatches.length < 5) {
+      const res = await databases.listDocuments(
+        process.env.APPWRITE_DATABASE_ID,
+        'matches_history',
+        [
+          sdk.Query.orderDesc("$createdAt"),
+          sdk.Query.limit(limit),
+          sdk.Query.offset(offset)
+        ]
+      );
+      if (res.documents.length === 0) break;
+
+      for (const doc of res.documents) {
+        if (recentMatches.length >= 5) break;
+        let playersJson: any = doc.players_json;
+        try {
+          playersJson = typeof playersJson === "string" ? JSON.parse(playersJson) : playersJson;
+        } catch {
+          playersJson = [];
+        }
+        if (!Array.isArray(playersJson)) continue;
+        const playerRow = playersJson.find((p: any) => p.id === profile.$id);
+        if (!playerRow) continue;
+
+        const winsAdd = Number(playerRow.winsAdd || 0);
+        const losesAdd = Number(playerRow.losesAdd || 0);
+        const outcome = winsAdd >= 2 ? 'win' : (losesAdd >= 2 ? 'loss' : 'draw');
+        const scoreLine = `${winsAdd}:${losesAdd}`;
+
+        recentMatches.push({
+          matchId: doc.matchId || doc.$id,
+          createdAt: doc.$createdAt,
+          outcome,
+          scoreLine,
+        });
+      }
+
+      offset += limit;
+      if (offset > 1000) break;
+    }
+
+    return c.json({
+      profile: {
+        username: profile.username,
+        elo: profile.elo,
+        coins: profile.coins,
+        xp: profile.xp,
+        wins: profile.wins,
+        loses: profile.loses,
+        goals_scored: profile.goals_scored,
+        goals_conceded: profile.goals_conceded,
+        vyrazecky: profile.vyrazecky,
+        ultimate_wins: profile.ultimate_wins,
+        ultimate_loses: profile.ultimate_loses,
+        ten_zero_wins: profile.ten_zero_wins,
+        ten_zero_loses: profile.ten_zero_loses,
+        level: levelInfo.level,
+        levelProgress: levelInfo.progress,
+        rank: rankInfo,
+        selectedBadge: profile.selectedBadge ?? null,
+      },
+      achievements,
+      recentMatches,
+      canClaim: viewer === username,
+    });
+  } catch (err: any) {
+    console.error("profile summary error", err);
+    return c.json({ error: "Failed to load profile summary" }, 500);
+  }
+});
+
+app.post("/v1/achievements/claim", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? "";
+    if (!username) return c.redirect("/v1/auth/login");
+
+    const form = await c.req.formData();
+    const achievementId = String(form.get("achievementId") ?? "").trim();
+    if (!achievementId) return c.redirect("/v1/lobby");
+
+    const profile = await getPlayerProfile(username);
+    if (!profile) return c.redirect("/v1/lobby");
+
+    const claim = await claimAchievementReward(profile.$id, achievementId);
+    if (claim.status === 'claimed' && claim.rewardCoins > 0) {
+      await updatePlayerStats(profile.$id, {
+        coins: (profile.coins || 0) + claim.rewardCoins,
+      });
+    }
+
+    const referer = c.req.header("Referer");
+    return c.redirect(referer || "/v1/lobby");
+  } catch (err: any) {
+    console.error("claim achievement error", err);
+    return c.redirect("/v1/lobby");
   }
 });
 
@@ -1742,6 +1859,19 @@ export async function matchResults(matchId: string) {
     const scores = match.scores || [];
     const players = match.players || [];
 
+    const lostByGolden: Record<string, boolean> = {};
+    scores.forEach((s: any) => {
+      const golden = s?.goldenVyrazacka;
+      if (!golden?.playerId) return;
+      const a = Array.isArray(s.a) ? s.a : [];
+      const b = Array.isArray(s.b) ? s.b : [];
+      if (a.includes(golden.playerId)) {
+        b.forEach((id: string) => { lostByGolden[id] = true; });
+      } else if (b.includes(golden.playerId)) {
+        a.forEach((id: string) => { lostByGolden[id] = true; });
+      }
+    });
+
     // prepare per-player accumulators
     const byId: Record<string, any> = {};
     players.forEach((p: any) => {
@@ -1948,6 +2078,19 @@ app.post("/v1/match/game/finish", async (c) => {
 
     const scores = match.scores || [];
     const players = match.players || [];
+
+    const lostByGolden: Record<string, boolean> = {};
+    scores.forEach((s: any) => {
+      const golden = s?.goldenVyrazacka;
+      if (!golden?.playerId) return;
+      const a = Array.isArray(s.a) ? s.a : [];
+      const b = Array.isArray(s.b) ? s.b : [];
+      if (a.includes(golden.playerId)) {
+        b.forEach((id: string) => { lostByGolden[id] = true; });
+      } else if (b.includes(golden.playerId)) {
+        a.forEach((id: string) => { lostByGolden[id] = true; });
+      }
+    });
 
     // prepare per-player accumulators
     const byId: Record<string, any> = {};
@@ -2248,21 +2391,39 @@ app.post("/v1/match/game/finish", async (c) => {
           const newWins = (profile.wins || 0) + winsAdd;
           const newEloTotal = (profile.elo || 0) + (newElo - oldElo);
           const newVyrazecky = (profile.vyrazecky || 0) + rec.vyrazecky;
+          const newCoins = (profile.coins || 0) + coinsGain;
           const hasGoldenVyrazecka = (scores || []).some((s: any) => {
             const golden = s?.goldenVyrazacka;
             return golden?.playerId === id;
           });
 
-          await checkAndUnlockMatchAchievements(id, rec.username, matchId, {
-            wins: newWins,
-            elo: newEloTotal,
-            level: newLevel,
-            vyrazecky: newVyrazecky,
-            tenZeroWins: (profile.ten_zero_wins || 0) + rec.ten_zero_wins,
-            winsAdded: winsAdd,
+          const unlocked = await updateAchievementProgressAndUnlock(id, rec.username, matchId, {
+            matchWon: winsAdd >= 2,
+            matchLost: losesAdd >= 2,
+            matchUltimateWin: winsAdd === 3,
+            matchUltimateLose: losesAdd === 3,
             hadShutoutWin: rec.ten_zero_wins > 0,
-            hasGoldenVyrazecka,
+            lostByGoldenVyrazecka: !!lostByGolden[id],
+            vyrazeckyAdded: rec.vyrazecky || 0,
+            newLevel,
+            newElo: newEloTotal,
+            newCoins,
           });
+
+          for (const def of unlocked) {
+            await recordAchievement({
+              timestamp,
+              type: 'achievement_unlocked',
+              playerId: id,
+              username: rec.username,
+              data: {
+                achievementId: def.achievementId,
+                achievementName: def.name,
+                rewardCoins: def.rewardCoins,
+                matchId,
+              },
+            });
+          }
         }
       } catch (e) {
         console.error('failed updating profile', id, e);
@@ -2655,12 +2816,7 @@ app.get("/v1/f-bet", async (c) => {
 });
 
 app.get("/v1/achievements", async (c) => {
-  const playerParam = c.req.query('player');
-  return c.html(
-    <MainLayout c={c}>
-      <AchievementsPage c={c} viewingPlayerId={playerParam} />
-    </MainLayout>
-  );
+  return c.redirect("/v1/lobby");
 });
 
 app.get("/v1/tournaments", (c) => {
