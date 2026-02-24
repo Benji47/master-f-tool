@@ -130,6 +130,7 @@ function writeLastProcessedSeason(season: number): void {
 }
 
 async function applySeasonRolloverIfNeeded(): Promise<void> {
+  return;
   if (seasonRolloverInProgress) return;
 
   const currentSeason = getCurrentSeasonIndex();
