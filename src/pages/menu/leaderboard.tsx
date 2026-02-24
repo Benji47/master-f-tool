@@ -1,6 +1,6 @@
 import { PlayerProfile } from "../../logic/profile";
 import { formatCoins } from "../../logic/format";
-import { badges, eloColor, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
+import { badges, eloColor, getBadgeByName, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 import { levelsXp, getCumulativeThresholds } from "../../static/data";
 import { getSeasonLabel } from "../../logic/season";
 
@@ -112,13 +112,16 @@ export function LeaderboardPage({
   }
 
   function renderPlayerNameWithBadge(player: PlayerProfile) {
-    const badge = badges[computeLevel(player.xp).level - 1];
+    const levelBadge = badges[computeLevel(player.xp).level - 1];
+    const selectedBadgeName = (player.selectedBadge ?? "").trim();
+    const badge = selectedBadgeName ? (getBadgeByName(selectedBadgeName) ?? levelBadge) : levelBadge;
     return (
-      <>
-        <span>{player.username} [</span>
-        {renderBadgeName(badge?.name || "Unranked", badge?.iconUrl)}
-        <span>]</span>
-      </>
+      <span className="inline-flex items-center gap-2">
+        <span>{player.username}</span>
+        <span className={`${badge?.bg || "bg-neutral-700"} ${badge?.text || "text-neutral-100"} px-2 py-0.5 rounded text-xs font-semibold`}>
+          {renderBadgeName(badge?.name || "Unranked", badge?.iconUrl)}
+        </span>
+      </span>
     );
   }
 
@@ -225,9 +228,9 @@ export function LeaderboardPage({
 
         {/* ELO Leaderboard */}
         <div id="elo" className="leaderboard-tab active bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-7 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1.35fr_1.35fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
-            <div>Player</div>
+            <div className="col-span-2">Player</div>
             <div>ELO</div>
             <div>Level</div>
             <div><span className="text-green-400">W</span> : <span className="text-red-400">L</span></div>
@@ -243,12 +246,12 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1.35fr_1.35fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">{rankLabelsElo[idx]}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}> <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink></div>
+                  <div className={`col-span-2 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}> <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink></div>
                   <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo} {'->'} {eloRank}</div>
                   <div className="text-blue-400">LVL {computeLevel(player.xp).level} ({player.xp}xp)</div>
                   <div className="text-neutral-400">{player.wins}:{player.loses} ({Math.round(player.wins / player.loses * 100) / 100})</div>
@@ -262,10 +265,10 @@ export function LeaderboardPage({
 
         {/* Ultimate Wins Leaderboard */}
         <div id="ultimate_wins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
-            <div>Player</div>
-            <div>Ultimate Wins</div>
+            <div className="col-span-3">Player</div>
+            <div className="col-span-2">Ultimate Wins</div>
           </div>
           <div className="divide-y divide-neutral-800">
             {sortedByUltimateWins.map((player, idx) => {
@@ -276,16 +279,16 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">{rankLabelsUltimateWins[idx]}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                  <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
 
-                  <div className="text-green-400 font-bold">{player.ultimate_wins}</div>
+                  <div className="col-span-2 text-green-400 font-bold">{player.ultimate_wins}</div>
                 </div>
               );
             })}
@@ -294,10 +297,10 @@ export function LeaderboardPage({
 
         {/* Ultimate Loses Leaderboard */}
         <div id="ultimate_loses" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
-            <div>Player</div>
-            <div>Ultimate Loses</div>
+            <div className="col-span-3">Player</div>
+            <div className="col-span-2">Ultimate Loses</div>
           </div>
           <div className="divide-y divide-neutral-800">
             {sortedByUltimateLoses.map((player, idx) => {
@@ -308,16 +311,16 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">{rankLabelsUltimateLoses[idx]}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                  <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
 
-                  <div className="text-red-400 font-bold">{player.ultimate_loses}</div>
+                  <div className="col-span-2 text-red-400 font-bold">{player.ultimate_loses}</div>
                 </div>
               );
             })}
@@ -326,10 +329,10 @@ export function LeaderboardPage({
 
         {/* Vyrážečky Leaderboard */}
         <div id="vyrazacka" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
-            <div>Player</div>
-            <div>Vyrážečky</div>
+            <div className="col-span-3">Player</div>
+            <div className="col-span-2">Vyrážečky</div>
           </div>
           <div className="divide-y divide-neutral-800">
             {sortedByVyrazacka.map((player, idx) => {
@@ -344,16 +347,16 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">{rankLabelsVyrazacka[idx]}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                  <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
 
-                  <div className="text-orange-400 font-bold">{player.vyrazecky} ({vyrazeckyPercents}%)</div>
+                  <div className="col-span-2 text-orange-400 font-bold">{player.vyrazecky} ({vyrazeckyPercents}%)</div>
                 </div>
               );
             })}
@@ -420,10 +423,10 @@ export function LeaderboardPage({
 
         {/* Total Games Leaderboard */}
         <div id="total_games" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
-            <div>Player</div>
-            <div>Total Games</div>
+            <div className="col-span-3">Player</div>
+            <div className="col-span-2">Total Games</div>
           </div>
           <div className="divide-y divide-neutral-800">
             {sortedByTotalGames.map((player, idx) => {
@@ -434,16 +437,16 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">{rankLabelsTotalGames[idx]}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                  <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
 
-                  <div className="text-purple-400 font-bold">{player.wins + player.loses}</div>
+                  <div className="col-span-2 text-purple-400 font-bold">{player.wins + player.loses}</div>
                 </div>
               );
             })}
@@ -452,9 +455,9 @@ export function LeaderboardPage({
 
         {/* Level Leaderboard */}
         <div id="level" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-6 gap-6 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-6 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
-            <div>Player</div>
+            <div className="col-span-3">Player</div>
             <div>Level</div>
             <div>Xp</div>
           </div>
@@ -467,12 +470,12 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">{rankLabelsLevels[idx]}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                  <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
                   <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>{computeLevel(player.xp).level}</div>
@@ -485,10 +488,10 @@ export function LeaderboardPage({
 
         {/* Ten Zero Loses Leaderboard */}
         <div id="ten_zero_loses" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
-            <div>Player</div>
-            <div>10:0 Loses</div>
+            <div className="col-span-3">Player</div>
+            <div className="col-span-2">10:0 Loses</div>
           </div>
           <div className="divide-y divide-neutral-800">
             {sortedTenZeroLoses.map((player, idx) => {
@@ -499,15 +502,15 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">{rankLabelsTenZeroLoses[idx]}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                  <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
-                  <div className="text-yellow-400 font-bold">{player.ten_zero_loses}</div>
+                  <div className="col-span-2 text-yellow-400 font-bold">{player.ten_zero_loses}</div>
                 </div>
               );
             })}
@@ -516,10 +519,10 @@ export function LeaderboardPage({
 
         {/* Ten Zero Wins Leaderboard */}
         <div id="ten_zero_wins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
-            <div>Player</div>
-            <div>10:0 Wins</div>
+            <div className="col-span-3">Player</div>
+            <div className="col-span-2">10:0 Wins</div>
           </div>
           <div className="divide-y divide-neutral-800">
             {sortedTenZeroWins.map((player, idx) => {
@@ -529,15 +532,15 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">{rankLabelsTenZeroWins[idx]}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                  <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
-                  <div className="text-yellow-400 font-bold">{player.ten_zero_wins}</div>
+                  <div className="col-span-2 text-yellow-400 font-bold">{player.ten_zero_wins}</div>
                 </div>
               );
             })}
@@ -546,10 +549,10 @@ export function LeaderboardPage({
 
         {/* Coins Leaderboard */}
         <div id="coins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
-            <div>Player</div>
-            <div>Coins</div>
+            <div className="col-span-3">Player</div>
+            <div className="col-span-2">Coins</div>
           </div>
           <div className="divide-y divide-neutral-800">
             {sortedCoins.map((player, idx) => {
@@ -559,15 +562,15 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
                   <div className="font-bold text-lg">{rankLabelsCoins[idx]}</div>
-                  <div className={`font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                  <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
-                  <div className="text-yellow-400 font-bold">{formatCoins(player.coins)}</div>
+                  <div className="col-span-2 text-yellow-400 font-bold">{formatCoins(player.coins)}</div>
                 </div>
               );
             })}

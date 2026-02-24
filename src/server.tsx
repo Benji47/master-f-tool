@@ -274,6 +274,12 @@ app.use(async (c, next) => {
 app.get("/v1/changes-log", async (c) => {
   const changes = [
     {
+      date: "24.02.2026",
+      updates: [
+        "[Feature] -> Ton of new stuff! Explore it yourself :D",
+      ],
+    },
+    {
       date: "17.02.2026",
       updates: [
         "[Feature] -> Added tournaments!",
@@ -366,11 +372,40 @@ app.get("/v1/match-history", async (c) => {
   // parse each document as match history (includes elo deltas / xp gains)
   const matches = res.documents.map((doc: any) => (parseMatchHistoryDoc(doc)));
 
+  interface BetSummary {
+    lostAmount: number;
+    profitWon: number;
+  }
+
+  interface MatchWithBetSummary extends MatchHistoryDoc {
+    betSummary: BetSummary;
+  }
+
+  const matchesWithBetSummary: MatchWithBetSummary[] = await Promise.all(
+    matches.map(async (match: MatchHistoryDoc): Promise<MatchWithBetSummary> => {
+      const bets = await getBetsForMatch(match.matchId);
+      const totalLostAmount: number = bets
+        .filter((b) => b.status === "lost")
+        .reduce((sum: number, b) => sum + Number(b.betAmount || 0), 0);
+      const totalProfitWon: number = bets
+        .filter((b) => b.status === "won")
+        .reduce((sum: number, b) => sum + Math.max(0, Number(b.winnings || 0) - Number(b.betAmount || 0)), 0);
+
+      return {
+        ...match,
+        betSummary: {
+          lostAmount: totalLostAmount,
+          profitWon: totalProfitWon,
+        },
+      };
+    })
+  );
+
   const user = getCookie(c, "user") ?? null;
 
   return c.html(
     <MainLayout c={c}>
-      <MatchHistoryPage c={c} matches={matches} currentUser={user} filterUsername={null} />
+      <MatchHistoryPage c={c} matches={matchesWithBetSummary} currentUser={user} filterUsername={null} />
     </MainLayout>
   );
 });
@@ -433,9 +468,29 @@ app.get("/v1/match-history/players/:username", async (c) => {
   })
   .map((doc: any) => parseMatchHistoryDoc(doc));
 
+  const matchesWithBetSummary = await Promise.all(
+    matches.map(async (match) => {
+      const bets = await getBetsForMatch(match.matchId);
+      const totalLostAmount = bets
+        .filter((b) => b.status === "lost")
+        .reduce((sum, b) => sum + Number(b.betAmount || 0), 0);
+      const totalProfitWon = bets
+        .filter((b) => b.status === "won")
+        .reduce((sum, b) => sum + Math.max(0, Number(b.winnings || 0) - Number(b.betAmount || 0)), 0);
+
+      return {
+        ...match,
+        betSummary: {
+          lostAmount: totalLostAmount,
+          profitWon: totalProfitWon,
+        },
+      };
+    })
+  );
+
   return c.html(
     <MainLayout c={c}>
-      <MatchHistoryPage c={c} matches={matches} currentUser={null} filterUsername={username} />
+      <MatchHistoryPage c={c} matches={matchesWithBetSummary} currentUser={null} filterUsername={username} />
     </MainLayout>
   );
 });
@@ -665,6 +720,7 @@ app.get("/v1/leaderboard", async (c) => {
               $id: profile.$id,
               userId: profile.userId,
               username: profile.username,
+              selectedBadge: profile.selectedBadge,
               xp: profile.xp ?? seasonRow.xp,
               elo: scope === "current" ? profile.elo : seasonRow.elo,
               coins: profile.coins ?? seasonRow.coins,
@@ -1740,7 +1796,7 @@ export async function matchResults(matchId: string) {
           byId[id].gamesAdded += 1;
           byId[id].goals_conceded += bScore;
           byId[id].xpGained += aScore;
-          byId[id].coinsGained += 100; // +100 coins for winning
+          byId[id].coinsGained += 200; // +200 coins for winning
           byId[id].coinsGained += aScore * 2; // +2 coins per goal scored
           byId[id].goals_scored += aScore;
           if (aScore === 10 && bScore === 0) {
@@ -1753,6 +1809,7 @@ export async function matchResults(matchId: string) {
           byId[id].goals_conceded += aScore;
           byId[id].goals_scored += bScore;
           byId[id].xpGained += bScore;
+          byId[id].coinsGained += 100; // +100 coins participation reward
           byId[id].coinsGained += bScore * 2; // +2 coins per goal scored
           byId[id].losesAdded += 1;
           byId[id].xpGained += 5;
@@ -1765,7 +1822,7 @@ export async function matchResults(matchId: string) {
           byId[id].xpGained += 15;
           byId[id].gamesAdded += 1;
           byId[id].xpGained += bScore;
-          byId[id].coinsGained += 100; // +100 coins for winning
+          byId[id].coinsGained += 200; // +200 coins for winning
           byId[id].coinsGained += bScore * 2; // +2 coins per goal scored
           byId[id].goals_conceded += aScore;
           byId[id].goals_scored += bScore;
@@ -1779,6 +1836,7 @@ export async function matchResults(matchId: string) {
           byId[id].goals_conceded += bScore;
           byId[id].goals_scored += aScore;
           byId[id].xpGained += aScore;
+          byId[id].coinsGained += 100; // +100 coins participation reward
           byId[id].coinsGained += aScore * 2; // +2 coins per goal scored
           byId[id].losesAdded += 1;
           byId[id].xpGained += 5;

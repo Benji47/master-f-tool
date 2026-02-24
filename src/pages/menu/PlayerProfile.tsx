@@ -181,6 +181,7 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
     </div>
     <dialog
       id="badge-modal"
+      onclick="if (event.target === this) this.close()"
       className="backdrop:bg-black/70 rounded-lg bg-neutral-900/95 border border-purple-600/50 p-0 w-full max-w-md"
     >
       <div className="p-4">

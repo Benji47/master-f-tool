@@ -255,6 +255,7 @@ export async function LobbyPage({
       {/* Levels Modal */}
       <dialog
         id="levels-modal"
+        onclick="if (event.target === this) this.close()"
         className="backdrop:bg-black/60 rounded-lg bg-neutral-900/95 border border-purple-600/50 p-0 w-full max-w-xl"
       >
         <div className="p-5">
@@ -292,26 +293,27 @@ export async function LobbyPage({
       {/* Ranks Modal */}
       <dialog
         id="ranks-modal"
-        className="backdrop:bg-black/60 rounded-lg bg-neutral-900/95 border border-purple-600/50 p-0 w-full max-w-6xl"
+        onclick="if (event.target === this) this.close()"
+        className="backdrop:bg-black/60 rounded-lg bg-neutral-900/95 border border-purple-600/50 p-0 w-full max-w-[95vw]"
       >
-        <div className="p-5 max-h-[85vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-bold text-white font-[Orbitron]">Ranks</h4>
+        <div className="p-7 max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h4 className="text-2xl font-bold text-white font-[Orbitron]">Ranks</h4>
             <button
               type="button"
               onclick="document.getElementById('ranks-modal')?.close()"
-              className="text-neutral-400 hover:text-white"
+              className="text-neutral-400 hover:text-white text-xl"
               aria-label="Close"
             >
               ✕
             </button>
           </div>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             {[
               ["zElo", "Bronze", "Silver", "Gold"],
               ["Platinum", "Diamond", "Master", "Grandmaster"],
             ].map((rankRow, rowIdx) => (
-              <div key={`row-${rowIdx}`} className="flex gap-4">
+              <div key={`row-${rowIdx}`} className="flex gap-5">
                 {rankRow.map((rankName) => {
                   const tiers = rankTiers.filter((t) => t.name.startsWith(rankName));
 
@@ -332,34 +334,34 @@ export async function LobbyPage({
                   return (
                     <div
                       key={rankName}
-                      className={`flex-1 rounded-lg p-3 border-2 ${rankColors[rankName] || "bg-neutral-800/40"}`}
+                      className={`flex-1 rounded-lg p-5 border-2 ${rankColors[rankName] || "bg-neutral-800/40"}`}
                       style={{ borderColor: firstTier.textColor.split(" ").pop() }}
                     >
-                      <div className={`text-lg font-bold text-center mb-3 ${firstTier.textColor}`}>
+                      <div className={`text-2xl font-bold text-center mb-4 ${firstTier.textColor}`}>
                         {rankName === "zElo" ? "🥬 zElo" : rankName}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-4">
                         {tiers.map((tier) => {
                           const playersInTier = players.filter((p) => getRankInfoFromElo(p.elo).name === tier.name);
                           const sortedPlayers = playersInTier.sort((a, b) => b.elo - a.elo);
 
                           return (
-                            <div key={tier.name} className="flex flex-col gap-2 bg-neutral-800/50 rounded p-2">
+                            <div key={tier.name} className="flex flex-col gap-2 bg-neutral-800/50 rounded p-3">
                               <div className="flex items-center justify-between gap-1">
-                                <div className="flex items-center gap-1">
-                                  <div className={`w-6 h-2 rounded-full bg-gradient-to-r ${tier.color}`} />
-                                  <div className={`${tier.textColor} text-xs font-bold`}>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-8 h-2.5 rounded-full bg-gradient-to-r ${tier.color}`} />
+                                  <div className={`${tier.textColor} text-sm font-bold`}>
                                     {tier.name.split(" ")[1]}
                                   </div>
                                 </div>
-                                <div className="text-neutral-400 text-xs">
+                                <div className="text-neutral-400 text-sm">
                                   ({tier.min}-{tier.max})
                                 </div>
                               </div>
 
                               {sortedPlayers.length > 0 ? (
-                                <ul className="text-neutral-300 text-xs list-disc pl-3 max-h-32 overflow-y-auto">
+                                <ul className="text-neutral-300 text-sm list-disc pl-4 max-h-40 overflow-y-auto">
                                   {sortedPlayers.map((p) => (
                                     <li key={p.username} className="truncate">
                                       {p.username} ({p.elo})
@@ -367,7 +369,7 @@ export async function LobbyPage({
                                   ))}
                                 </ul>
                               ) : (
-                                <div className="text-neutral-600 text-xs italic"></div>
+                                <div className="text-neutral-600 text-sm italic"></div>
                               )}
                             </div>
                           );
