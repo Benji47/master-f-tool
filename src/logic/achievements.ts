@@ -1,4 +1,5 @@
 import * as sdk from "node-appwrite";
+import { computeLevel } from "../static/data";
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
 const projectId = process.env.APPWRITE_PROJECT || '';
@@ -56,8 +57,8 @@ interface PlayerAchievementProgress {
   $id?: string;
   playerId: string;
   username: string;
-  createdAt: number;
-  updatedAt: number;
+  createdAt: string;
+  updatedAt: string;
   baselineLevel: number;
   baselineElo: number;
   baselineCoins: number;
@@ -371,6 +372,8 @@ export async function getAllAchievementsForPlayer(
   locked: AchievementDefinition[];
 }> {
   try {
+    await syncAchievementsFromProfile(playerId);
+
     const unlocked = await getPlayerAchievements(playerId);
     const claimed = await getAchievementClaims(playerId);
     const unlockedWithClaims = unlocked.map((row) => ({
@@ -388,6 +391,67 @@ export async function getAllAchievementsForPlayer(
   }
 }
 
+async function syncAchievementsFromProfile(playerId: string): Promise<void> {
+  try {
+    const client = getClient();
+    const databases = new sdk.Databases(client);
+    const profile = await databases.getDocument(databaseId, 'players-profile', playerId);
+
+    const username = String(profile.username || '');
+    const level = computeLevel(Number(profile.xp || 0)).level;
+    const elo = Number(profile.elo || 0);
+    const coins = Number(profile.coins || 0);
+    const vyrazecky = Number(profile.vyrazecky || 0);
+    const ultimateWins = Number(profile.ultimate_wins || 0);
+    const ultimateLoses = Number(profile.ultimate_loses || 0);
+    const shutoutWins = Number(profile.ten_zero_wins || 0);
+
+    for (const def of ACHIEVEMENT_DEFINITIONS) {
+      const requirement = def.requirement;
+      if (!requirement) continue;
+
+      const value = requirement.value ?? 1;
+      let shouldUnlock = false;
+
+      switch (requirement.type) {
+        case 'level':
+          shouldUnlock = level >= value;
+          break;
+        case 'elo':
+          shouldUnlock = elo >= value;
+          break;
+        case 'coins':
+          shouldUnlock = coins >= value;
+          break;
+        case 'vyrazecky':
+          shouldUnlock = vyrazecky >= value;
+          break;
+        case 'ultimate_win':
+          shouldUnlock = ultimateWins >= value;
+          break;
+        case 'ultimate_lose':
+          shouldUnlock = ultimateLoses >= value;
+          break;
+        case 'shutout_win':
+          shouldUnlock = shutoutWins >= value;
+          break;
+        default:
+          shouldUnlock = false;
+          break;
+      }
+
+      if (shouldUnlock) {
+        await unlockAchievement(playerId, username, def.achievementId, {
+          source: 'profile_sync',
+          value,
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error syncing profile achievements:', error);
+  }
+}
+
 async function getOrCreateProgress(
   playerId: string,
   username: string,
@@ -399,7 +463,7 @@ async function getOrCreateProgress(
     const doc = await databases.getDocument(databaseId, progressCollectionId, playerId);
     return doc as unknown as PlayerAchievementProgress;
   } catch {
-    const now = Date.now();
+    const now = new Date().toISOString();
     const doc = await databases.createDocument(
       databaseId,
       progressCollectionId,
@@ -431,33 +495,45 @@ export async function updateAchievementProgressAndUnlock(
   matchId: string,
   stats: MatchAchievementStats
 ): Promise<AchievementDefinition[]> {
-  const progress = await getOrCreateProgress(playerId, username, {
-    level: stats.newLevel,
-    elo: stats.newElo,
-    coins: stats.newCoins,
-  });
+  let nextMatchesPlayed = 1;
+  let nextWinStreak = stats.matchWon ? 1 : 0;
+  let nextMaxWinStreak = nextWinStreak;
+  let nextTotalVyrazecky = Number(stats.vyrazeckyAdded || 0);
+  let nextMaxLevel = Number(stats.newLevel || 0);
+  let nextMaxElo = Number(stats.newElo || 0);
+  let nextMaxCoins = Number(stats.newCoins || 0);
 
-  const nextMatchesPlayed = Number(progress.matchesPlayed || 0) + 1;
-  const nextWinStreak = stats.matchWon ? Number(progress.winStreak || 0) + 1 : 0;
-  const nextMaxWinStreak = Math.max(Number(progress.maxWinStreak || 0), nextWinStreak);
-  const nextTotalVyrazecky = Number(progress.totalVyrazecky || 0) + Number(stats.vyrazeckyAdded || 0);
+  try {
+    const progress = await getOrCreateProgress(playerId, username, {
+      level: stats.newLevel,
+      elo: stats.newElo,
+      coins: stats.newCoins,
+    });
 
-  const nextMaxLevel = Math.max(Number(progress.maxLevel || 0), Number(stats.newLevel || 0));
-  const nextMaxElo = Math.max(Number(progress.maxElo || 0), Number(stats.newElo || 0));
-  const nextMaxCoins = Math.max(Number(progress.maxCoins || 0), Number(stats.newCoins || 0));
+    nextMatchesPlayed = Number(progress.matchesPlayed || 0) + 1;
+    nextWinStreak = stats.matchWon ? Number(progress.winStreak || 0) + 1 : 0;
+    nextMaxWinStreak = Math.max(Number(progress.maxWinStreak || 0), nextWinStreak);
+    nextTotalVyrazecky = Number(progress.totalVyrazecky || 0) + Number(stats.vyrazeckyAdded || 0);
 
-  const client = getClient();
-  const databases = new sdk.Databases(client);
-  await databases.updateDocument(databaseId, progressCollectionId, progress.playerId, {
-    matchesPlayed: nextMatchesPlayed,
-    winStreak: nextWinStreak,
-    maxWinStreak: nextMaxWinStreak,
-    totalVyrazecky: nextTotalVyrazecky,
-    maxLevel: nextMaxLevel,
-    maxElo: nextMaxElo,
-    maxCoins: nextMaxCoins,
-    updatedAt: Date.now(),
-  });
+    nextMaxLevel = Math.max(Number(progress.maxLevel || 0), Number(stats.newLevel || 0));
+    nextMaxElo = Math.max(Number(progress.maxElo || 0), Number(stats.newElo || 0));
+    nextMaxCoins = Math.max(Number(progress.maxCoins || 0), Number(stats.newCoins || 0));
+
+    const client = getClient();
+    const databases = new sdk.Databases(client);
+    await databases.updateDocument(databaseId, progressCollectionId, progress.playerId, {
+      matchesPlayed: nextMatchesPlayed,
+      winStreak: nextWinStreak,
+      maxWinStreak: nextMaxWinStreak,
+      totalVyrazecky: nextTotalVyrazecky,
+      maxLevel: nextMaxLevel,
+      maxElo: nextMaxElo,
+      maxCoins: nextMaxCoins,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error updating achievement progress, using fallback unlock evaluation:', error);
+  }
 
   const unlocked: AchievementDefinition[] = [];
 
@@ -470,13 +546,13 @@ export async function updateAchievementProgressAndUnlock(
 
     switch (requirement.type) {
       case 'level':
-        shouldUnlock = nextMaxLevel >= value && Number(progress.baselineLevel || 0) < value;
+        shouldUnlock = nextMaxLevel >= value;
         break;
       case 'elo':
-        shouldUnlock = nextMaxElo >= value && Number(progress.baselineElo || 0) < value;
+        shouldUnlock = nextMaxElo >= value;
         break;
       case 'coins':
-        shouldUnlock = nextMaxCoins >= value && Number(progress.baselineCoins || 0) < value;
+        shouldUnlock = nextMaxCoins >= value;
         break;
       case 'matches_played':
         shouldUnlock = nextMatchesPlayed >= value;

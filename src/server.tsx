@@ -68,6 +68,7 @@ import {
   createBracketMatches, 
   getTournamentMatches, 
   getMatch as getTournamentMatch,
+  getTeam,
   updateMatchState,
   createTournamentResult,
   getTournamentResults,
@@ -2275,8 +2276,9 @@ app.post("/v1/match/game/finish", async (c) => {
     for (const id of ids) {
       const rec = byId[id];
       // compute final changes
-      const oldElo = rec.oldElo;
+      const oldElo = Math.round(rec.oldElo);
       const newElo = Math.round(rec.newElo);
+      const eloDelta = newElo - oldElo;
       const xpGain = Math.max(0, Math.round(rec.xpGained));
       const coinsGain = Math.max(0, Math.round(rec.coinsGained));
       const winsAdd = rec.winsAdded || 0;
@@ -2285,10 +2287,15 @@ app.post("/v1/match/game/finish", async (c) => {
       const ultimateLoseInc = (ultimateLoserId === id) ? 1 : 0;
       const gamesAdded = rec.gamesAdded || 0;
 
+      let oldEloForResult = oldElo;
+      let newEloForResult = newElo;
+
       // update DB profile
       try {
         const profile = await getPlayerProfile(id); // profile id or username may be used
         if (profile) {
+          const oldEloTotal = Math.round(profile.elo || 0);
+          const newEloTotal = oldEloTotal + eloDelta;
           const oldXp = profile.xp || 0;
           const newXp = oldXp + xpGain;
           const oldLevel = computeLevel(oldXp).level;
@@ -2296,7 +2303,7 @@ app.post("/v1/match/game/finish", async (c) => {
           
           await updatePlayerStats(profile.$id, {
             xp: newXp,
-            elo: (profile.elo || 0) + (newElo - oldElo),
+            elo: newEloTotal,
             wins: (profile.wins || 0) + winsAdd,
             loses: (profile.loses || 0) + losesAdd,
             ultimate_wins: (profile.ultimate_wins || 0) + ultimateWinInc,
@@ -2328,21 +2335,21 @@ app.post("/v1/match/game/finish", async (c) => {
           }
           
           // ELO rank changes — only record when rank tier/name actually changes
-          if (newElo !== oldElo) {
-            const oldRank = getRankInfoFromElo(oldElo || 0);
-            const newRank = getRankInfoFromElo(newElo || 0);
+          if (newEloTotal !== oldEloTotal) {
+            const oldRank = getRankInfoFromElo(oldEloTotal || 0);
+            const newRank = getRankInfoFromElo(newEloTotal || 0);
             const rankChanged = oldRank.name !== newRank.name;
 
             if (rankChanged) {
-              const type = newElo > oldElo ? 'elo_rank_up' : 'elo_rank_down';
+              const type = newEloTotal > oldEloTotal ? 'elo_rank_up' : 'elo_rank_down';
               await recordAchievement({
                 timestamp,
                 type,
                 playerId: id,
                 username: rec.username,
                 data: {
-                  oldValue: oldElo,
-                  newValue: newElo,
+                  oldValue: oldEloTotal,
+                  newValue: newEloTotal,
                   matchId,
                 },
               });
@@ -2390,7 +2397,6 @@ app.post("/v1/match/game/finish", async (c) => {
           }
 
           const newWins = (profile.wins || 0) + winsAdd;
-          const newEloTotal = (profile.elo || 0) + (newElo - oldElo);
           const newVyrazecky = (profile.vyrazecky || 0) + rec.vyrazecky;
           const newCoins = (profile.coins || 0) + coinsGain;
           const hasGoldenVyrazecka = (scores || []).some((s: any) => {
@@ -2399,8 +2405,8 @@ app.post("/v1/match/game/finish", async (c) => {
           });
 
           const unlocked = await updateAchievementProgressAndUnlock(id, rec.username, matchId, {
-            matchWon: winsAdd >= 2,
-            matchLost: losesAdd >= 2,
+            matchWon: winsAdd > losesAdd,
+            matchLost: losesAdd > winsAdd,
             matchUltimateWin: winsAdd === 3,
             matchUltimateLose: losesAdd === 3,
             hadShutoutWin: rec.ten_zero_wins > 0,
@@ -2410,6 +2416,9 @@ app.post("/v1/match/game/finish", async (c) => {
             newElo: newEloTotal,
             newCoins,
           });
+
+          oldEloForResult = oldEloTotal;
+          newEloForResult = newEloTotal;
 
           for (const def of unlocked) {
             await recordAchievement({
@@ -2433,8 +2442,8 @@ app.post("/v1/match/game/finish", async (c) => {
       historyPlayers.push({
         id,
         username: rec.username,
-        oldElo,
-        newElo,
+        oldElo: oldEloForResult,
+        newElo: newEloForResult,
         xpGain,
         winsAdd,
         losesAdd,
@@ -2444,8 +2453,8 @@ app.post("/v1/match/game/finish", async (c) => {
       });
 
       // for result page
-      byId[id].oldElo = oldElo;
-      byId[id].newElo = newElo;
+      byId[id].oldElo = oldEloForResult;
+      byId[id].newElo = newEloForResult;
       byId[id].xpGained = xpGain;
     }
 
@@ -3063,6 +3072,10 @@ app.post("/v1/api/tournaments/:id/start", async (c) => {
       return c.json({ error: "Only tournament creator can start" }, 403);
     }
 
+    if (tournament.status !== "registration") {
+      return c.json({ error: "Tournament is not in registration state" }, 400);
+    }
+
     const teams = await getTournamentTeams(tournamentId);
     const lockedTeams = teams.filter((t) => t.status === "locked");
 
@@ -3089,10 +3102,45 @@ app.post("/v1/api/tournaments/:id/start", async (c) => {
 // Start a match
 app.post("/v1/api/tournaments/:tourId/match/:matchId/start", async (c) => {
   try {
+    const tournamentId = c.req.param("tourId");
     const matchId = c.req.param("matchId");
+    const userId = getCookie(c, "user");
+    if (!userId) return c.redirect("/v1/auth/login");
+
+    const tournament = await getTournament(tournamentId);
+    if (!tournament) {
+      return c.json({ error: "Tournament not found" }, 404);
+    }
+    if (tournament.status !== "started") {
+      return c.json({ error: "Tournament has not started yet" }, 400);
+    }
+
+    const match = await getTournamentMatch(matchId);
+    if (!match) {
+      return c.json({ error: "Match not found" }, 404);
+    }
+    if (match.tournamentId !== tournamentId) {
+      return c.json({ error: "Match does not belong to this tournament" }, 400);
+    }
+
+    const team1 = await getTeam(match.team1Id);
+    const team2 = match.team2Id ? await getTeam(match.team2Id) : null;
+    const userInMatch =
+      team1?.player1.id === userId ||
+      team1?.player2?.id === userId ||
+      team2?.player1.id === userId ||
+      team2?.player2?.id === userId;
+
+    if (!userInMatch) {
+      return c.json({ error: "Only match participants can start this match" }, 403);
+    }
+
+    if (match.state !== "waiting") {
+      return c.json({ error: "Match cannot be started from current state" }, 400);
+    }
 
     await updateMatchState(matchId, "playing");
-    return c.json({ success: true });
+    return c.redirect(`/v1/tournaments/${tournamentId}/match/${matchId}`);
   } catch (error: any) {
     console.error("Start match error:", error);
     return c.json({ error: error.message }, 500);
@@ -3102,15 +3150,51 @@ app.post("/v1/api/tournaments/:tourId/match/:matchId/start", async (c) => {
 // Finish a match
 app.post("/v1/api/tournaments/:tourId/match/:matchId/finish", async (c) => {
   try {
+    const tournamentId = c.req.param("tourId");
     const matchId = c.req.param("matchId");
+    const userId = getCookie(c, "user");
+    if (!userId) return c.redirect("/v1/auth/login");
+
     const body = await c.req.formData();
 
     const team1Score = parseInt(body.get("team1Score") as string) || 0;
     const team2Score = parseInt(body.get("team2Score") as string) || 0;
 
+    const tournament = await getTournament(tournamentId);
+    if (!tournament) {
+      return c.json({ error: "Tournament not found" }, 404);
+    }
+    if (tournament.status !== "started") {
+      return c.json({ error: "Tournament has not started yet" }, 400);
+    }
+
     const match = await getTournamentMatch(matchId);
     if (!match) {
       return c.json({ error: "Match not found" }, 404);
+    }
+
+    if (match.tournamentId !== tournamentId) {
+      return c.json({ error: "Match does not belong to this tournament" }, 400);
+    }
+
+    if (match.state !== "playing") {
+      return c.json({ error: "Match is not in playing state" }, 400);
+    }
+
+    if (team1Score === team2Score) {
+      return c.json({ error: "Match cannot end in a draw" }, 400);
+    }
+
+    const team1 = await getTeam(match.team1Id);
+    const team2 = match.team2Id ? await getTeam(match.team2Id) : null;
+    const userInMatch =
+      team1?.player1.id === userId ||
+      team1?.player2?.id === userId ||
+      team2?.player1.id === userId ||
+      team2?.player2?.id === userId;
+
+    if (!userInMatch) {
+      return c.json({ error: "Only match participants can submit score" }, 403);
     }
 
     // Determine winner

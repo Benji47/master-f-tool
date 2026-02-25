@@ -5,7 +5,9 @@ import { formatCoins } from "../../logic/format";
 export async function TournamentsPage({ c }: { c: Context }) {
   try {
     const allTournaments = await listTournaments();
-    const activeTournaments = allTournaments.filter(t => t.status === 'registration' || t.status === 'started');
+    const activeTournaments = allTournaments.filter(
+      t => t.status === 'setup' || t.status === 'registration' || t.status === 'started'
+    );
     const completedTournaments = allTournaments.filter(t => t.status === 'finished');
 
     return (

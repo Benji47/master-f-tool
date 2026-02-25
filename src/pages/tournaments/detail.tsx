@@ -84,22 +84,24 @@ export async function TournamentDetailPage({ c }: { c: Context }) {
               </>
             )}
             {userTeam && (
-              <button
-                hx-post={`/v1/api/tournaments/${tournamentId}/teams/leave`}
-                hx-swap="redirect:"
-                className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
-              >
-                Leave Tournament
-              </button>
+              <form action={`/v1/api/tournaments/${tournamentId}/teams/leave`} method="post">
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
+                >
+                  Leave Tournament
+                </button>
+              </form>
             )}
             {isTournamentCreator && lockedTeams.length >= 2 && (
-              <button
-                hx-post={`/v1/api/tournaments/${tournamentId}/start`}
-                hx-swap="beforebegin"
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded font-semibold transition"
-              >
-                Start Tournament
-              </button>
+              <form action={`/v1/api/tournaments/${tournamentId}/start`} method="post">
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded font-semibold transition"
+                >
+                  Start Tournament
+                </button>
+              </form>
             )}
           </div>
         )}
@@ -164,12 +166,14 @@ export async function TournamentDetailPage({ c }: { c: Context }) {
                       <p className="text-neutral-400 text-sm">Elo: {team.player1.elo}</p>
                     </div>
                     {!userTeam && userId !== team.player1.id && (
-                      <a
-                        href={`/v1/tournaments/${tournamentId}/teams/${team.$id}/join`}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-sm font-semibold transition"
-                      >
-                        Join Team
-                      </a>
+                      <form action={`/v1/api/tournaments/${tournamentId}/teams/${team.$id}/join`} method="post">
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-sm font-semibold transition"
+                        >
+                          Join Team
+                        </button>
+                      </form>
                     )}
                   </div>
                 </div>

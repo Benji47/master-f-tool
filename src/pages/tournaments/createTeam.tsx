@@ -32,7 +32,7 @@ export async function CreateTeamPage({ c }: { c: Context }) {
         <h1 className="text-3xl font-bold mb-2">{tournament.name}</h1>
         <p className="text-neutral-400 mb-8">Create a new team</p>
 
-        <form hx-post={`/v1/api/tournaments/${tournamentId}/teams/create`} hx-swap="redirect:" className="space-y-6">
+        <form action={`/v1/api/tournaments/${tournamentId}/teams/create`} method="post" className="space-y-6">
           <div className="bg-neutral-900/60 rounded-lg border border-neutral-800 p-6">
             <h3 className="text-lg font-bold mb-4">Your Profile Information</h3>
             <p className="text-neutral-300 mb-2">Your user profile will be used to create the team.</p>

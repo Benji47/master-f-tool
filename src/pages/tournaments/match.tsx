@@ -56,12 +56,14 @@ export async function TournamentMatchPage({ c }: { c: Context }) {
             <div className="mb-8">
               <p className="text-center text-neutral-400 mb-4">Waiting for match to start...</p>
               {isUserInMatch && (
-                <button
-                  hx-post={`/v1/api/tournaments/${tournamentId}/match/${matchId}/start`}
-                  className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded font-semibold transition"
-                >
-                  Start Match
-                </button>
+                <form action={`/v1/api/tournaments/${tournamentId}/match/${matchId}/start`} method="post">
+                  <button
+                    type="submit"
+                    className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded font-semibold transition"
+                  >
+                    Start Match
+                  </button>
+                </form>
               )}
             </div>
           </div>
@@ -78,42 +80,55 @@ export async function TournamentMatchPage({ c }: { c: Context }) {
           <h1 className="text-3xl font-bold mb-8">{tournament?.name} - Match In Progress</h1>
 
           <div className="bg-neutral-900/60 rounded-lg border border-neutral-800 p-8 mb-8">
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="text-center">
-                <p className="text-sm text-neutral-400 mb-2">Team 1</p>
-                <p className="text-xl font-bold mb-2">{t1.name}</p>
-                <input
-                  type="number"
-                  placeholder="0"
-                  id="team1-score"
-                  min="0"
-                  max="10"
-                  className="w-full px-4 py-2 text-center text-3xl font-bold bg-neutral-800 border border-neutral-700 rounded focus:border-purple-500"
-                />
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-neutral-400 mb-2">Team 2</p>
-                <p className="text-xl font-bold mb-2">{t2.name}</p>
-                <input
-                  type="number"
-                  placeholder="0"
-                  id="team2-score"
-                  min="0"
-                  max="10"
-                  className="w-full px-4 py-2 text-center text-3xl font-bold bg-neutral-800 border border-neutral-700 rounded focus:border-purple-500"
-                />
-              </div>
-            </div>
+            {isUserInMatch ? (
+              <form action={`/v1/api/tournaments/${tournamentId}/match/${matchId}/finish`} method="post">
+                <div className="grid grid-cols-2 gap-6 mb-8">
+                  <div className="text-center">
+                    <p className="text-sm text-neutral-400 mb-2">Team 1</p>
+                    <p className="text-xl font-bold mb-2">{t1.name}</p>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      name="team1Score"
+                      min="0"
+                      max="10"
+                      required
+                      className="w-full px-4 py-2 text-center text-3xl font-bold bg-neutral-800 border border-neutral-700 rounded focus:border-purple-500"
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-neutral-400 mb-2">Team 2</p>
+                    <p className="text-xl font-bold mb-2">{t2.name}</p>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      name="team2Score"
+                      min="0"
+                      max="10"
+                      required
+                      className="w-full px-4 py-2 text-center text-3xl font-bold bg-neutral-800 border border-neutral-700 rounded focus:border-purple-500"
+                    />
+                  </div>
+                </div>
 
-            {isUserInMatch && (
-              <button
-                hx-post={`/v1/api/tournaments/${tournamentId}/match/${matchId}/finish`}
-                hx-vals='{"team1Score": document.getElementById("team1-score").value, "team2Score": document.getElementById("team2-score").value}'
-                hx-swap="redirect:"
-                className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 rounded font-semibold transition"
-              >
-                Submit Score
-              </button>
+                <button
+                  type="submit"
+                  className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 rounded font-semibold transition"
+                >
+                  Submit Score
+                </button>
+              </form>
+            ) : (
+              <div className="grid grid-cols-2 gap-6 mb-8">
+                <div className="text-center">
+                  <p className="text-sm text-neutral-400 mb-2">Team 1</p>
+                  <p className="text-xl font-bold mb-2">{t1.name}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-neutral-400 mb-2">Team 2</p>
+                  <p className="text-xl font-bold mb-2">{t2.name}</p>
+                </div>
+              </div>
             )}
           </div>
 

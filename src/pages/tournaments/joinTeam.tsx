@@ -51,8 +51,8 @@ export async function JoinTeamPage({ c }: { c: Context }) {
                     <p className="text-sm text-neutral-400">Team ID: {team.$id}</p>
                   </div>
                   <form
-                    hx-post={`/v1/api/tournaments/${tournamentId}/teams/${team.$id}/join`}
-                    hx-swap="redirect:"
+                    action={`/v1/api/tournaments/${tournamentId}/teams/${team.$id}/join`}
+                    method="post"
                     className="text-right"
                   >
                     <button

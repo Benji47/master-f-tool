@@ -200,7 +200,7 @@ export async function createTournament(
       {
         name,
         description: description ?? '',
-        status: 'setup',
+        status: 'registration',
         creatorId,
         maxTeams,
         rewards: JSON.stringify(DEFAULT_TOURNAMENT_REWARDS),
@@ -282,6 +282,25 @@ export async function createTeam(
   const databases = new sdk.Databases(c);
 
   try {
+    const tournament = await getTournament(tournamentId);
+    if (!tournament) {
+      throw new Error('Tournament not found');
+    }
+
+    if (tournament.status !== 'registration') {
+      throw new Error('Tournament registration is closed');
+    }
+
+    const existingPlayerTeams = await getPlayerTeams(tournamentId, player1Id);
+    if (existingPlayerTeams.length > 0) {
+      throw new Error('You are already registered in this tournament');
+    }
+
+    const existingTeams = await getTournamentTeams(tournamentId);
+    if (existingTeams.length >= Number(tournament.maxTeams || 0)) {
+      throw new Error('Tournament is full');
+    }
+
     const doc = await databases.createDocument(
       databaseId,
       TEAMS_COLLECTION,
@@ -318,8 +337,27 @@ export async function joinTeam(
     // Check if player is not already in another team in this tournament
     const teamDoc = await databases.getDocument(databaseId, TEAMS_COLLECTION, teamId);
     const team = parseTeamDoc(teamDoc);
+
+    const tournament = await getTournament(team.tournamentId);
+    if (!tournament) {
+      throw new Error('Tournament not found');
+    }
+
+    if (tournament.status !== 'registration') {
+      throw new Error('Tournament registration is closed');
+    }
+
     if (team.player1.id === player2Id) {
       throw new Error('You cannot join your own team');
+    }
+
+    if (team.player2 || team.status !== 'looking') {
+      throw new Error('Team is not available for joining');
+    }
+
+    const existingPlayerTeams = await getPlayerTeams(team.tournamentId, player2Id);
+    if (existingPlayerTeams.length > 0) {
+      throw new Error('You are already registered in this tournament');
     }
 
     const doc = await databases.updateDocument(databaseId, TEAMS_COLLECTION, teamId, {
