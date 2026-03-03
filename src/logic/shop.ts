@@ -31,6 +31,14 @@ export interface ShopOrder {
 // Available shop items
 export const SHOP_ITEMS: ShopItem[] = [
   {
+    id: 'icecream',
+    name: 'Ice Cream',
+    description: 'Sweet ice cream treat',
+    price: 1000000,
+    icon: '🍦',
+    type: 'physical',
+  },
+  {
     id: 'lunch',
     name: 'Lunch',
     description: 'Delicious lunch of your choice',

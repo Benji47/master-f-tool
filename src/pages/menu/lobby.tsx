@@ -1,6 +1,6 @@
 import { Context } from "hono";
 import { getCookie } from "hono/cookie";
-import { getAllPlayerProfiles, GlobalStats, PlayerProfile } from "../../logic/profile";
+import { GlobalStats, PlayerProfile } from "../../logic/profile";
 import { badges, rankTiers, computeLevel, getLevelBadgeColor, getRankInfoFromElo } from "../../static/data";
 import GlobalStatsPanel from "./GlobalStats";
 import PlayerProfilePanel from "./PlayerProfile";
@@ -62,6 +62,8 @@ export async function LobbyPage({
   currentSeasonIndex = 0,
   availableSeasonIndexes = [0],
   walletCoins,
+  players = [],
+  incomingCoinMessages = [],
 }: {
   c: Context;
   playerProfile: PlayerProfile | null;
@@ -71,8 +73,9 @@ export async function LobbyPage({
   currentSeasonIndex?: number;
   availableSeasonIndexes?: number[];
   walletCoins?: number;
+  players?: PlayerProfile[];
+  incomingCoinMessages?: Array<{ from: string; amount: number; text: string; createdAt: string }>;
 }) {
-  const players = await getAllPlayerProfiles();
   const dailyAchievements = await getDailyAchievements(24);
 
   if (playerProfile === null || globalStats === null) {
@@ -105,9 +108,9 @@ export async function LobbyPage({
         <nav className="flex gap-3 items-center"></nav>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
         {/* Left Sidebar - Player Profile */}
-        <PlayerProfilePanel playerProfile={playerProfile} players={players} walletCoins={walletCoins} achievements={achievementsView} />
+        <PlayerProfilePanel playerProfile={playerProfile} players={players} walletCoins={walletCoins} achievements={achievementsView} incomingCoinMessages={incomingCoinMessages} />
 
         {/* Center - 3x4 Grid with PLAY in Middle */}
         <div className="lg:col-span-2 flex flex-col justify-center items-center gap-6 pt-6">

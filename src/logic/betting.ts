@@ -305,6 +305,66 @@ export async function getAllBets(limit: number = 200): Promise<Bet[]> {
   }
 }
 
+export async function getBetsForPlayerPaginated(
+  playerId: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ bets: Bet[]; total: number; page: number; pageSize: number }> {
+  const cli = client();
+  const databases = new sdk.Databases(cli);
+  try {
+    const safePageSize = Math.max(1, Math.min(100, Math.floor(pageSize)));
+    const safePage = Math.max(1, Math.floor(page));
+    const offset = (safePage - 1) * safePageSize;
+
+    const res = await databases.listDocuments(databaseId, collectionId, [
+      sdk.Query.equal('playerId', playerId),
+      sdk.Query.orderDesc('$createdAt'),
+      sdk.Query.limit(safePageSize),
+      sdk.Query.offset(offset),
+    ]);
+
+    return {
+      bets: (res.documents || []).map(parseBetDoc),
+      total: Number(res.total || 0),
+      page: safePage,
+      pageSize: safePageSize,
+    };
+  } catch (e) {
+    console.error('getBetsForPlayerPaginated error', e);
+    return { bets: [], total: 0, page: 1, pageSize: Math.max(1, Math.min(100, Math.floor(pageSize || 20))) };
+  }
+}
+
+export async function getAllBetsPaginated(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ bets: Bet[]; total: number; page: number; pageSize: number }> {
+  const cli = client();
+  const databases = new sdk.Databases(cli);
+  try {
+    const safePageSize = Math.max(1, Math.min(100, Math.floor(pageSize)));
+    const safePage = Math.max(1, Math.floor(page));
+    const offset = (safePage - 1) * safePageSize;
+
+    const res = await databases.listDocuments(databaseId, collectionId, [
+      sdk.Query.orderDesc('$createdAt'),
+      sdk.Query.limit(safePageSize),
+      sdk.Query.offset(offset),
+    ]);
+
+    return {
+      bets: (res.documents || []).map(parseBetDoc),
+      total: Number(res.total || 0),
+      page: safePage,
+      pageSize: safePageSize,
+    };
+  } catch (e) {
+    console.error('getAllBetsPaginated error', e);
+    return { bets: [], total: 0, page: 1, pageSize: Math.max(1, Math.min(100, Math.floor(pageSize || 20))) };
+  }
+}
+
 /*
  Resolve bets for a finished match.
  scores: array of rounds with scoreA/scoreB

@@ -9,6 +9,10 @@ export interface FBetPageProps {
   availableMatches:  MatchDoc[];
   playerBets: any[];
   allBetsHistory: any[];
+  playerBetsPage: number;
+  playerBetsTotalPages: number;
+  allBetsPage: number;
+  allBetsTotalPages: number;
   matchTeamInfoByMatchId: Record<string, { match1?: { a: string[]; b: string[] }; match2?: { a: string[]; b: string[] }; match3?: { a: string[]; b: string[] } }>;
 }
 
@@ -97,12 +101,18 @@ function SubBetMarker({ result }: { result?: 'correct' | 'wrong' | 'pending' }) 
   return null;
 }
 
-export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, matchTeamInfoByMatchId }: FBetPageProps) {
+export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, playerBetsPage, playerBetsTotalPages, allBetsPage, allBetsTotalPages, matchTeamInfoByMatchId }: FBetPageProps) {
   const userCoins = currentUserProfile?.coins || 0;
   const wonBets = playerBets.filter((b: any) => b.status === 'won');
   const lostBets = playerBets.filter((b: any) => b.status === 'lost');
   const totalWinnings = wonBets.reduce((sum: number, b: any) => sum + b.winnings, 0);
   const totalLosings = lostBets.reduce((sum: number, b: any) => sum + Number(b.betAmount || 0), 0);
+
+  const buildBetPageHref = (nextPlayerPage: number, nextAllBetsPage: number) => {
+    const safePlayerPage = Math.max(1, nextPlayerPage);
+    const safeAllBetsPage = Math.max(1, nextAllBetsPage);
+    return `/v1/f-bet?playerPage=${safePlayerPage}&allPage=${safeAllBetsPage}`;
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-6 text-white">
@@ -382,6 +392,23 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
               ))
             )}
           </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-purple-200/80">
+            <span>Page {playerBetsPage} / {Math.max(1, playerBetsTotalPages)}</span>
+            <div className="flex gap-2">
+              <a
+                href={buildBetPageHref(playerBetsPage - 1, allBetsPage)}
+                className={`px-2 py-1 rounded border ${playerBetsPage > 1 ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 pointer-events-none'}`}
+              >
+                Prev
+              </a>
+              <a
+                href={buildBetPageHref(playerBetsPage + 1, allBetsPage)}
+                className={`px-2 py-1 rounded border ${playerBetsPage < Math.max(1, playerBetsTotalPages) ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 pointer-events-none'}`}
+              >
+                Next
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -435,6 +462,23 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
               ))}
             </div>
           )}
+        </div>
+        <div className="mt-3 flex items-center justify-between text-xs text-purple-200/80">
+          <span>Page {allBetsPage} / {Math.max(1, allBetsTotalPages)}</span>
+          <div className="flex gap-2">
+            <a
+              href={buildBetPageHref(playerBetsPage, allBetsPage - 1)}
+              className={`px-2 py-1 rounded border ${allBetsPage > 1 ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 pointer-events-none'}`}
+            >
+              Prev
+            </a>
+            <a
+              href={buildBetPageHref(playerBetsPage, allBetsPage + 1)}
+              className={`px-2 py-1 rounded border ${allBetsPage < Math.max(1, allBetsTotalPages) ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 pointer-events-none'}`}
+            >
+              Next
+            </a>
+          </div>
         </div>
       </div>
 

@@ -43,7 +43,7 @@ function renderBadgeName(name: string, iconUrl?: string) {
   );
 }
 
-export default function PlayerProfilePanel({ playerProfile, players, walletCoins, achievements }: { playerProfile: PlayerProfile; players: PlayerProfile[]; walletCoins?: number; achievements?: AchievementView }) {
+export default function PlayerProfilePanel({ playerProfile, players, walletCoins, achievements, incomingCoinMessages = [] }: { playerProfile: PlayerProfile; players: PlayerProfile[]; walletCoins?: number; achievements?: AchievementView; incomingCoinMessages?: Array<{ from: string; amount: number; text: string; createdAt: string }> }) {
   const lvl = computeLevel(playerProfile.xp);
   const rank = getRankInfoFromElo(playerProfile.elo);
   const badgeColor = getLevelBadgeColor(lvl.level);
@@ -71,8 +71,8 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
 
   return (
     <>
-    <div className="lg:col-span-1 bg-neutral-900/60 rounded-lg border-2 border-purple-600/50 p-5 flex flex-col justify-between relative">
-      <div className="space-y-4">
+    <div className="lg:col-span-1 self-start bg-neutral-900/60 rounded-lg border-2 border-purple-600/50 p-5 relative">
+      <div className="space-y-5">
         {/* Header - Username + Rank */}
         <div className="text-center pb-3 border-b border-purple-600/30">
           <h2 className="text-2xl font-bold text-white font-[Orbitron] mb-1">{playerProfile.username}</h2>
@@ -80,7 +80,7 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
         </div>
 
         {/* Level Card */}
-        <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-3">
+        <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-4">
           <div className="space-y-3">
             <span className={`${badgeToShow?.bg || badgeColor.bg} ${badgeToShow?.text || badgeColor.text} w-full mx-auto min-h-[92px] px-5 py-3 rounded text-lg font-bold inline-flex items-center justify-center text-center`}>
               {renderBadgeName(`Level ${lvl.level} • ${badgeToShow?.name || "Unranked"}`, badgeToShow?.iconUrl)}
@@ -107,7 +107,7 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
         </div>
 
         {/* ELO Card */}
-        <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-3">
+        <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-neutral-400 uppercase tracking-wider">Rank Progress</span>
             <span className={`text-sm font-semibold bg-gradient-to-r ${rank.color} bg-clip-text text-transparent`}>{rank.name}</span>
@@ -119,23 +119,23 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-2">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-3">
             <div className="text-xs text-neutral-400 mb-1">Matches</div>
             <div className="text-lg font-bold text-white">{playerProfile.wins + playerProfile.loses}</div>
             <div className="text-xs text-neutral-500">({(playerProfile.wins + playerProfile.loses)/3} games)</div>
           </div>
-          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-2">
+          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-3">
             <div className="text-xs text-neutral-400 mb-1">Winrate</div>
             <div className="text-lg font-bold text-green-400">{winrate}%</div>
             <div className="text-xs text-neutral-500">{playerProfile.wins}W-{playerProfile.loses}L</div>
           </div>
-          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-2">
+          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-3">
             <div className="text-xs text-neutral-400 mb-1">Goals</div>
             <div className="text-lg font-bold text-white">{playerProfile.goals_scored}:{playerProfile.goals_conceded}</div>
             <div className="text-xs text-neutral-500">Scored:Conceded</div>
           </div>
-          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-2">
+          <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-3">
             <div className="text-xs text-neutral-400 mb-1">Vyrážečka</div>
             <div className="text-lg font-bold text-orange-400">{playerProfile.vyrazecky}</div>
             <div className="text-xs text-neutral-500">{playerProfile.goals_scored > 0 ? Math.round(playerProfile.vyrazecky / playerProfile.goals_scored * 10000) / 100 : 0}%</div>
@@ -180,6 +180,18 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
             <span className="text-xs text-neutral-400 uppercase tracking-wider">💰 Balance</span>
             <span className="text-xl font-bold text-yellow-400">{formatCoins(walletCoins ?? playerProfile.coins)}</span>
           </div>
+
+          {incomingCoinMessages.length > 0 && (
+            <div className="mb-3 space-y-2">
+              {incomingCoinMessages.slice(-3).reverse().map((row, index) => (
+                <div key={`${row.createdAt}-${index}`} className="text-xs rounded border border-emerald-600/40 bg-emerald-900/20 p-2 text-emerald-200">
+                  <div className="font-semibold">💌 {row.from} sent you {formatCoins(row.amount)} coins</div>
+                  <div className="text-emerald-100/90">“{row.text}”</div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <form action="/v1/coins/send" method="post" className="space-y-2">
             <select
               name="recipient"
@@ -208,6 +220,13 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
                 Send
               </button>
             </div>
+            <input
+              name="message"
+              type="text"
+              maxLength={180}
+              className="w-full bg-neutral-700 border border-neutral-600 text-neutral-100 rounded px-2 py-1 text-xs"
+              placeholder="Optional message for receiver"
+            />
           </form>
         </div>
       </div>

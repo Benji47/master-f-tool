@@ -54,7 +54,7 @@ import { HallOfFamePage } from "./pages/menu/hallOfFame";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { updateAchievementProgressAndUnlock, claimAchievementReward, getAllAchievementsForPlayer, getPlayerAchievements, unlockAchievement } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
-import { placeBet, getAllBets, getBetsForMatch, resolveBets, getBetsForPlayer, getRoundOdds, getTotalGoalsOdds, getVyrazackaOutcomeOdds, VyrazackaOutcome } from "./logic/betting";
+import { placeBet, getAllBets, getAllBetsPaginated, getBetsForMatch, getBetsForPlayerPaginated, resolveBets, getRoundOdds, getTotalGoalsOdds, getVyrazackaOutcomeOdds, VyrazackaOutcome } from "./logic/betting";
 import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
 import { 
   createTournament, 
@@ -80,9 +80,102 @@ const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").trim();
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 const SEASON_STATE_FILE = "./.season-state.json";
 const MAX_TIMEOUT_MS = 2_147_000_000;
+const PROFILES_CACHE_TTL_MS = 20_000;
+const MATCH_HISTORY_CACHE_TTL_MS = 20_000;
+const MAX_COIN_TRANSFER_MESSAGES = 15;
 
 let seasonRolloverInProgress = false;
 let seasonRolloverTimer: Timer | null = null;
+let cachedAllProfiles: { expiresAt: number; value: ReturnType<typeof getAllPlayerProfiles> extends Promise<infer T> ? T : never } | null = null;
+let cachedMatchHistoryDocs: { expiresAt: number; value: MatchHistoryDoc[] } | null = null;
+
+type CoinTransferMessage = {
+  from: string;
+  amount: number;
+  text: string;
+  createdAt: string;
+};
+
+async function getAllPlayerProfilesCached(forceRefresh: boolean = false) {
+  const now = Date.now();
+  if (!forceRefresh && cachedAllProfiles && cachedAllProfiles.expiresAt > now) {
+    return cachedAllProfiles.value;
+  }
+
+  const profiles = await getAllPlayerProfiles();
+  cachedAllProfiles = {
+    value: profiles,
+    expiresAt: now + PROFILES_CACHE_TTL_MS,
+  };
+  return profiles;
+}
+
+function invalidateMatchHistoryCache() {
+  cachedMatchHistoryDocs = null;
+}
+
+async function appendCoinTransferMessage(
+  recipientUserId: string,
+  senderUsername: string,
+  amount: number,
+  messageText: string
+): Promise<void> {
+  try {
+    const client = new sdk.Client()
+      .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
+      .setProject(process.env.APPWRITE_PROJECT)
+      .setKey(process.env.APPWRITE_KEY);
+    const users = new sdk.Users(client);
+
+    const user = await users.get(recipientUserId);
+    const prefs = (user?.prefs && typeof user.prefs === 'object') ? user.prefs : {};
+    const existing = Array.isArray((prefs as any).coinTransferMessages) ? (prefs as any).coinTransferMessages : [];
+    const nextMessages: CoinTransferMessage[] = [
+      ...existing,
+      {
+        from: senderUsername,
+        amount,
+        text: messageText,
+        createdAt: new Date().toISOString(),
+      },
+    ].slice(-MAX_COIN_TRANSFER_MESSAGES);
+
+    await users.updatePrefs(recipientUserId, {
+      ...prefs,
+      coinTransferMessages: nextMessages,
+    });
+  } catch (error) {
+    console.error('appendCoinTransferMessage error:', error);
+  }
+}
+
+async function consumeCoinTransferMessages(userId: string): Promise<CoinTransferMessage[]> {
+  try {
+    const client = new sdk.Client()
+      .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
+      .setProject(process.env.APPWRITE_PROJECT)
+      .setKey(process.env.APPWRITE_KEY);
+    const users = new sdk.Users(client);
+
+    const user = await users.get(userId);
+    const prefs = (user?.prefs && typeof user.prefs === 'object') ? user.prefs : {};
+    const messages: CoinTransferMessage[] = Array.isArray((prefs as any).coinTransferMessages)
+      ? (prefs as any).coinTransferMessages
+      : [];
+
+    if (messages.length > 0) {
+      await users.updatePrefs(userId, {
+        ...prefs,
+        coinTransferMessages: [],
+      });
+    }
+
+    return messages;
+  } catch (error) {
+    console.error('consumeCoinTransferMessages error:', error);
+    return [];
+  }
+}
 
 function applyEloSeasonReset(elo: number): number {
   const mapRange = (
@@ -144,7 +237,7 @@ async function applySeasonRolloverIfNeeded(): Promise<void> {
     for (let season = lastProcessed + 1; season <= currentSeason; season++) {
       if (season <= 0) continue;
 
-      const players = await getAllPlayerProfiles();
+      const players = await getAllPlayerProfilesCached();
       for (const player of players) {
         const shrunkElo = applyEloSeasonReset(player.elo || 500);
         if (shrunkElo !== (player.elo || 0)) {
@@ -561,12 +654,15 @@ app.get("/v1/lobby", async (c) => {
 
     const overallProfile = await getPlayerProfile(username);
     const overallGlobalStats = await getGlobalStats();
+    const allProfiles = await getAllPlayerProfilesCached();
+    const incomingCoinMessages = overallProfile?.userId
+      ? await consumeCoinTransferMessages(overallProfile.userId)
+      : [];
 
     let playerData = overallProfile;
     let globalStats = overallGlobalStats;
 
     if (overallProfile && scope !== "overall") {
-      const allProfiles = await getAllPlayerProfiles();
       const allMatches = await listAllMatchHistoryDocs();
       const seasonMatches = filterMatchesForSeason(allMatches, selectedSeasonIndex);
       const seasonAggregate = aggregateSeasonStats(seasonMatches, allProfiles);
@@ -603,6 +699,8 @@ app.get("/v1/lobby", async (c) => {
           currentSeasonIndex={currentSeasonIndex}
           availableSeasonIndexes={availableSeasonIndexes}
           walletCoins={overallProfile?.coins}
+          players={allProfiles}
+          incomingCoinMessages={incomingCoinMessages}
         />
       </MainLayout>,
     );
@@ -643,6 +741,11 @@ function addGoldenStat(
 }
 
 async function listAllMatchHistoryDocs(): Promise<MatchHistoryDoc[]> {
+  const now = Date.now();
+  if (cachedMatchHistoryDocs && cachedMatchHistoryDocs.expiresAt > now) {
+    return cachedMatchHistoryDocs.value;
+  }
+
   const client = new sdk.Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
     .setProject(process.env.APPWRITE_PROJECT)
@@ -672,7 +775,12 @@ async function listAllMatchHistoryDocs(): Promise<MatchHistoryDoc[]> {
     if (allDocuments.length > 10000) break;
   }
 
-  return allDocuments.map((doc: any) => parseMatchHistoryDoc(doc));
+  const parsed = allDocuments.map((doc: any) => parseMatchHistoryDoc(doc));
+  cachedMatchHistoryDocs = {
+    value: parsed,
+    expiresAt: Date.now() + MATCH_HISTORY_CACHE_TTL_MS,
+  };
+  return parsed;
 }
 
 function resolveSeasonSelection(c: any): {
@@ -701,7 +809,7 @@ function resolveSeasonSelection(c: any): {
 // render leaderboard (GET)
 app.get("/v1/leaderboard", async (c) => {
   try {
-    const allProfiles = await getAllPlayerProfiles();
+    const allProfiles = await getAllPlayerProfilesCached();
     const username = getCookie(c, "user") ?? undefined;
     const { scope, selectedSeasonIndex, currentSeasonIndex, availableSeasonIndexes } = resolveSeasonSelection(c);
     const allMatches = await listAllMatchHistoryDocs();
@@ -1101,7 +1209,7 @@ app.post("/v1/admin/reset-coins", async (c) => {
     const amountRaw = Number(form.get("amount") ?? 10000);
     const amount = Math.max(0, Math.floor(amountRaw));
 
-    const players = await getAllPlayerProfiles();
+    const players = await getAllPlayerProfilesCached();
     for (const player of players) {
       try {
         await updatePlayerStats(player.$id, { coins: amount });
@@ -1268,6 +1376,7 @@ app.post("/v1/coins/send", async (c) => {
 
     const form = await c.req.formData();
     const recipientUsername = String(form.get("recipient") ?? "").trim();
+    const customMessage = String(form.get("message") ?? "").trim().slice(0, 180);
     const amountRaw = Number(form.get("amount") ?? 0);
     const amount = Math.floor(amountRaw);
 
@@ -1283,6 +1392,12 @@ app.post("/v1/coins/send", async (c) => {
 
     await updatePlayerStats(senderProfile.$id, { coins: (senderProfile.coins || 0) - amount });
     await updatePlayerStats(recipientProfile.$id, { coins: (recipientProfile.coins || 0) + amount });
+    await appendCoinTransferMessage(
+      recipientProfile.userId,
+      senderUsername,
+      amount,
+      customMessage || "Enjoy the coins! 🎉"
+    );
 
     return c.redirect("/v1/lobby");
   } catch (err: any) {
@@ -1786,20 +1901,27 @@ function buildRecentFormMap(match: MatchDoc, history: MatchHistoryDoc[], lookbac
   return result;
 }
 
-async function buildPlayerStatsMap(match: MatchDoc): Promise<Record<string, { vyrazecky: number; wins: number; loses: number }>> {
+async function buildPlayerStatsMap(
+  match: MatchDoc,
+  profilesByKey?: Map<string, any>
+): Promise<Record<string, { vyrazecky: number; wins: number; loses: number }>> {
   const map: Record<string, { vyrazecky: number; wins: number; loses: number }> = {};
   for (const p of match.players || []) {
     let profile = null;
-    try {
-      profile = await getPlayerProfile(p.id);
-    } catch {
-      profile = null;
-    }
-    if (!profile && p.username && p.username !== p.id) {
+    if (profilesByKey) {
+      profile = profilesByKey.get(p.id) || (p.username ? profilesByKey.get(p.username) : null) || null;
+    } else {
       try {
-        profile = await getPlayerProfile(p.username);
+        profile = await getPlayerProfile(p.id);
       } catch {
         profile = null;
+      }
+      if (!profile && p.username && p.username !== p.id) {
+        try {
+          profile = await getPlayerProfile(p.username);
+        } catch {
+          profile = null;
+        }
       }
     }
     map[p.id] = {
@@ -2498,6 +2620,7 @@ app.post("/v1/match/game/finish", async (c) => {
           scores_json: JSON.stringify(scores), // stringify
         }
       );
+      invalidateMatchHistoryCache();
     } catch (e) {
       console.error('failed to write match history', e);
     }
@@ -2672,25 +2795,55 @@ app.get("/v1/f-bet", async (c) => {
   try {
     const username = getCookie(c, "user") ?? null;
     const profile = username ? await getPlayerProfile(username) : null;
+    const playerPageRaw = Number(c.req.query("playerPage") ?? 1);
+    const allPageRaw = Number(c.req.query("allPage") ?? 1);
+    const playerPage = Number.isFinite(playerPageRaw) ? Math.max(1, Math.floor(playerPageRaw)) : 1;
+    const allPage = Number.isFinite(allPageRaw) ? Math.max(1, Math.floor(allPageRaw)) : 1;
+    const playerPageSize = 12;
+    const allPageSize = 24;
 
     const allMatches = await listAvailableMatches();
     const allHistory = await listAllMatchHistoryDocs();
+    const allProfiles = await getAllPlayerProfilesCached();
+    const profilesByKey = new Map<string, any>();
+    allProfiles.forEach((profileRow: any) => {
+      if (profileRow?.$id) profilesByKey.set(profileRow.$id, profileRow);
+      if (profileRow?.userId) profilesByKey.set(profileRow.userId, profileRow);
+      if (profileRow?.username) profilesByKey.set(profileRow.username, profileRow);
+    });
+
+    const recentBets = await getAllBets(500);
+    const betsByMatchId = new Map<string, any[]>();
+    recentBets.forEach((bet) => {
+      const key = bet.matchId;
+      if (!key) return;
+      const row = betsByMatchId.get(key) || [];
+      row.push(bet);
+      betsByMatchId.set(key, row);
+    });
+
     // enrich with bets for each match and only keep 'playing' matches
     const playingMatches: any[] = [];
     for (const m of allMatches) {
-      const bets = await getBetsForMatch(m.$id);
+      const bets = betsByMatchId.get(m.$id) || [];
       const playerElosById = buildPlayerEloMap(m);
       const recentFormById = buildRecentFormMap(m, allHistory);
       const roundOdds = buildRoundOdds(m, playerElosById, recentFormById);
-      const statsById = await buildPlayerStatsMap(m);
+      const statsById = await buildPlayerStatsMap(m, profilesByKey);
       const vyrazackaOutcomeOdds = buildVyrazackaOutcomeOdds(m, statsById);
       const totalGoalsOdds = buildTotalGoalsOdds(m, roundOdds);
       const enriched = { ...m, bets, bettingOdds: roundOdds, vyrazackaOutcomeOdds, totalGoalsOdds };
       if (m.state === 'playing') playingMatches.push(enriched);
     }
 
-    const playerBets = profile ? await getBetsForPlayer(profile.$id) : [];
-    const allBetsHistory = await getAllBets(200);
+    const playerBetsPageData = profile
+      ? await getBetsForPlayerPaginated(profile.$id, playerPage, playerPageSize)
+      : { bets: [], total: 0, page: 1, pageSize: playerPageSize };
+    const allBetsHistoryPageData = await getAllBetsPaginated(allPage, allPageSize);
+    const playerBets = playerBetsPageData.bets;
+    const allBetsHistory = allBetsHistoryPageData.bets;
+    const playerBetsTotalPages = Math.max(1, Math.ceil((playerBetsPageData.total || 0) / playerBetsPageData.pageSize));
+    const allBetsTotalPages = Math.max(1, Math.ceil((allBetsHistoryPageData.total || 0) / allBetsHistoryPageData.pageSize));
 
     const historyByMatchId = new Map<string, MatchHistoryDoc>();
     allHistory.forEach((h) => {
@@ -2836,6 +2989,10 @@ app.get("/v1/f-bet", async (c) => {
           availableMatches={playingMatches}
           playerBets={playerBetsEvaluated}
           allBetsHistory={allBetsHistoryEvaluated}
+          playerBetsPage={playerBetsPageData.page}
+          playerBetsTotalPages={playerBetsTotalPages}
+          allBetsPage={allBetsHistoryPageData.page}
+          allBetsTotalPages={allBetsTotalPages}
           matchTeamInfoByMatchId={matchTeamInfoByMatchId}
         />
       </MainLayout>
@@ -2844,7 +3001,7 @@ app.get("/v1/f-bet", async (c) => {
     console.error("f-bet page error:", err);
     return c.html(
       <MainLayout c={c}>
-        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} allBetsHistory={[]} matchTeamInfoByMatchId={{}} />
+        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} allBetsHistory={[]} playerBetsPage={1} playerBetsTotalPages={1} allBetsPage={1} allBetsTotalPages={1} matchTeamInfoByMatchId={{}} />
       </MainLayout>
     );
   }
@@ -2890,7 +3047,7 @@ app.get("/v1/hall-of-fame", async (c) => {
       ? Math.max(0, Math.min(currentSeason, Math.floor(seasonRaw)))
       : currentSeason;
 
-    const allProfiles = await getAllPlayerProfiles();
+    const allProfiles = await getAllPlayerProfilesCached();
     const allMatches = await listAllMatchHistoryDocs();
     const seasonMatches = filterMatchesForSeason(allMatches, selectedSeason);
     const seasonStats = aggregateSeasonStats(seasonMatches, allProfiles);
