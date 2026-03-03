@@ -44,7 +44,7 @@ export const badges: Badge[] = [
       bg: "bg-white",
       text: "text-black",
   },
-  { name: "XXX0m3g4Pl4y3rXXX", minLevel: 7500, maxLevel: 10000, bg: "bg-black", text: "text-neutral-100" },
+  { name: "XXX0m3g4Pl4y3rXXX", minLevel: 7500, maxLevel: 10000, bg: "bg-pink-600", text: "text-neutral-100" },
 ];
 
 // Shop-exclusive badges (not earned by leveling)
