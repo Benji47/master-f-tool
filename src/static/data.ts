@@ -22,7 +22,7 @@ export interface Badge {
   iconUrl?: string;
 }
 
-export const levelsXp = [75, 150, 225, 300, 400, 500, 650, 800, 1000, 1400, 2000];
+export const levelsXp = [75, 150, 225, 300, 400, 500, 650, 800, 1000, 1400, 2000, 2500];
 
 export const badges: Badge[] = [
   { name: "Rookie ♖", minLevel: 0, maxLevel: 75, bg: "bg-red-600", text: "text-red-100" },
@@ -43,7 +43,8 @@ export const badges: Badge[] = [
       maxLevel: 7500,
       bg: "bg-white",
       text: "text-black",
-  }
+  },
+  { name: "XXX0m3g4Pl4y3rXXX", minLevel: 7500, maxLevel: 10000, bg: "bg-black", text: "text-neutral-100" },
 ];
 
 // Shop-exclusive badges (not earned by leveling)
@@ -130,6 +131,7 @@ export function getLevelBadgeColor(level: number): { bg: string; text: string, t
   if (level <= 9) return { bg: "bg-purple-600", text: "text-purple-100", textInLeaderboards: "text-purple-500" };
   if (level <= 10) return { bg: "bg-black", text: "text-neutral-100", textInLeaderboards: "text-neutral-500" };
   if (level <= 11) return { bg: "bg-white", text: "text-black", textInLeaderboards: "text-white" };
+  if (level <= 12) return { bg: "bg-pink-600", text: "text-black", textInLeaderboards: "text-white" };
   return { bg: "bg-indigo-600", text: "text-indigo-100", textInLeaderboards: "text-red-500" };
 }
 
