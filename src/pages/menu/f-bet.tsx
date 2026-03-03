@@ -508,9 +508,26 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
             });
           }
 
+          function wireSingleSubmit(form) {
+            form.addEventListener('submit', function(event) {
+              if (form.dataset.submitting === '1') {
+                event.preventDefault();
+                return;
+              }
+
+              form.dataset.submitting = '1';
+              const submitButton = form.querySelector('button[type="submit"]');
+              if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Placing Bet...';
+              }
+            });
+          }
+
           document.querySelectorAll('.bet-form').forEach(form => {
             wireOddsPreview(form);
             wireUncheckableMatchRadios(form);
+            wireSingleSubmit(form);
           });
         `
       }} />

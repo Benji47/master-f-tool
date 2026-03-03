@@ -2622,6 +2622,31 @@ app.post("/v1/bet/place", async (c) => {
     predictions._odds = odds;
     predictions._totalLegs = totalLegs;
 
+    const existingBetsForMatch = await getBetsForMatch(matchId);
+    const isDuplicateRecentBet = existingBetsForMatch.some((existingBet) => {
+      if (existingBet.playerId !== profile.$id) return false;
+      if (Number(existingBet.betAmount || 0) !== betAmount) return false;
+
+      const existingPredictions = existingBet.predictions || {};
+      const sameMatch1 = String(existingPredictions.match1 || "") === String(predictions.match1 || "");
+      const sameMatch2 = String(existingPredictions.match2 || "") === String(predictions.match2 || "");
+      const sameMatch3 = String(existingPredictions.match3 || "") === String(predictions.match3 || "");
+      const sameVyrazackaOutcome = String(existingPredictions.vyrazackaOutcome || "") === String(predictions.vyrazackaOutcome || "");
+      const sameTotalGoals = Number(existingPredictions.totalGoals || 0) === Number(predictions.totalGoals || 0);
+
+      if (!(sameMatch1 && sameMatch2 && sameMatch3 && sameVyrazackaOutcome && sameTotalGoals)) {
+        return false;
+      }
+
+      const createdAtMs = existingBet.$createdAt ? new Date(existingBet.$createdAt).getTime() : NaN;
+      if (!Number.isFinite(createdAtMs)) return false;
+      return Date.now() - createdAtMs <= 15_000;
+    });
+
+    if (isDuplicateRecentBet) {
+      return c.redirect("/v1/f-bet");
+    }
+
     // Deduct coins
     await updatePlayerStats(profile.$id, { coins: (profile.coins || 0) - betAmount });
 
