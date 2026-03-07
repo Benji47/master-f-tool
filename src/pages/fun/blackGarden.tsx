@@ -69,7 +69,7 @@ export function BlackGardenPage() {
       index,
       left: point.x,
       top: point.y,
-      size: 78 + Math.round(rng() * 46),
+      size: (78 + Math.round(rng() * 46)) * 1.4,
       scale: 0.88 + rng() * 0.42,
       rotation: -20 + rng() * 40,
       idleDelay: Number((rng() * 2.8).toFixed(2)),
@@ -143,7 +143,7 @@ export function BlackGardenPage() {
           left: var(--left);
           top: var(--top);
           width: var(--size);
-          min-width: 58px;
+          min-width: 82px;
           transform: translate(-50%, -50%) rotate(var(--base-rotation)) scale(var(--base-scale));
           transform-origin: 50% 64%;
           border: 0;
