@@ -8,7 +8,7 @@ export function BlackGardenPage() {
     "Yoga i smích ať sílu vám dá,",
     "Dnešní den ať radost rozdává.",
     "Energie, štěstí a úsměv v tváři,",
-    "Nechť se vám dnes i zítra daří. 🌸",
+    "Nechť se vám dnes i každý den daří. 🌸",
   ];
   const poemInitialColor = "#ffd76a";
 
