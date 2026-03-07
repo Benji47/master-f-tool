@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { getCookie } from "hono/cookie";
 import { Homepage } from "./pages/auth/homepage";
+import { BlackGardenPage } from "./pages/fun/blackGarden";
 import { MainLayout } from "./main";
 import { listAllUsersForAdmin, loginUser, registerUser, resetUserPasswordById } from "./logic/auth";
 import { LoginPage } from "./pages/auth/login";
@@ -323,6 +324,7 @@ app.use(async (c, next) => {
   // Allow these routes to skip auth check
   if (
     c.req.path == "/" ||
+    c.req.path == "/v1/black-garden" ||
     c.req.path.startsWith("/v1/auth/")
   ) {
     await next();
@@ -599,6 +601,14 @@ app.get("/", (c) => {
   return c.html(
     <MainLayout c={c}>
       <Homepage c={c} />
+    </MainLayout>,
+  );
+});
+
+app.get("/v1/black-garden", (c) => {
+  return c.html(
+    <MainLayout c={c}>
+      <BlackGardenPage />
     </MainLayout>,
   );
 });
