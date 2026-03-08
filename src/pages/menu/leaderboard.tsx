@@ -170,10 +170,10 @@ export function LeaderboardPage({
   const rankLabelsGoldenReceived = buildRankLabels(goldenTeamsReceived, (t) => t.count);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-3 sm:p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-5xl font-bold text-white font-[Orbitron] mb-2">Leaderboards</h1>
+          <h1 className="text-3xl sm:text-5xl font-bold text-white font-[Orbitron] mb-2">Leaderboards</h1>
           <p className="text-neutral-400">
             Top players across different categories — {statsScope === "overall" ? "Overall" : getSeasonLabel(selectedSeasonIndex)}
           </p>
@@ -202,20 +202,20 @@ export function LeaderboardPage({
 
         {/* Tab Buttons */}
         <div className="flex gap-2 mb-6 flex-wrap">
-          <button data-tab="elo" className="tab-btn active px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 cursor-pointer text-white rounded-md font-semibold transition-colors">ELO</button>
-          <button data-tab="ultimate_wins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Ultimate Wins</button>
-          <button data-tab="ultimate_loses" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Ultimate Loses</button>
-          <button data-tab="vyrazacka" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Vyrážečky</button>
-          <button data-tab="golden_scored" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Golden Scored</button>
-          <button data-tab="golden_received" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Golden Received</button>
-          <button data-tab="total_games" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Total Games</button>
-          <button data-tab="level" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Level</button>
-          <button data-tab="ten_zero_loses" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Loses</button>
-          <button data-tab="ten_zero_wins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">10:0 Wins</button>
-          <button data-tab="coins" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Coins</button>
-          <button data-tab="duos" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duos by Winrate</button>
-          <button data-tab="duos_matches" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duos by Matches</button>
-          <button data-tab="duo" className="tab-btn px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Duo Analyzer</button>
+          <button data-tab="elo" className="tab-btn active px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">ELO</button>
+          <button data-tab="ultimate_wins" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Ultimate Wins</button>
+          <button data-tab="ultimate_loses" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Ultimate Loses</button>
+          <button data-tab="vyrazacka" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Vyrážečky</button>
+          <button data-tab="golden_scored" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Golden Scored</button>
+          <button data-tab="golden_received" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Golden Received</button>
+          <button data-tab="total_games" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Total Games</button>
+          <button data-tab="level" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Level</button>
+          <button data-tab="ten_zero_loses" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">10:0 Loses</button>
+          <button data-tab="ten_zero_wins" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">10:0 Wins</button>
+          <button data-tab="coins" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Coins</button>
+          <button data-tab="duos" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Duos by Winrate</button>
+          <button data-tab="duos_matches" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Duos by Matches</button>
+          <button data-tab="duo" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Duo Analyzer</button>
           
           <div className="">
             <a href="/v1/lobby">
@@ -227,7 +227,7 @@ export function LeaderboardPage({
         </div>
 
         {/* ELO Leaderboard */}
-        <div id="elo" className="leaderboard-tab active bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="elo" className="leaderboard-tab active bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-[0.6fr_1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr_0.9fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-2">Player</div>
@@ -275,7 +275,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Ultimate Wins Leaderboard */}
-        <div id="ultimate_wins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="ultimate_wins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
@@ -307,7 +307,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Ultimate Loses Leaderboard */}
-        <div id="ultimate_loses" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="ultimate_loses" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
@@ -339,7 +339,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Vyrážečky Leaderboard */}
-        <div id="vyrazacka" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="vyrazacka" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
@@ -375,7 +375,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Golden Vyrazacka Scored Leaderboard */}
-        <div id="golden_scored" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="golden_scored" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-2">Team</div>
@@ -404,7 +404,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Golden Vyrazacka Received Leaderboard */}
-        <div id="golden_received" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="golden_received" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-2">Team</div>
@@ -433,7 +433,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Total Games Leaderboard */}
-        <div id="total_games" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="total_games" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
@@ -465,7 +465,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Level Leaderboard */}
-        <div id="level" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="level" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-6 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
@@ -498,7 +498,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Ten Zero Loses Leaderboard */}
-        <div id="ten_zero_loses" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="ten_zero_loses" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
@@ -529,7 +529,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Ten Zero Wins Leaderboard */}
-        <div id="ten_zero_wins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="ten_zero_wins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
@@ -559,7 +559,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Coins Leaderboard */}
-        <div id="coins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="coins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
@@ -589,7 +589,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Duos Leaderboard */}
-        <div id="duos" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="duos" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-7 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-2">Duo</div>
@@ -604,7 +604,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Duos by Matches Leaderboard */}
-        <div id="duos_matches" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="duos_matches" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="grid grid-cols-7 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-2">Duo</div>
@@ -619,7 +619,7 @@ export function LeaderboardPage({
         </div>
 
         {/* Duo Analyzer */}
-        <div id="duo" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-hidden">
+        <div id="duo" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
           <div className="px-6 py-6">
             <h2 className="text-2xl font-bold text-white mb-2">Duo Analyzer</h2>
             <p className="text-neutral-400 mb-6">Pick two players to see their matches together and how they perform against each opponent duo.</p>

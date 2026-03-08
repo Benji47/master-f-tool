@@ -1,4 +1,5 @@
 const sdk = require('node-appwrite');
+import { cacheGet, cacheSet, CACHE_KEYS, CACHE_TTL } from './cache';
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
 const projectId = process.env.APPWRITE_PROJECT;
@@ -54,9 +55,14 @@ export type PlayerGamesHistory = {
 };
 
 /**
- * Get Elo history for all players by reconstructing from match history
+ * Shared cached fetch of all match history documents.
+ * All 4 graph functions use this instead of making separate DB calls.
  */
-export async function getAllPlayersEloHistory(): Promise<PlayerEloHistory[]> {
+async function fetchMatchHistoryForGraphs(): Promise<any[]> {
+  const cacheKey = CACHE_KEYS.MATCH_HISTORY_ALL;
+  const cached = cacheGet<any[]>(cacheKey);
+  if (cached) return cached;
+
   if (!projectId || !apiKey || !databaseId) {
     throw new Error('Appwrite credentials not configured');
   }
@@ -68,16 +74,26 @@ export async function getAllPlayersEloHistory(): Promise<PlayerEloHistory[]> {
 
   const databases = new sdk.Databases(client);
 
+  const response = await databases.listDocuments(
+    databaseId,
+    'matches_history',
+    [
+      sdk.Query.orderAsc('$createdAt'),
+      sdk.Query.limit(1000)
+    ]
+  );
+
+  cacheSet(cacheKey, response.documents, CACHE_TTL.MATCH_HISTORY);
+  return response.documents;
+}
+
+/**
+ * Get Elo history for all players by reconstructing from match history
+ */
+export async function getAllPlayersEloHistory(): Promise<PlayerEloHistory[]> {
   try {
-    // Fetch all match history, ordered by creation date
-    const response = await databases.listDocuments(
-      databaseId,
-      'matches_history',
-      [
-        sdk.Query.orderAsc('$createdAt'),
-        sdk.Query.limit(1000) // Adjust if needed
-      ]
-    );
+    // Fetch all match history using shared cached fetch
+    const documents = await fetchMatchHistoryForGraphs();
 
     const playerHistories = new Map<string, PlayerEloHistory>();
 
@@ -85,7 +101,7 @@ export async function getAllPlayersEloHistory(): Promise<PlayerEloHistory[]> {
     const tempPlayerData = new Map<string, { username: string; points: Array<{ date: Date; elo: number; matchId: string }> }>();
 
     // Process each match in chronological order
-    for (const match of response.documents) {
+    for (const match of documents) {
       const playersJson = match.players_json ?? match.players ?? '[]';
       let players: any[] = [];
 
@@ -183,31 +199,13 @@ export async function getPlayersEloHistory(playerIds: string[]): Promise<PlayerE
  * Get XP history for all players - tracks cumulative XP from match history
  */
 export async function getAllPlayersXPHistory(): Promise<PlayerXPHistory[]> {
-  if (!projectId || !apiKey || !databaseId) {
-    throw new Error('Appwrite credentials not configured');
-  }
-
-  const client = new sdk.Client()
-    .setEndpoint(endpoint)
-    .setProject(projectId)
-    .setKey(apiKey);
-
-  const databases = new sdk.Databases(client);
-
   try {
-    const response = await databases.listDocuments(
-      databaseId,
-      'matches_history',
-      [
-        sdk.Query.orderAsc('$createdAt'),
-        sdk.Query.limit(1000)
-      ]
-    );
+    const documents = await fetchMatchHistoryForGraphs();
 
     const playerHistories = new Map<string, PlayerXPHistory>();
     const tempPlayerData = new Map<string, { username: string; cumulativeXp: number; points: Array<{ date: Date; xp: number; matchId: string }> }>();
 
-    for (const match of response.documents) {
+    for (const match of documents) {
       const playersJson = match.players_json ?? match.players ?? '[]';
       let players: any[] = [];
 
@@ -271,31 +269,13 @@ export async function getAllPlayersXPHistory(): Promise<PlayerXPHistory[]> {
  * Get Vyrážečka history for all players - tracks cumulative vyrážečka count
  */
 export async function getAllPlayersVyrazeckaHistory(): Promise<PlayerVyrazeckaHistory[]> {
-  if (!projectId || !apiKey || !databaseId) {
-    throw new Error('Appwrite credentials not configured');
-  }
-
-  const client = new sdk.Client()
-    .setEndpoint(endpoint)
-    .setProject(projectId)
-    .setKey(apiKey);
-
-  const databases = new sdk.Databases(client);
-
   try {
-    const response = await databases.listDocuments(
-      databaseId,
-      'matches_history',
-      [
-        sdk.Query.orderAsc('$createdAt'),
-        sdk.Query.limit(1000)
-      ]
-    );
+    const documents = await fetchMatchHistoryForGraphs();
 
     const playerHistories = new Map<string, PlayerVyrazeckaHistory>();
     const tempPlayerData = new Map<string, { username: string; cumulativeVyrazecka: number; points: Array<{ date: Date; vyrazecka: number; matchId: string }> }>();
 
-    for (const match of response.documents) {
+    for (const match of documents) {
       const playersJson = match.players_json ?? match.players ?? '[]';
       const scoresJson = match.scores_json ?? '[]';
       let players: any[] = [];
@@ -382,31 +362,13 @@ export async function getAllPlayersVyrazeckaHistory(): Promise<PlayerVyrazeckaHi
  * Get games history for all players
  */
 export async function getAllPlayersGamesHistory(): Promise<PlayerGamesHistory[]> {
-  if (!projectId || !apiKey || !databaseId) {
-    throw new Error('Appwrite credentials not configured');
-  }
-
-  const client = new sdk.Client()
-    .setEndpoint(endpoint)
-    .setProject(projectId)
-    .setKey(apiKey);
-
-  const databases = new sdk.Databases(client);
-
   try {
-    const response = await databases.listDocuments(
-      databaseId,
-      'matches_history',
-      [
-        sdk.Query.orderAsc('$createdAt'),
-        sdk.Query.limit(1000)
-      ]
-    );
+    const documents = await fetchMatchHistoryForGraphs();
 
     const playerHistories = new Map<string, PlayerGamesHistory>();
     const tempPlayerData = new Map<string, { username: string; games: number; lastDate: Date; points: Array<{ date: Date; games: number; matchId: string }> }>();
 
-    for (const match of response.documents) {
+    for (const match of documents) {
       const playersJson = match.players_json ?? match.players ?? '[]';
       let players: any[] = [];
 

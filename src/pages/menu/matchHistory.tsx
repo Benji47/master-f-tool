@@ -5,31 +5,30 @@ export function MatchHistoryPage({ c, matches, currentUser, filterUsername }: { 
   const formatCoins = (value: number) => new Intl.NumberFormat("cs-CZ").format(Math.max(0, Math.floor(value || 0)));
 
   return (
-    <div class="min-h-screen p-6 text-white max-w-5xl mx-auto">
+    <div class="min-h-screen p-3 sm:p-6 text-white max-w-5xl mx-auto">
       {/* HEADER ROW */}
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-4xl font-bold font-[Orbitron] text-purple-200">Match History</h1>
+      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 class="text-2xl sm:text-4xl font-bold font-[Orbitron] text-purple-200">Match History</h1>
 
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <a href={`/v1/match-history`}>
-            <button class="tab-btn px-4 py-2 bg-neutral-800/70 border border-purple-600/40 hover:bg-neutral-700/80 hover:border-purple-500/60 cursor-pointer text-white rounded-md font-semibold transition-colors">
+            <button class="tab-btn px-3 sm:px-4 py-2 bg-neutral-800/70 border border-purple-600/40 hover:bg-neutral-700/80 hover:border-purple-500/60 cursor-pointer text-white rounded-md font-semibold transition-colors text-sm">
               All Matches
             </button>
           </a>
           {currentUser && (
             <a href={`/v1/match-history/players/${currentUser}`}>
-              <button class="tab-btn px-4 py-2 bg-neutral-800/70 border border-purple-600/40 hover:bg-neutral-700/80 hover:border-purple-500/60 cursor-pointer text-white rounded-md font-semibold transition-colors">
+              <button class="tab-btn px-3 sm:px-4 py-2 bg-neutral-800/70 border border-purple-600/40 hover:bg-neutral-700/80 hover:border-purple-500/60 cursor-pointer text-white rounded-md font-semibold transition-colors text-sm">
                 Your Matches
               </button>
             </a>
           )}
+          <a href={`/v1/lobby`}>
+            <button class="px-3 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-md hover:from-purple-500 hover:to-violet-500 cursor-pointer font-semibold transition-colors text-sm">
+              Back to lobby
+            </button>
+          </a>
         </div>
-
-        <a href={`/v1/lobby`}>
-          <button class="px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-md hover:from-purple-500 hover:to-violet-500 cursor-pointer font-semibold transition-colors">
-            Back to lobby
-          </button>
-        </a>
       </div>
 
       <div class="flex flex-col gap-4">

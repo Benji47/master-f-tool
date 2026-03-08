@@ -1,5 +1,6 @@
 import * as sdk from "node-appwrite";
 import { computeLevel } from "../static/data";
+import { cacheGet, cacheSet, cacheInvalidate, CACHE_KEYS, CACHE_TTL } from "./cache";
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
 const projectId = process.env.APPWRITE_PROJECT || '';
@@ -296,6 +297,9 @@ export async function unlockAchievement(
       }
     );
 
+    // Invalidate achievement cache for this player
+    cacheInvalidate(CACHE_KEYS.PLAYER_ACHIEVEMENTS(playerId));
+
     return {
       $id: doc.$id,
       playerId: doc.playerId,
@@ -314,6 +318,10 @@ export async function getPlayerAchievements(
   playerId: string
 ): Promise<PlayerAchievementWithDef[]> {
   try {
+    const cacheKey = CACHE_KEYS.PLAYER_ACHIEVEMENTS(playerId);
+    const cached = cacheGet<PlayerAchievementWithDef[]>(cacheKey);
+    if (cached) return cached;
+
     const client = getClient();
     const databases = new sdk.Databases(client);
 
@@ -327,7 +335,7 @@ export async function getPlayerAchievements(
       ]
     );
 
-    return res.documents
+    const result = res.documents
       .map(doc => {
         const definition = ACHIEVEMENT_DEFINITIONS.find(
           d => d.achievementId === doc.achievementId
@@ -340,6 +348,9 @@ export async function getPlayerAchievements(
         };
       })
       .filter(Boolean) as unknown as PlayerAchievementWithDef[];
+
+    cacheSet(cacheKey, result, CACHE_TTL.ACHIEVEMENTS);
+    return result;
   } catch (error) {
     console.error('Error fetching player achievements:', error);
     return [];
@@ -348,6 +359,10 @@ export async function getPlayerAchievements(
 
 async function getAchievementClaims(playerId: string): Promise<Set<string>> {
   try {
+    const cacheKey = CACHE_KEYS.ACHIEVEMENT_CLAIMS(playerId);
+    const cached = cacheGet<Set<string>>(cacheKey);
+    if (cached) return cached;
+
     const client = getClient();
     const databases = new sdk.Databases(client);
     const res = await databases.listDocuments(
@@ -358,7 +373,9 @@ async function getAchievementClaims(playerId: string): Promise<Set<string>> {
         sdk.Query.limit(200)
       ]
     );
-    return new Set(res.documents.map(doc => String(doc.achievementId)));
+    const result = new Set(res.documents.map(doc => String(doc.achievementId)));
+    cacheSet(cacheKey, result, CACHE_TTL.ACHIEVEMENTS);
+    return result;
   } catch (error) {
     console.error('Error fetching achievement claims:', error);
     return new Set();
@@ -395,7 +412,11 @@ async function syncAchievementsFromProfile(playerId: string): Promise<void> {
   try {
     const client = getClient();
     const databases = new sdk.Databases(client);
-    const profile = await databases.getDocument(databaseId, 'players-profile', playerId);
+
+    // Use cached profile from profile.tsx instead of a separate DB read
+    const { getPlayerProfile } = await import('./profile');
+    const profile = await getPlayerProfile(playerId);
+    if (!profile) return;
 
     const username = String(profile.username || '');
     const level = computeLevel(Number(profile.xp || 0)).level;
@@ -406,7 +427,14 @@ async function syncAchievementsFromProfile(playerId: string): Promise<void> {
     const ultimateLoses = Number(profile.ultimate_loses || 0);
     const shutoutWins = Number(profile.ten_zero_wins || 0);
 
+    // Fetch existing achievements ONCE instead of checking each one individually
+    const existingAchievements = await getPlayerAchievements(playerId);
+    const alreadyUnlockedIds = new Set(existingAchievements.map(a => a.achievementId));
+
     for (const def of ACHIEVEMENT_DEFINITIONS) {
+      // Skip if already unlocked - avoids a DB read per achievement
+      if (alreadyUnlockedIds.has(def.achievementId)) continue;
+
       const requirement = def.requirement;
       if (!requirement) continue;
 
@@ -641,6 +669,8 @@ export async function claimAchievementReward(
       rewardCoins: def.rewardCoins,
     }
   );
+
+  cacheInvalidate(CACHE_KEYS.ACHIEVEMENT_CLAIMS(playerId));
 
   return { rewardCoins: def.rewardCoins, status: 'claimed' };
 }

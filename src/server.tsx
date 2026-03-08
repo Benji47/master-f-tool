@@ -24,6 +24,7 @@ import { findCurrentMatch } from "./logic/match";
 import { MatchHistoryPage } from "./pages/menu/matchHistory";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { FBetPage } from "./pages/menu/f-bet";
+import { cacheGet, cacheSet, cacheInvalidate, CACHE_KEYS, CACHE_TTL } from "./logic/cache";
 import { TournamentsPage } from "./pages/tournaments/tournaments";
 import { CreateTournamentPage } from "./pages/tournaments/create";
 import { TournamentDetailPage } from "./pages/tournaments/detail";
@@ -81,14 +82,12 @@ const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").trim();
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 const SEASON_STATE_FILE = "./.season-state.json";
 const MAX_TIMEOUT_MS = 2_147_000_000;
-const PROFILES_CACHE_TTL_MS = 20_000;
-const MATCH_HISTORY_CACHE_TTL_MS = 20_000;
+const PROFILES_CACHE_TTL_MS = 600_000;
+const MATCH_HISTORY_CACHE_TTL_MS = 600_000;
 const MAX_COIN_TRANSFER_MESSAGES = 15;
 
 let seasonRolloverInProgress = false;
 let seasonRolloverTimer: Timer | null = null;
-let cachedAllProfiles: { expiresAt: number; value: ReturnType<typeof getAllPlayerProfiles> extends Promise<infer T> ? T : never } | null = null;
-let cachedMatchHistoryDocs: { expiresAt: number; value: MatchHistoryDoc[] } | null = null;
 
 type CoinTransferMessage = {
   from: string;
@@ -98,21 +97,15 @@ type CoinTransferMessage = {
 };
 
 async function getAllPlayerProfilesCached(forceRefresh: boolean = false) {
-  const now = Date.now();
-  if (!forceRefresh && cachedAllProfiles && cachedAllProfiles.expiresAt > now) {
-    return cachedAllProfiles.value;
+  if (forceRefresh) {
+    cacheInvalidate(CACHE_KEYS.ALL_PROFILES);
   }
-
-  const profiles = await getAllPlayerProfiles();
-  cachedAllProfiles = {
-    value: profiles,
-    expiresAt: now + PROFILES_CACHE_TTL_MS,
-  };
-  return profiles;
+  // Delegates to getAllPlayerProfiles which now has its own cache
+  return getAllPlayerProfiles();
 }
 
 function invalidateMatchHistoryCache() {
-  cachedMatchHistoryDocs = null;
+  cacheInvalidate(CACHE_KEYS.MATCH_HISTORY_ALL);
 }
 
 async function appendCoinTransferMessage(
@@ -335,28 +328,16 @@ app.use(async (c, next) => {
   const user = getCookie(c, "user") ?? "";
 
   if (user) {
-    const activeMatch = await findCurrentMatch(user);
+  // Match redirect logic is disabled - skip the expensive findCurrentMatch DB query
+  // to save reads. If re-enabled, uncomment the block below.
 
-  // ❗ do not redirect JSON/API endpoints
-  const isApiRequest = c.req.header("Accept")?.includes("application/json")
-                    || c.req.path.startsWith("/v1/match/state")
-                    || c.req.path.startsWith("/v1/match/list")
-                    || c.req.path.startsWith("/v1/match/game/score")
-                    || c.req.path.startsWith("/v1/match/game/vyrazacka")
-                    || c.req.path.startsWith("/v1/match/game/golden-vyrazacka");
-
-  // if (!isApiRequest && activeMatch) {
-
-  //   if (activeMatch.state === "playing" &&
-  //       !c.req.path.startsWith("/v1/match/game")) {
-  //     return c.redirect(`/v1/match/game`);
-  //   }
-
-  //   // if (activeMatch.state === "open" &&
-  //   //     !c.req.path.startsWith("/v1/match/lobby")) {
-  //   //   return c.redirect(`/v1/match/lobby`);
-  //   // }
-  // }
+  // const activeMatch = await findCurrentMatch(user);
+  // const isApiRequest = c.req.header("Accept")?.includes("application/json")
+  //                   || c.req.path.startsWith("/v1/match/state")
+  //                   || c.req.path.startsWith("/v1/match/list")
+  //                   || c.req.path.startsWith("/v1/match/game/score")
+  //                   || c.req.path.startsWith("/v1/match/game/vyrazacka")
+  //                   || c.req.path.startsWith("/v1/match/game/golden-vyrazacka");
   }
 
   
@@ -452,21 +433,8 @@ app.get("/v1/changes-log", async (c) => {
 });
 
 app.get("/v1/match-history", async (c) => {
-  const client = new sdk.Client()
-    .setEndpoint(process.env.APPWRITE_ENDPOINT!)
-    .setProject(process.env.APPWRITE_PROJECT!)
-    .setKey(process.env.APPWRITE_KEY!);
-
-  const databases = new sdk.Databases(client);
-
-  const res = await databases.listDocuments(
-    process.env.APPWRITE_DATABASE_ID!,
-    'matches_history',
-    [sdk.Query.orderDesc("$createdAt")]
-  );
-
-  // parse each document as match history (includes elo deltas / xp gains)
-  const matches = res.documents.map((doc: any) => (parseMatchHistoryDoc(doc)));
+  // Use the cached match history instead of a fresh DB read
+  const matches = await listAllMatchHistoryDocs();
 
   interface BetSummary {
     lostAmount: number;
@@ -477,25 +445,32 @@ app.get("/v1/match-history", async (c) => {
     betSummary: BetSummary;
   }
 
-  const matchesWithBetSummary: MatchWithBetSummary[] = await Promise.all(
-    matches.map(async (match: MatchHistoryDoc): Promise<MatchWithBetSummary> => {
-      const bets = await getBetsForMatch(match.matchId);
-      const totalLostAmount: number = bets
-        .filter((b) => b.status === "lost")
-        .reduce((sum: number, b) => sum + Number(b.betAmount || 0), 0);
-      const totalProfitWon: number = bets
-        .filter((b) => b.status === "won")
-        .reduce((sum: number, b) => sum + Math.max(0, Number(b.winnings || 0) - Number(b.betAmount || 0)), 0);
+  // Fetch all bets in a single query instead of N separate getBetsForMatch calls
+  const allBets = await getAllBets(500);
+  const betsByMatchId = new Map<string, typeof allBets>();
+  for (const bet of allBets) {
+    const existing = betsByMatchId.get(bet.matchId) || [];
+    existing.push(bet);
+    betsByMatchId.set(bet.matchId, existing);
+  }
 
-      return {
-        ...match,
-        betSummary: {
-          lostAmount: totalLostAmount,
-          profitWon: totalProfitWon,
-        },
-      };
-    })
-  );
+  const matchesWithBetSummary: MatchWithBetSummary[] = matches.map((match: MatchHistoryDoc): MatchWithBetSummary => {
+    const bets = betsByMatchId.get(match.matchId) || [];
+    const totalLostAmount: number = bets
+      .filter((b) => b.status === "lost")
+      .reduce((sum: number, b) => sum + Number(b.betAmount || 0), 0);
+    const totalProfitWon: number = bets
+      .filter((b) => b.status === "won")
+      .reduce((sum: number, b) => sum + Math.max(0, Number(b.winnings || 0) - Number(b.betAmount || 0)), 0);
+
+    return {
+      ...match,
+      betSummary: {
+        lostAmount: totalLostAmount,
+        profitWon: totalProfitWon,
+      },
+    };
+  });
 
   const user = getCookie(c, "user") ?? null;
 
@@ -509,80 +484,40 @@ app.get("/v1/match-history", async (c) => {
 app.get("/v1/match-history/players/:username", async (c) => {
   const username = c.req.param("username");
 
-  const client = new sdk.Client()
-    .setEndpoint(process.env.APPWRITE_ENDPOINT!)
-    .setProject(process.env.APPWRITE_PROJECT!)
-    .setKey(process.env.APPWRITE_KEY!);
+  // Use cached match history instead of paginating all from DB
+  const allMatches = await listAllMatchHistoryDocs();
 
-  const databases = new sdk.Databases(client);
+  // Filter for matches that include this player
+  const matches = allMatches.filter((match: MatchHistoryDoc) => {
+    return (match.players || []).some((p: HistoryPlayers) => p.id === username);
+  });
 
-  // Fetch ALL documents with pagination
-  let allDocuments: any[] = [];
-  let offset = 0;
-  const limit = 100; // Fetch 100 at a time
-
-  while (true) {
-    const res = await databases.listDocuments(
-      process.env.APPWRITE_DATABASE_ID!,
-      'matches_history',
-      [
-        sdk.Query.orderDesc("$createdAt"),
-        sdk.Query.limit(limit),
-        sdk.Query.offset(offset)
-      ]
-    );
-
-    if (res.documents.length === 0) break;
-    
-    allDocuments = allDocuments.concat(res.documents);
-    offset += limit;
-    
-    // Safety check to prevent infinite loops
-    if (allDocuments.length > 10000) {
-      break;
-    }
+  // Fetch all bets in one query instead of N separate calls
+  const allBets = await getAllBets(500);
+  const betsByMatchId = new Map<string, typeof allBets>();
+  for (const bet of allBets) {
+    const existing = betsByMatchId.get(bet.matchId) || [];
+    existing.push(bet);
+    betsByMatchId.set(bet.matchId, existing);
   }
 
-  // parse each document similar to match docs
-  const matches = allDocuments
-  .filter((doc: any) => {
-    try {
-      // Parse JSON if it's a string
-      let players = typeof doc.players_json === "string"
-        ? JSON.parse(doc.players_json)
-        : doc.players_json;
-      
-      if (!Array.isArray(players)) {
-        return false;
-      }
-      
-      const hasPlayer = players.some((p: any) => p.id === username);
-      return hasPlayer;
-    } catch (err: any) {
-      return false;
-    }
-  })
-  .map((doc: any) => parseMatchHistoryDoc(doc));
+  const matchesWithBetSummary = matches.map((match) => {
+    const bets = betsByMatchId.get(match.matchId) || [];
+    const totalLostAmount = bets
+      .filter((b) => b.status === "lost")
+      .reduce((sum, b) => sum + Number(b.betAmount || 0), 0);
+    const totalProfitWon = bets
+      .filter((b) => b.status === "won")
+      .reduce((sum, b) => sum + Math.max(0, Number(b.winnings || 0) - Number(b.betAmount || 0)), 0);
 
-  const matchesWithBetSummary = await Promise.all(
-    matches.map(async (match) => {
-      const bets = await getBetsForMatch(match.matchId);
-      const totalLostAmount = bets
-        .filter((b) => b.status === "lost")
-        .reduce((sum, b) => sum + Number(b.betAmount || 0), 0);
-      const totalProfitWon = bets
-        .filter((b) => b.status === "won")
-        .reduce((sum, b) => sum + Math.max(0, Number(b.winnings || 0) - Number(b.betAmount || 0)), 0);
-
-      return {
-        ...match,
-        betSummary: {
-          lostAmount: totalLostAmount,
-          profitWon: totalProfitWon,
-        },
-      };
-    })
-  );
+    return {
+      ...match,
+      betSummary: {
+        lostAmount: totalLostAmount,
+        profitWon: totalProfitWon,
+      },
+    };
+  });
 
   return c.html(
     <MainLayout c={c}>
@@ -751,10 +686,8 @@ function addGoldenStat(
 }
 
 async function listAllMatchHistoryDocs(): Promise<MatchHistoryDoc[]> {
-  const now = Date.now();
-  if (cachedMatchHistoryDocs && cachedMatchHistoryDocs.expiresAt > now) {
-    return cachedMatchHistoryDocs.value;
-  }
+  const cached = cacheGet<MatchHistoryDoc[]>(CACHE_KEYS.MATCH_HISTORY_ALL);
+  if (cached) return cached;
 
   const client = new sdk.Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
@@ -786,10 +719,7 @@ async function listAllMatchHistoryDocs(): Promise<MatchHistoryDoc[]> {
   }
 
   const parsed = allDocuments.map((doc: any) => parseMatchHistoryDoc(doc));
-  cachedMatchHistoryDocs = {
-    value: parsed,
-    expiresAt: Date.now() + MATCH_HISTORY_CACHE_TTL_MS,
-  };
+  cacheSet(CACHE_KEYS.MATCH_HISTORY_ALL, parsed, MATCH_HISTORY_CACHE_TTL_MS);
   return parsed;
 }
 
@@ -954,54 +884,26 @@ app.get("/v1/profile/summary/:username", async (c) => {
     const rankInfo = getRankInfoFromElo(profile.elo || 0);
     const achievements = await getAllAchievementsForPlayer(profile.$id);
 
-    const client = new sdk.Client()
-      .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
-      .setProject(process.env.APPWRITE_PROJECT)
-      .setKey(process.env.APPWRITE_KEY);
-    const databases = new sdk.Databases(client);
-
+    // Use cached match history instead of paginating from DB
+    const allMatches = await listAllMatchHistoryDocs();
     const recentMatches: Array<{ matchId: string; createdAt?: string; outcome: string; scoreLine: string }> = [];
-    let offset = 0;
-    const limit = 100;
-    while (recentMatches.length < 5) {
-      const res = await databases.listDocuments(
-        process.env.APPWRITE_DATABASE_ID,
-        'matches_history',
-        [
-          sdk.Query.orderDesc("$createdAt"),
-          sdk.Query.limit(limit),
-          sdk.Query.offset(offset)
-        ]
-      );
-      if (res.documents.length === 0) break;
 
-      for (const doc of res.documents) {
-        if (recentMatches.length >= 5) break;
-        let playersJson: any = doc.players_json;
-        try {
-          playersJson = typeof playersJson === "string" ? JSON.parse(playersJson) : playersJson;
-        } catch {
-          playersJson = [];
-        }
-        if (!Array.isArray(playersJson)) continue;
-        const playerRow = playersJson.find((p: any) => p.id === profile.$id);
-        if (!playerRow) continue;
+    for (const match of allMatches) {
+      if (recentMatches.length >= 5) break;
+      const playerRow = (match.players || []).find((p: HistoryPlayers) => p.id === profile.$id);
+      if (!playerRow) continue;
 
-        const winsAdd = Number(playerRow.winsAdd || 0);
-        const losesAdd = Number(playerRow.losesAdd || 0);
-        const outcome = winsAdd >= 2 ? 'win' : (losesAdd >= 2 ? 'loss' : 'draw');
-        const scoreLine = `${winsAdd}:${losesAdd}`;
+      const winsAdd = Number(playerRow.winsAdd || 0);
+      const losesAdd = Number(playerRow.losesAdd || 0);
+      const outcome = winsAdd >= 2 ? 'win' : (losesAdd >= 2 ? 'loss' : 'draw');
+      const scoreLine = `${winsAdd}:${losesAdd}`;
 
-        recentMatches.push({
-          matchId: doc.matchId || doc.$id,
-          createdAt: doc.$createdAt,
-          outcome,
-          scoreLine,
-        });
-      }
-
-      offset += limit;
-      if (offset > 1000) break;
+      recentMatches.push({
+        matchId: match.matchId || match.$id,
+        createdAt: match.createdAt,
+        outcome,
+        scoreLine,
+      });
     }
 
     return c.json({

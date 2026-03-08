@@ -1,4 +1,5 @@
 const sdk = require('node-appwrite');
+import { cacheGet, cacheSet, cacheInvalidatePrefix } from './cache';
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
 const projectId = process.env.APPWRITE_PROJECT;
@@ -256,6 +257,7 @@ export async function placeBet(b: Omit<Bet, '$id' | 'status' | 'winnings' | 'cor
       correctPredictions: 0,
     }
   );
+  cacheInvalidatePrefix('all_bets:');
   return parseBetDoc(doc);
 }
 
@@ -294,11 +296,17 @@ export async function getAllBets(limit: number = 200): Promise<Bet[]> {
   const databases = new sdk.Databases(cli);
   try {
     const safeLimit = Math.max(1, Math.min(500, Math.floor(limit)));
+    const cacheKey = `all_bets:${safeLimit}`;
+    const cached = cacheGet<Bet[]>(cacheKey);
+    if (cached) return cached;
+
     const res = await databases.listDocuments(databaseId, collectionId, [
       sdk.Query.orderDesc('$createdAt'),
       sdk.Query.limit(safeLimit),
     ]);
-    return (res.documents || []).map(parseBetDoc);
+    const result = (res.documents || []).map(parseBetDoc);
+    cacheSet(cacheKey, result, 60_000); // 60s cache
+    return result;
   } catch (e) {
     console.error('getAllBets error', e);
     return [];

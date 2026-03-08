@@ -117,96 +117,153 @@ export async function LobbyPage({
           <div className="w-full max-w-2xl">
             <SeasonTimerPanel />
           </div>
-          <div className="grid grid-cols-3 gap-8 w-fit">
+          <div className="grid grid-cols-3 gap-4 sm:gap-8 w-full max-w-sm sm:max-w-none sm:w-fit px-2 sm:px-0">
             {/* Row 1 */}
-            <a href="/v1/leaderboard" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-blue-500/50">
+            <a href="/v1/leaderboard" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-blue-500/50">
                 🪜
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Leaderboards</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Leaderboards</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Leaderboards</span>
             </a>
 
-            <a href="/v1/match-history" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-indigo-500/50">
+            <a href="/v1/match-history" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-indigo-500/50">
                 📜
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Match History</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">History</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Match History</span>
             </a>
 
-            <a href="/v1/graphs" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-purple-700 hover:from-purple-400 hover:to-purple-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-purple-500/50">
+            <a href="/v1/graphs" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-purple-500 to-purple-700 hover:from-purple-400 hover:to-purple-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-purple-500/50">
                 📊
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Graphs</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Graphs</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Graphs</span>
             </a>
 
             {/* Row 2 */}
-            <a href="/v1/changes-log" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-gray-600 to-gray-800 hover:from-gray-500 hover:to-gray-700 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-gray-500/50">
+            <a href="/v1/changes-log" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-gray-600 to-gray-800 hover:from-gray-500 hover:to-gray-700 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-gray-500/50">
                 🛠️
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Changes & Fixes</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Changes</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Changes & Fixes</span>
             </a>
 
-            <a href="/v1/match/lobby" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-green-700 hover:from-green-400 hover:to-green-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-green-500/50">
+            <a href="/v1/match/lobby" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-green-500 to-green-700 hover:from-green-400 hover:to-green-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-green-500/50">
                 ⚔️
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">PLAY</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center font-bold">PLAY</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">PLAY</span>
             </a>
 
-            <a href="/v1/f-bet" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-yellow-500 to-yellow-700 hover:from-yellow-400 hover:to-yellow-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-yellow-500/50">
+            <a href="/v1/f-bet" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-yellow-500 to-yellow-700 hover:from-yellow-400 hover:to-yellow-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-yellow-500/50">
                 🎲
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">F Bet</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">F Bet</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">F Bet</span>
             </a>
 
             {/* Row 3 */}
-            <a href="/v1/tournaments" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-orange-700 hover:from-orange-400 hover:to-orange-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-orange-500/50">
+            <a href="/v1/tournaments" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-orange-500 to-orange-700 hover:from-orange-400 hover:to-orange-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-orange-500/50">
                 🏆
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Tournaments</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Tournaments</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Tournaments</span>
             </a>
 
-            <a href="/v1/shop" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-amber-500/50">
+            <a href="/v1/shop" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-amber-500/50">
                 🛒
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Shop</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Shop</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Shop</span>
             </a>
 
             {/* Row 4 */}
-            <a href="/v1/hall-of-fame" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-amber-500/50">
+            <a href="/v1/hall-of-fame" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-amber-500/50">
                 🏛️
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Hall of Fame</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Hall of Fame</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Hall of Fame</span>
             </a>
 
-            <a href="/v1/faq" className="group relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-cyan-500 to-cyan-700 hover:from-cyan-400 hover:to-cyan-600 rounded-lg flex items-center justify-center text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-cyan-500/50">
+            <a href="/v1/faq" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-cyan-500 to-cyan-700 hover:from-cyan-400 hover:to-cyan-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-cyan-500/50">
                 ❓
               </div>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">FAQ</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">FAQ</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">FAQ</span>
             </a>
 
-            <form action="/v1/auth/logout" method="post" className="group relative">
+            <form action="/v1/auth/logout" method="post" className="group relative flex flex-col items-center">
               <button
                 type="submit"
-                className="w-24 h-24 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 rounded-lg flex items-center justify-center text-4xl transition-all transform hover:scale-110 shadow-lg hover:shadow-red-500/50 text-white"
+                className="w-full aspect-square max-w-24 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 rounded-lg flex items-center justify-center text-3xl sm:text-4xl transition-all transform hover:scale-110 shadow-lg hover:shadow-red-500/50 text-white"
               >
                 🚪
               </button>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Logout</span>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Logout</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Logout</span>
             </form>
+          </div>
+
+          {/* Stats/Daily Log/Global Stats - inline on mobile, hidden on lg (shown fixed on lg) */}
+          <div className="w-full flex flex-col gap-4 lg:hidden">
+            {/* Showing Stats Box */}
+            <div className="w-full rounded-md border border-purple-600/50 bg-neutral-900/60 p-3">
+              <p className="text-xs text-neutral-400 mb-2 text-center">Showing stats:</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <a href="/v1/lobby?scope=current" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "current" ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+                  Current Season
+                </a>
+                <a href="/v1/lobby?scope=overall" className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "overall" ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}>
+                  Overall
+                </a>
+                {availableSeasonIndexes.filter((season) => season !== currentSeasonIndex).map((season) => (
+                  <a
+                    key={season}
+                    href={`/v1/lobby?scope=season&season=${season}`}
+                    className={`px-3 py-1 rounded text-sm font-semibold ${statsScope === "season" && selectedSeasonIndex === season ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white" : "bg-neutral-700 text-neutral-200 hover:bg-neutral-600"}`}
+                  >
+                    {getSeasonLabel(season)}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Levels and Ranks Buttons */}
+            <div className="w-full flex gap-2">
+              <button
+                type="button"
+                onclick="document.getElementById('levels-modal')?.showModal()"
+                className="flex-1 px-3 py-1 text-xs text-white/70 rounded-md bg-neutral-800/60 border border-purple-600/40 hover:border-purple-500/60 hover:bg-neutral-700 transition-colors"
+              >
+                Levels
+              </button>
+              <button
+                type="button"
+                onclick="document.getElementById('ranks-modal')?.showModal()"
+                className="flex-1 px-3 py-1 text-xs text-white/70 rounded-md bg-neutral-800/60 border border-purple-600/40 hover:border-purple-500/60 hover:bg-neutral-700 transition-colors"
+              >
+                Ranks
+              </button>
+            </div>
+
+            <DailyAchievementsPanel achievements={dailyAchievements} />
+            <GlobalStatsPanel globalStats={globalStats} />
           </div>
         </div>
       </div>
 
-      {/* Right Sidebar - Fixed Position */}
-      <div className="fixed top-4 right-4 w-120 flex flex-col gap-4 z-40">
+      {/* Right Sidebar - Fixed Position on large screens only, hidden on mobile (shown inline above) */}
+      <div className="hidden lg:flex fixed top-4 right-4 w-120 flex-col gap-4 z-40">
         {/* Showing Stats Box */}
         <div className="w-full rounded-md border border-purple-600/50 bg-neutral-900/60 p-3">
           <p className="text-xs text-neutral-400 mb-2 text-center">Showing stats:</p>
@@ -312,7 +369,7 @@ export async function LobbyPage({
               ["zElo", "Bronze", "Silver", "Gold"],
               ["Platinum", "Diamond", "Master", "Grandmaster"],
             ].map((rankRow, rowIdx) => (
-              <div key={`row-${rowIdx}`} className="flex gap-5">
+              <div key={`row-${rowIdx}`} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {rankRow.map((rankName) => {
                   const tiers = rankTiers.filter((t) => t.name.startsWith(rankName));
 

@@ -115,20 +115,20 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 text-white">
+    <div className="max-w-7xl mx-auto p-3 sm:p-6 text-white">
       {/* HEADER */}
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold mb-2">🎲 F Bet</h1>
-          <p className="text-purple-200/70">Live match betting with match winners, vyrážečka outcomes, and exact total goals.</p>
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2">🎲 F Bet</h1>
+          <p className="text-purple-200/70 text-sm sm:text-base">Live match betting with match winners, vyrážečka outcomes, and exact total goals.</p>
         </div>
-        <a href="/v1/lobby" className="inline-block px-5 py-2 bg-purple-700 hover:bg-purple-600 rounded-lg font-semibold transition border border-purple-500 whitespace-nowrap">
+        <a href="/v1/lobby" className="inline-block px-5 py-2 bg-purple-700 hover:bg-purple-600 rounded-lg font-semibold transition border border-purple-500 whitespace-nowrap self-start">
           ← Back to Lobby
         </a>
       </div>
 
       {/* COINS DISPLAY */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-gradient-to-br from-yellow-900/65 to-amber-900/55 p-4 rounded-lg border border-yellow-500/70">
           <div className="text-yellow-100/80 text-sm">Your Coins</div>
           <div className="text-3xl font-bold text-yellow-200">{formatCoins(userCoins)}</div>
@@ -144,9 +144,9 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
       </div>
 
       {/* MAIN CONTENT */}
-      <div className="grid grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* LEFT: AVAILABLE MATCHES */}
-        <div className="col-span-2">
+        <div className="lg:col-span-2">
           <h2 className="text-2xl font-bold mb-4">Available Matches</h2>
           {availableMatches.length === 0 ? (
             <div className="bg-neutral-900/70 p-8 rounded-lg text-center text-neutral-300 border border-purple-700/60">
@@ -217,7 +217,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                         >
                           <input type="hidden" name="matchId" value={match.$id} />
 
-                          <div className="grid grid-cols-3 gap-3 mb-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                             {[1,2,3].map((n)=>(
                               <div key={n}>
                                 <label className="block text-xs text-purple-200/70 mb-1">Match {n}</label>
@@ -237,7 +237,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                             ))}
                           </div>
 
-                          <div className="grid grid-cols-3 gap-3 mb-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                             <div>
                               <label className="block text-xs text-purple-200/70 mb-1">Bet Amount</label>
                               <input type="number" name="betAmount" min="1" max={userCoins} defaultValue="100" className="w-full px-3 py-2 bg-purple-950/60 border border-purple-700 rounded text-white text-sm" required disabled={isPlayerInMatch} />

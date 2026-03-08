@@ -1,5 +1,6 @@
 // filepath: c:\Users\mrave\Desktop\master-f-tool\src\logic\siteContent.ts
 const sdk = require('node-appwrite');
+import { cacheGet, cacheSet, cacheInvalidate, CACHE_KEYS, CACHE_TTL } from './cache';
 
 export interface SiteContent {
   $id: string;
@@ -32,6 +33,10 @@ export async function getSiteContent(key: string): Promise<SiteContent | null> {
     return null;
   }
 
+  const cacheKey = CACHE_KEYS.SITE_CONTENT(key);
+  const cached = cacheGet<SiteContent | null>(cacheKey);
+  if (cached !== undefined) return cached;
+
   const client = new sdk.Client()
     .setEndpoint(endpoint)
     .setProject(projectId)
@@ -46,11 +51,9 @@ export async function getSiteContent(key: string): Promise<SiteContent | null> {
       [sdk.Query.equal('key', key), sdk.Query.limit(1)]
     );
 
-    if (response.documents.length > 0) {
-      return response.documents[0] as SiteContent;
-    }
-
-    return null;
+    const result = response.documents.length > 0 ? response.documents[0] as SiteContent : null;
+    cacheSet(cacheKey, result, CACHE_TTL.SITE_CONTENT);
+    return result;
   } catch (error: any) {
     console.error('getSiteContent error:', error);
     return null;
@@ -89,6 +92,8 @@ export async function updateSiteContent(key: string, content: string): Promise<S
           updatedAt: new Date().toISOString(),
         }
       );
+      cacheInvalidate(CACHE_KEYS.SITE_CONTENT(key));
+      cacheInvalidate(CACHE_KEYS.ALL_SITE_CONTENT);
       return updated as SiteContent;
     } else {
       // Create new
@@ -102,6 +107,8 @@ export async function updateSiteContent(key: string, content: string): Promise<S
           updatedAt: new Date().toISOString(),
         }
       );
+      cacheInvalidate(CACHE_KEYS.SITE_CONTENT(key));
+      cacheInvalidate(CACHE_KEYS.ALL_SITE_CONTENT);
       return created as SiteContent;
     }
   } catch (error: any) {

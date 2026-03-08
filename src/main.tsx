@@ -41,12 +41,18 @@ export function MainLayout({ children, c }: { children: Child, c: Context }) {
             left: 50%;
             transform: translate(-50%, -50%);
             margin: 0;
+            max-height: 90vh;
+            max-width: 95vw;
+            overflow-y: auto;
           }
           dialog::backdrop {
             background-color: rgba(0, 0, 0, 0.7);
           }
           select {
             color-scheme: dark;
+          }
+          html, body {
+            overflow-x: hidden;
           }
         `}</style>
       </head>

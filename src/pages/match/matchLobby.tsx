@@ -2,19 +2,19 @@ import { Context } from "hono";
 
 export function MatchLobbyPage({ c, currentUser }: { c: Context; currentUser: string }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold text-white font-[Orbitron]">Match Lobbies</h1>
-          <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
+          <h1 className="text-2xl sm:text-4xl font-bold text-white font-[Orbitron]">Match Lobbies</h1>
+          <div className="flex gap-2 sm:gap-3">
             <form action="/v1/match/create" method="post">
-              <button type="submit" className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-bold rounded-md transition-all">
+              <button type="submit" className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-bold rounded-md transition-all text-sm sm:text-base">
                 ➕ Create Match
               </button>
             </form>
             <a href="/v1/lobby">
-              <button className="px-6 py-3 bg-red-500 hover:bg-red-700 text-white font-bold rounded-md transition-all">
-                🏠 Return to Lobby
+              <button className="px-4 sm:px-6 py-2 sm:py-3 bg-red-500 hover:bg-red-700 text-white font-bold rounded-md transition-all text-sm sm:text-base">
+                🏠 Return
               </button>
             </a>
           </div>

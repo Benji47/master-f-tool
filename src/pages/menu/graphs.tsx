@@ -21,14 +21,14 @@ export function GraphsPage({
   const gamesData = JSON.stringify(gamesHistories);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-3 sm:p-4">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-6 mb-6 flex items-center justify-between">
+        <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4 sm:p-6 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-white font-[Orbitron]">📊 Player Performance Graphs</h1>
+            <h1 className="text-xl sm:text-3xl font-bold text-white font-[Orbitron]">📊 Player Performance Graphs</h1>
             <p className="text-neutral-400 text-sm mt-2">Track player statistics over time</p>
           </div>
-          <a href="/v1/lobby" className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-md text-sm font-bold">
+          <a href="/v1/lobby" className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-md text-sm font-bold self-start sm:self-center">
             ← Back to Lobby
           </a>
         </div>
@@ -41,9 +41,9 @@ export function GraphsPage({
           <button data-graph-tab="games" className="graph-tab px-4 py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors">Total Games Over Time</button>
         </div>
 
-        <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-6 mb-6">
+        <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4 sm:p-6 mb-6">
           <h2 className="text-xl font-bold text-white mb-4 font-[Orbitron]">Select Players</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" id="player-checkboxes">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" id="player-checkboxes">
             {eloHistories.map((history, idx) => {
               const color = getPlayerColor(idx);
               return (
@@ -64,10 +64,10 @@ export function GraphsPage({
         </div>
 
         {/* Date Range Filter */}
-        <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-6 mb-6">
+        <div className="bg-neutral-900/50 rounded-lg border border-neutral-800 p-4 sm:p-6 mb-6">
           <h2 className="text-xl font-bold text-white mb-4 font-[Orbitron]">Date Range</h2>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[200px]">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-stretch sm:items-end">
+            <div className="flex-1 min-w-0">
               <label className="block text-sm text-neutral-400 mb-2">From Date</label>
               <input
                 type="date"
@@ -75,7 +75,7 @@ export function GraphsPage({
                 className="w-full px-3 py-2 bg-neutral-800 text-white border border-neutral-700 rounded-md focus:border-purple-500 focus:outline-none"
               />
             </div>
-            <div className="flex-1 min-w-[200px]">
+            <div className="flex-1 min-w-0">
               <label className="block text-sm text-neutral-400 mb-2">To Date</label>
               <input
                 type="date"

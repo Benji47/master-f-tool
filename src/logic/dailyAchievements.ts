@@ -1,4 +1,5 @@
 import * as sdk from "node-appwrite";
+import { cacheGet, cacheSet, cacheInvalidatePrefix, CACHE_KEYS, CACHE_TTL } from "./cache";
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
 const projectId = process.env.APPWRITE_PROJECT || '';
@@ -49,6 +50,8 @@ export async function recordAchievement(achievement: Omit<DailyAchievement, '$id
         data: JSON.stringify(achievement.data)
       }
     );
+    // Invalidate daily achievements cache when a new one is recorded
+    cacheInvalidatePrefix('daily_achievements:');
     return doc;
   } catch (error) {
     console.error("Error recording achievement:", error);
@@ -58,6 +61,10 @@ export async function recordAchievement(achievement: Omit<DailyAchievement, '$id
 
 export async function getDailyAchievements(hoursBack: number = 24) {
   try {
+    const cacheKey = CACHE_KEYS.DAILY_ACHIEVEMENTS(hoursBack);
+    const cached = cacheGet<DailyAchievement[]>(cacheKey);
+    if (cached) return cached;
+
     const client = getClient();
     const databases = new sdk.Databases(client);
 
@@ -73,10 +80,13 @@ export async function getDailyAchievements(hoursBack: number = 24) {
       ]
     );
 
-    return res.documents.map(doc => ({
+    const result = res.documents.map(doc => ({
       ...doc,
       data: typeof doc.data === 'string' ? JSON.parse(doc.data) : doc.data
     })) as unknown as DailyAchievement[];
+
+    cacheSet(cacheKey, result, CACHE_TTL.DAILY_ACHIEVEMENTS);
+    return result;
   } catch (error) {
     console.error("Error fetching daily achievements:", error);
     return [];

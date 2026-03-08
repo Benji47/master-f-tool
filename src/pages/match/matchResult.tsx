@@ -86,16 +86,16 @@ export function MatchResultPage({ c, result, username, bets = [] }: { c: Context
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-3 sm:p-6">
       <div className="max-w-5xl mx-auto">
         {/* HEADER ROW */}
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2 font-[Orbitron]">Match Results</h1>
-            <p className="text-neutral-400 mb-6">Match ID: {result.matchId}</p>
+            <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2 font-[Orbitron]">Match Results</h1>
+            <p className="text-neutral-400 text-xs sm:text-base break-all">Match ID: {result.matchId}</p>
           </div>
 
-          <button onclick="history.back()" class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
+          <button onclick="history.back()" class="px-4 py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors self-start sm:self-center">
             ← Back
           </button>
         </div>
@@ -168,7 +168,7 @@ export function MatchResultPage({ c, result, username, bets = [] }: { c: Context
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
                     <div className={`rounded border p-2 ${eloDelta >= 0 ? 'bg-green-900/40 border-green-600/60' : 'bg-red-900/40 border-red-600/60'}`}>
                       <div className="text-xs text-neutral-200">
                         ELO: <span className="text-yellow-400 font-semibold">{p.oldElo}</span>

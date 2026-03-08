@@ -13,18 +13,18 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
     : allPlayers;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-3 sm:p-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-4 font-[Orbitron]">Match Game</h1>
-        <p className="text-neutral-400 mb-4">Match ID: {match.$id}</p>
+        <h1 className="text-2xl sm:text-4xl font-bold text-white mb-4 font-[Orbitron]">Match Game</h1>
+        <p className="text-neutral-400 mb-4 text-xs sm:text-base break-all">Match ID: {match.$id}</p>
 
         {/* Players list */}
-        <div className="bg-neutral-900/50 rounded-lg p-4 mb-6 border border-neutral-800">
+        <div className="bg-neutral-900/50 rounded-lg p-3 sm:p-4 mb-6 border border-neutral-800">
           <h3 className="text-lg text-white mb-2">Players</h3>
           <div className="grid grid-cols-2 gap-2 text-sm text-neutral-200">
             {players.map((p: any) => (
               <div key={p.id} className="p-2 bg-neutral-800/40 rounded">
-                <div className="font-semibold text-white">{p.username}</div>
+                <div className="font-semibold text-white text-sm truncate">{p.username}</div>
                 <div className="text-xs text-neutral-400">ELO: {p.elo} — W:{p.wins} L:{p.loses}</div>
               </div>
             ))}
@@ -34,61 +34,63 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
         {/* Pairings */}
         <div id="pairings" className="space-y-4">
           {scores.map((s: any, idx: number) => (
+            <div key={idx} className="bg-neutral-900/50 rounded-lg p-3 sm:p-4 border border-neutral-300">
+              {/* Score display */}
+              <div className="flex items-center justify-center gap-2 sm:gap-6 mb-4">
+                <div className="font-semibold text-white text-xs sm:text-sm text-center min-w-0 truncate">
+                  {s.a.map((id:string,i:number)=> {
+                    const p = players.find((x:any)=>x.id===id);
+                    return <span key={i}>{p ? p.username : id}{i < s.a.length-1 ? ' / ' : ''}</span>;
+                  })}
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-white text-center shrink-0">
+                  <span id={`scoreA-${idx}`}>{s.scoreA}</span>
+                  <span className="mx-2 sm:mx-4 text-neutral-400">:</span>
+                  <span id={`scoreB-${idx}`}>{s.scoreB}</span>
+                </div>
+                <div className="font-semibold text-white text-xs sm:text-sm text-center min-w-0 truncate">
+                  {s.b.map((id:string,i:number)=> {
+                    const p = players.find((x:any)=>x.id===id);
+                    return <span key={i}>{p ? p.username : id}{i < s.b.length-1 ? ' / ' : ''}</span>;
+                  })}
+                </div>
+              </div>
 
-
-
-
-
-
-
-
-            <div key={idx} className="bg-neutral-900/50 rounded-lg p-4 border border-neutral-300">
-              <div className="flex items-center justify-between mb-4">
-                {/* Left team */}
-                <div className="flex flex-col items-start gap-2 w-1/3">
-                  <div className="font-semibold text-white text-sm">
+              {/* Score buttons - stacked on mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {/* Left team buttons */}
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs text-neutral-400 font-semibold text-center sm:text-left">
                     {s.a.map((id:string,i:number)=> {
                       const p = players.find((x:any)=>x.id===id);
                       return <span key={i}>{p ? p.username : id}{i < s.a.length-1 ? ' / ' : ''}</span>;
-
                     })}
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <button className="px-3 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="10">+10</button>
-                    <button className="px-3 py-1 bg-green-500 hover:bg-green-600 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="5">+5</button>
-                    <button className="px-3 py-1 bg-green-400 hover:bg-green-500 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="1">+1</button>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <button className="px-3 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="-10">-10</button>
-                    <button className="px-3 py-1 bg-red-500 hover:bg-red-600 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="-5">-5</button>
-                    <button className="px-3 py-1 bg-red-400 hover:bg-red-500 cursor-pointer rounded text-sm" data-idx={idx} data-side="a" data-delta="-1">-1</button>
+                  <div className="flex gap-1 sm:gap-2 flex-wrap justify-center sm:justify-start">
+                    <button className="px-2 sm:px-3 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="a" data-delta="10">+10</button>
+                    <button className="px-2 sm:px-3 py-1 bg-green-500 hover:bg-green-600 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="a" data-delta="5">+5</button>
+                    <button className="px-2 sm:px-3 py-1 bg-green-400 hover:bg-green-500 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="a" data-delta="1">+1</button>
+                    <button className="px-2 sm:px-3 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="a" data-delta="-10">-10</button>
+                    <button className="px-2 sm:px-3 py-1 bg-red-500 hover:bg-red-600 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="a" data-delta="-5">-5</button>
+                    <button className="px-2 sm:px-3 py-1 bg-red-400 hover:bg-red-500 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="a" data-delta="-1">-1</button>
                   </div>
                 </div>
 
-                {/* Score center */}
-                <div className="text-3xl font-bold text-white text-center">
-                  <span id={`scoreA-${idx}`}>{s.scoreA}</span>
-                  <span className="mx-4 text-neutral-400">:</span>
-                  <span id={`scoreB-${idx}`}>{s.scoreB}</span>
-                </div>
-
-                {/* Right team */}
-                <div className="flex flex-col items-end gap-2 w-1/3">
-                  <div className="font-semibold text-white text-sm">
+                {/* Right team buttons */}
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs text-neutral-400 font-semibold text-center sm:text-right">
                     {s.b.map((id:string,i:number)=> {
                       const p = players.find((x:any)=>x.id===id);
                       return <span key={i}>{p ? p.username : id}{i < s.b.length-1 ? ' / ' : ''}</span>;
                     })}
                   </div>
-                  <div className="flex gap-2 flex-wrap justify-end">
-                    <button className="px-3 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="10">+10</button>
-                    <button className="px-3 py-1 bg-green-500 hover:bg-green-600 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="5">+5</button>
-                    <button className="px-3 py-1 bg-green-400 hover:bg-green-500 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="1">+1</button>
-                  </div>
-                  <div className="flex gap-2 flex-wrap justify-end">
-                    <button className="px-3 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="-10">-10</button>
-                    <button className="px-3 py-1 bg-red-500 hover:bg-red-600 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="-5">-5</button>
-                    <button className="px-3 py-1 bg-red-400 hover:bg-red-500 cursor-pointer rounded text-sm" data-idx={idx} data-side="b" data-delta="-1">-1</button>
+                  <div className="flex gap-1 sm:gap-2 flex-wrap justify-center sm:justify-end">
+                    <button className="px-2 sm:px-3 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="b" data-delta="10">+10</button>
+                    <button className="px-2 sm:px-3 py-1 bg-green-500 hover:bg-green-600 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="b" data-delta="5">+5</button>
+                    <button className="px-2 sm:px-3 py-1 bg-green-400 hover:bg-green-500 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="b" data-delta="1">+1</button>
+                    <button className="px-2 sm:px-3 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="b" data-delta="-10">-10</button>
+                    <button className="px-2 sm:px-3 py-1 bg-red-500 hover:bg-red-600 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="b" data-delta="-5">-5</button>
+                    <button className="px-2 sm:px-3 py-1 bg-red-400 hover:bg-red-500 cursor-pointer rounded text-xs sm:text-sm" data-idx={idx} data-side="b" data-delta="-1">-1</button>
                   </div>
                 </div>
               </div>
@@ -96,7 +98,7 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
               {/* Vyrazacka section */}
               <div className="border-t border-neutral-700 pt-4 mt-4">
                 <h4 className="text-sm font-semibold text-neutral-300 mb-3">Vyrážečky</h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Left team vyrazacka */}
                   <div className="space-y-2">
                     {(() => {
@@ -106,8 +108,8 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
                         const vyr = s.vyrazacka?.[id] ?? 0;
                         return (
                           <div key={id} className="flex items-center gap-2 bg-neutral-800/40 p-2 rounded">
-                            <span className="text-sm text-neutral-300 flex-1">{p ? p.username : id}</span>
-                            <div className="flex gap-2 items-center">
+                            <span className="text-xs sm:text-sm text-neutral-300 flex-1 truncate">{p ? p.username : id}</span>
+                            <div className="flex gap-1 sm:gap-2 items-center shrink-0">
                               <button className="px-2 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="-1">-1</button>
                               <span id={`vyr-${idx}-${id}`} className="text-white font-bold min-w-[2rem] text-center">{vyr}</span>
                               <button className="px-2 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="1">+1</button>
@@ -127,8 +129,8 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
                         const vyr = s.vyrazacka?.[id] ?? 0;
                         return (
                           <div key={id} className="flex items-center gap-2 bg-neutral-800/40 p-2 rounded">
-                            <span className="text-sm text-neutral-300 flex-1">{p ? p.username : id}</span>
-                            <div className="flex gap-2 items-center">
+                            <span className="text-xs sm:text-sm text-neutral-300 flex-1 truncate">{p ? p.username : id}</span>
+                            <div className="flex gap-1 sm:gap-2 items-center shrink-0">
                               <button className="px-2 py-1 bg-red-600 hover:bg-red-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="-1">-1</button>
                               <span id={`vyr-${idx}-${id}`} className="text-white font-bold min-w-[2rem] text-center">{vyr}</span>
                               <button className="px-2 py-1 bg-green-600 hover:bg-green-700 cursor-pointer rounded text-xs text-white" data-idx={idx} data-player-id={id} data-vyr-delta="1">+1</button>
@@ -152,13 +154,13 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
                     : 'Not set';
                   const options = [...(s.a || []), ...(s.b || [])];
                   return (
-                    <div className="grid md:grid-cols-3 gap-3 items-center">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
                       <div className="text-sm text-neutral-200" id={`golden-display-${idx}`}>{displayText}</div>
                       <div className="flex items-center gap-2">
                         <select
                           id={`golden-player-${idx}`}
                           defaultValue={golden?.playerId || ''}
-                          className="bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-3 py-2 text-sm"
+                          className="flex-1 bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-3 py-2 text-sm"
                         >
                           <option value="">Select scorer</option>
                           {options.map((id: string) => {
@@ -174,7 +176,7 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
                           min="0"
                           max="10"
                           defaultValue={golden?.diff ?? 0}
-                          className="w-20 bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-2 py-2 text-sm"
+                          className="w-16 sm:w-20 bg-neutral-900 border border-neutral-700 text-neutral-100 rounded-md px-2 py-2 text-sm"
                           placeholder="Diff"
                         />
                       </div>
@@ -193,12 +195,12 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
 
         <div className="mt-6 flex gap-3">
           <a href="/v1/match/lobby" className="flex-1">
-            <button className="w-full px-6 py-2 bg-neutral-800/60 hover:bg-neutral-800 cursor-pointer text-white rounded-md">← Back to Lobby</button>
+            <button className="w-full px-4 sm:px-6 py-2 bg-neutral-800/60 hover:bg-neutral-800 cursor-pointer text-white rounded-md text-sm sm:text-base">← Back</button>
           </a>
 
           <form id="finishForm" action="/v1/match/game/finish" method="post" className="flex-1">
             <input type="hidden" name="matchId" value={match.$id} />
-            <button id="finishBtn" type="button" className="w-full px-6 py-2 bg-blue-600 hover:bg-blue-700 cursor-pointer text-white rounded-md">Finish Match</button>
+            <button id="finishBtn" type="button" className="w-full px-4 sm:px-6 py-2 bg-blue-600 hover:bg-blue-700 cursor-pointer text-white rounded-md text-sm sm:text-base">Finish Match</button>
           </form>
         </div>
       </div>
@@ -306,7 +308,7 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
   document.addEventListener('click', function(e){
     const el = e.target;
     if(!(el instanceof HTMLElement)) return;
-    
+
     // Score update buttons
     const idx = el.getAttribute('data-idx');
     const side = el.getAttribute('data-side');
@@ -397,14 +399,14 @@ export function MatchGamePage({ c, match, currentUserId }: { c: Context; match: 
 
         updateGoldenDisplay(i, s.goldenVyrazacka || null);
 
-        
+
       });
     }
   }
 
   pollState();
   const poll = setInterval(pollState, 4000);
-  window.addEventListener("beforeunload", () => clearInterval(poll)); 
+  window.addEventListener("beforeunload", () => clearInterval(poll));
 
 
 })();
