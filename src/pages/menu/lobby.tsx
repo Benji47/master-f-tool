@@ -202,6 +202,14 @@ export async function LobbyPage({
               <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">FAQ</span>
             </a>
 
+            <a href="/v1/feature-requests" className="group relative flex flex-col items-center">
+              <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-400 hover:to-pink-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-pink-500/50">
+                💡
+              </div>
+              <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Navrhy</span>
+              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Feature Requests</span>
+            </a>
+
             <form action="/v1/auth/logout" method="post" className="group relative flex flex-col items-center">
               <button
                 type="submit"

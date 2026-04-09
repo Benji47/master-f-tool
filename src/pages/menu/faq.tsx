@@ -125,13 +125,14 @@ export function FAQPage({ c, matchRules }: { c: Context; matchRules?: MatchRule[
               <div className="space-y-2 text-sm mt-4">
                 <p className="font-semibold text-red-300">Rank Tiers:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li><span className="text-amber-800">zElo</span> (below 0) — <span className="text-amber-600">cokolada!</span></li>
                   <li><span className="text-amber-400">Bronze</span> (0-199)</li>
                   <li><span className="text-gray-400">Silver</span> (200-399)</li>
                   <li><span className="text-yellow-500">Gold</span> (400-599)</li>
                   <li><span className="text-sky-400">Platinum</span> (600-799)</li>
                   <li><span className="text-indigo-400">Diamond</span> (800-999)</li>
                   <li><span className="text-purple-400">Master</span> (1000-1199)</li>
-                  <li><span className="text-red-400">Grandmaster</span> (1200+)</li>
+                  <li><span className="text-red-400">Grandmaster</span> (1200+) — <span className="text-amber-600">cokolada!</span></li>
                 </ul>
               </div>
             </div>

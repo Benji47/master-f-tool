@@ -52,6 +52,8 @@ import {
   ContentSection 
 } from "./logic/siteContent";
 import { HallOfFamePage } from "./pages/menu/hallOfFame";
+import { FeatureRequestsPage } from "./pages/menu/featureRequests";
+import { listFeatureRequests, createFeatureRequest, updateFeatureRequest, deleteFeatureRequest, toggleUpvote, setRequestStatus } from "./logic/featureRequests";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { updateAchievementProgressAndUnlock, claimAchievementReward, getAllAchievementsForPlayer, getPlayerAchievements, unlockAchievement } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
@@ -3492,6 +3494,84 @@ app.get("/v1/api/achievements/player/:playerId", async (c) => {
     console.error('get achievements error', err);
     return c.json({ error: 'failed to fetch achievements' }, 500);
   }
+});
+
+// ---- Feature Requests ----
+
+app.get("/v1/feature-requests", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.redirect("/v1/auth/login");
+    const profile = await getPlayerProfileFast(username);
+    if (!profile) return c.redirect("/v1/auth/login");
+    const requests = await listFeatureRequests();
+    return c.html(
+      <MainLayout c={c}>
+        <FeatureRequestsPage c={c} requests={requests} currentUser={username} currentUserId={profile.$id} isAdmin={isAdminUsername(username)} />
+      </MainLayout>
+    );
+  } catch (err: any) {
+    console.error("Feature requests error:", err);
+    return c.text("Failed to load feature requests", 500);
+  }
+});
+
+app.post("/v1/feature-requests/create", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const profile = await getPlayerProfileFast(username);
+  if (!profile) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const title = String(form.get("title") ?? "").trim();
+  const description = String(form.get("description") ?? "").trim();
+  if (!title || title.length < 3) return c.text("Nazov musi mat aspon 3 znaky", 400);
+  await createFeatureRequest(profile.$id, username, title, description);
+  return c.redirect("/v1/feature-requests");
+});
+
+app.post("/v1/feature-requests/update", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  const title = String(form.get("title") ?? "").trim();
+  const description = String(form.get("description") ?? "").trim();
+  if (!id || !title) return c.text("Missing data", 400);
+  await updateFeatureRequest(id, title, description);
+  return c.redirect("/v1/feature-requests");
+});
+
+app.post("/v1/feature-requests/delete", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  if (!id) return c.text("Missing id", 400);
+  await deleteFeatureRequest(id);
+  return c.redirect("/v1/feature-requests");
+});
+
+app.post("/v1/feature-requests/upvote", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const profile = await getPlayerProfileFast(username);
+  if (!profile) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  if (!id) return c.text("Missing id", 400);
+  await toggleUpvote(id, profile.$id);
+  return c.redirect("/v1/feature-requests");
+});
+
+app.post("/v1/feature-requests/status", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username || !isAdminUsername(username)) return c.text("Unauthorized", 403);
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  const status = String(form.get("status") ?? "") as any;
+  if (!id || !['open', 'done', 'rejected'].includes(status)) return c.text("Invalid data", 400);
+  await setRequestStatus(id, status);
+  return c.redirect("/v1/feature-requests");
 });
 
 // Load all data into memory at server start
