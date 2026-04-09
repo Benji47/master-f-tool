@@ -329,15 +329,15 @@ export async function LobbyPage({
           <div className="space-y-2">
             {badges.map((b, idx) => (
               <div
-                key={b.name}
+                key={`${b.name}-${idx}`}
                 className="flex items-center justify-between bg-neutral-800/40 rounded px-3 py-2"
               >
                 <div className="flex items-center gap-3">
-                  <span className={`${b.bg} ${b.text} px-2 py-0.5 rounded text-xs font-semibold w-28 text-left`}>
+                  <span className={`${b.bg} ${b.text} ${b.rainbow ? "rainbow-border" : ""} px-2 py-0.5 rounded text-xs font-semibold w-28 text-left`}>
                     {b.name}
                   </span>
                   <div className="text-neutral-200 text-sm">
-                    Level {idx + 1} ({b.minLevel} - {b.maxLevel})
+                    Level {idx + 1}{b.rainbow ? " ✦" : ""}
                   </div>
                 </div>
               </div>

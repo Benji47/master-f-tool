@@ -13,7 +13,7 @@ import { LeaderboardPage } from "./pages/menu/leaderboard";
 import { GraphsPage } from "./pages/menu/graphs";
 import { ShopPage } from "./pages/menu/shop";
 import { getAllPlayerProfiles, getGlobalStats, getPlayerProfile, updateGlobalStats, updatePlayerStats, selectBadge } from "./logic/profile";
-import { purchaseItem, SHOP_ITEMS } from "./logic/shop";
+import { purchaseItem, getUserOrders, SHOP_ITEMS } from "./logic/shop";
 import { getAllPlayersEloHistory, getAllPlayersXPHistory, getAllPlayersVyrazeckaHistory, getAllPlayersGamesHistory } from "./logic/graphs";
 import { findOrCreateAndJoin, getMatch, startMatch, MatchDoc, MatchPlayer, leaveMatch, findPlayingMatch, deleteMatch, finishMatch, parseDoc, parseMatchHistoryDoc, MatchHistoryDoc, HistoryPlayers, createMatch, joinMatch, listAvailableMatches } from "./logic/match";
 import { MatchLobbyPage } from "./pages/match/matchLobby";
@@ -24,7 +24,6 @@ import { findCurrentMatch } from "./logic/match";
 import { MatchHistoryPage } from "./pages/menu/matchHistory";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { FBetPage } from "./pages/menu/f-bet";
-import { cacheGet, cacheSet, cacheInvalidate, CACHE_KEYS, CACHE_TTL } from "./logic/cache";
 import { TournamentsPage } from "./pages/tournaments/tournaments";
 import { CreateTournamentPage } from "./pages/tournaments/create";
 import { TournamentDetailPage } from "./pages/tournaments/detail";
@@ -58,6 +57,8 @@ import { updateAchievementProgressAndUnlock, claimAchievementReward, getAllAchie
 import { computeLevel, getRankInfoFromElo } from "./static/data";
 import { placeBet, getAllBets, getAllBetsPaginated, getBetsForMatch, getBetsForPlayerPaginated, resolveBets, getRoundOdds, getTotalGoalsOdds, getVyrazackaOutcomeOdds, VyrazackaOutcome } from "./logic/betting";
 import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
+import { buildFromMatchHistory, appendMatch, getComputedStats, isReady as computedStatsReady } from "./logic/computedStats";
+import { loadAllIntoMemory, getProfileFromMemory, getAllProfilesFromMemory, getGlobalStatsFromMemory, updateProfileInMemory, updateGlobalStatsInMemory, refreshProfileFromDb, isMemoryReady } from "./logic/memoryStore";
 import { 
   createTournament, 
   getTournament, 
@@ -82,8 +83,6 @@ const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").trim();
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 const SEASON_STATE_FILE = "./.season-state.json";
 const MAX_TIMEOUT_MS = 2_147_000_000;
-const PROFILES_CACHE_TTL_MS = 600_000;
-const MATCH_HISTORY_CACHE_TTL_MS = 600_000;
 const MAX_COIN_TRANSFER_MESSAGES = 15;
 
 let seasonRolloverInProgress = false;
@@ -97,15 +96,41 @@ type CoinTransferMessage = {
 };
 
 async function getAllPlayerProfilesCached(forceRefresh: boolean = false) {
-  if (forceRefresh) {
-    cacheInvalidate(CACHE_KEYS.ALL_PROFILES);
-  }
-  // Delegates to getAllPlayerProfiles which now has its own cache
+  if (isMemoryReady() && !forceRefresh) return getAllProfilesFromMemory();
   return getAllPlayerProfiles();
 }
 
+function getPlayerProfileFast(id: string) {
+  if (isMemoryReady()) {
+    const mem = getProfileFromMemory(id);
+    if (mem) return Promise.resolve(mem);
+  }
+  return getPlayerProfile(id);
+}
+
+function getGlobalStatsFast() {
+  if (isMemoryReady()) {
+    const mem = getGlobalStatsFromMemory();
+    if (mem) return Promise.resolve(mem);
+  }
+  return getGlobalStats();
+}
+
+// Wrapper that updates memory after DB write
+async function updatePlayerStatsAndMemory(userId: string, updates: any) {
+  const result = await updatePlayerStatsAndMemory(userId, updates);
+  updateProfileInMemory(result);
+  return result;
+}
+
+async function updateGlobalStatsAndMemory(updates: any) {
+  const result = await updateGlobalStatsAndMemory(updates);
+  updateGlobalStatsInMemory(result);
+  return result;
+}
+
 function invalidateMatchHistoryCache() {
-  cacheInvalidate(CACHE_KEYS.MATCH_HISTORY_ALL);
+  // no-op: caching removed
 }
 
 async function appendCoinTransferMessage(
@@ -236,7 +261,7 @@ async function applySeasonRolloverIfNeeded(): Promise<void> {
         const shrunkElo = applyEloSeasonReset(player.elo || 500);
         if (shrunkElo !== (player.elo || 0)) {
           try {
-            await updatePlayerStats(player.$id, { elo: shrunkElo });
+            await updatePlayerStatsAndMemory(player.$id, { elo: shrunkElo });
           } catch (error) {
             console.error("failed to shrink elo for player", player.$id, error);
           }
@@ -433,8 +458,7 @@ app.get("/v1/changes-log", async (c) => {
 });
 
 app.get("/v1/match-history", async (c) => {
-  // Use the cached match history instead of a fresh DB read
-  const matches = await listAllMatchHistoryDocs();
+  const matches = await listRecentMatchHistoryDocs(10);
 
   interface BetSummary {
     lostAmount: number;
@@ -445,8 +469,7 @@ app.get("/v1/match-history", async (c) => {
     betSummary: BetSummary;
   }
 
-  // Fetch all bets in a single query instead of N separate getBetsForMatch calls
-  const allBets = await getAllBets(500);
+  const allBets = await getAllBets(20);
   const betsByMatchId = new Map<string, typeof allBets>();
   for (const bet of allBets) {
     const existing = betsByMatchId.get(bet.matchId) || [];
@@ -484,16 +507,14 @@ app.get("/v1/match-history", async (c) => {
 app.get("/v1/match-history/players/:username", async (c) => {
   const username = c.req.param("username");
 
-  // Use cached match history instead of paginating all from DB
-  const allMatches = await listAllMatchHistoryDocs();
+  const allMatches = await listRecentMatchHistoryDocs(30);
 
   // Filter for matches that include this player
   const matches = allMatches.filter((match: MatchHistoryDoc) => {
     return (match.players || []).some((p: HistoryPlayers) => p.id === username);
   });
 
-  // Fetch all bets in one query instead of N separate calls
-  const allBets = await getAllBets(500);
+  const allBets = await getAllBets(20);
   const betsByMatchId = new Map<string, typeof allBets>();
   for (const bet of allBets) {
     const existing = betsByMatchId.get(bet.matchId) || [];
@@ -597,8 +618,8 @@ app.get("/v1/lobby", async (c) => {
     const username = getCookie(c, "user") ?? "Player";
     const { scope, selectedSeasonIndex, currentSeasonIndex, availableSeasonIndexes } = resolveSeasonSelection(c);
 
-    const overallProfile = await getPlayerProfile(username);
-    const overallGlobalStats = await getGlobalStats();
+    const overallProfile = await getPlayerProfileFast(username);
+    const overallGlobalStats = await getGlobalStatsFast();
     const allProfiles = await getAllPlayerProfilesCached();
     const incomingCoinMessages = overallProfile?.userId
       ? await consumeCoinTransferMessages(overallProfile.userId)
@@ -608,29 +629,30 @@ app.get("/v1/lobby", async (c) => {
     let globalStats = overallGlobalStats;
 
     if (overallProfile && scope !== "overall") {
-      const allMatches = await listAllMatchHistoryDocs();
-      const seasonMatches = filterMatchesForSeason(allMatches, selectedSeasonIndex);
-      const seasonAggregate = aggregateSeasonStats(seasonMatches, allProfiles);
-
-      const seasonProfile = seasonAggregate.players.find((p) => p.$id === overallProfile.$id);
-      const base = seasonProfile ?? buildEmptySeasonPlayer(overallProfile.$id);
+      const computed = getComputedStats();
+      const seasonData = computed.seasonStats[String(selectedSeasonIndex)] || {};
+      const s = seasonData[overallProfile.$id];
+      const base = s || buildEmptySeasonPlayer(overallProfile.$id);
 
       playerData = {
         ...overallProfile,
-        wins: base.wins,
-        loses: base.loses,
-        ultimate_wins: base.ultimate_wins,
-        ultimate_loses: base.ultimate_loses,
+        wins: s?.wins ?? 0,
+        loses: s?.loses ?? 0,
+        ultimate_wins: s?.ultimate_wins ?? 0,
+        ultimate_loses: s?.ultimate_loses ?? 0,
         xp: overallProfile.xp,
-        elo: scope === "current" ? overallProfile.elo : base.elo,
-        vyrazecky: base.vyrazecky,
-        goals_scored: base.goals_scored,
-        goals_conceded: base.goals_conceded,
-        ten_zero_wins: base.ten_zero_wins,
-        ten_zero_loses: base.ten_zero_loses,
+        elo: scope === "current" ? overallProfile.elo : (s?.elo ?? 500),
+        vyrazecky: s?.vyrazecky ?? 0,
+        goals_scored: s?.goals_scored ?? 0,
+        goals_conceded: s?.goals_conceded ?? 0,
+        ten_zero_wins: s?.ten_zero_wins ?? 0,
+        ten_zero_loses: s?.ten_zero_loses ?? 0,
       };
 
-      globalStats = seasonAggregate.globalStats;
+      const sg = computed.seasonGlobalStats[String(selectedSeasonIndex)];
+      if (sg) {
+        globalStats = { totalMatches: sg.totalMatches, totalGoals: sg.totalGoals, totalPodlezani: sg.totalPodlezani, totalVyrazecka: sg.totalVyrazecka };
+      }
     }
     
     return c.html(
@@ -685,10 +707,7 @@ function addGoldenStat(
   map.set(key, row);
 }
 
-async function listAllMatchHistoryDocs(): Promise<MatchHistoryDoc[]> {
-  const cached = cacheGet<MatchHistoryDoc[]>(CACHE_KEYS.MATCH_HISTORY_ALL);
-  if (cached) return cached;
-
+async function listRecentMatchHistoryDocs(maxDocs: number = 100): Promise<MatchHistoryDoc[]> {
   const client = new sdk.Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
     .setProject(process.env.APPWRITE_PROJECT)
@@ -699,13 +718,14 @@ async function listAllMatchHistoryDocs(): Promise<MatchHistoryDoc[]> {
   let offset = 0;
   const limit = 100;
 
-  while (true) {
+  while (allDocuments.length < maxDocs) {
+    const batchSize = Math.min(limit, maxDocs - allDocuments.length);
     const res = await databases.listDocuments(
       process.env.APPWRITE_DATABASE_ID,
       'matches_history',
       [
         sdk.Query.orderDesc("$createdAt"),
-        sdk.Query.limit(limit),
+        sdk.Query.limit(batchSize),
         sdk.Query.offset(offset),
       ]
     );
@@ -713,14 +733,15 @@ async function listAllMatchHistoryDocs(): Promise<MatchHistoryDoc[]> {
     if (res.documents.length === 0) break;
 
     allDocuments = allDocuments.concat(res.documents);
-    offset += limit;
-
-    if (allDocuments.length > 10000) break;
+    offset += batchSize;
   }
 
-  const parsed = allDocuments.map((doc: any) => parseMatchHistoryDoc(doc));
-  cacheSet(CACHE_KEYS.MATCH_HISTORY_ALL, parsed, MATCH_HISTORY_CACHE_TTL_MS);
-  return parsed;
+  return allDocuments.map((doc: any) => parseMatchHistoryDoc(doc));
+}
+
+// Alias for backward compat — pages that truly need everything
+async function listAllMatchHistoryDocs(): Promise<MatchHistoryDoc[]> {
+  return listRecentMatchHistoryDocs(10000);
 }
 
 function resolveSeasonSelection(c: any): {
@@ -752,105 +773,42 @@ app.get("/v1/leaderboard", async (c) => {
     const allProfiles = await getAllPlayerProfilesCached();
     const username = getCookie(c, "user") ?? undefined;
     const { scope, selectedSeasonIndex, currentSeasonIndex, availableSeasonIndexes } = resolveSeasonSelection(c);
-    const allMatches = await listAllMatchHistoryDocs();
-    const parsedMatches = scope === "overall"
-      ? allMatches
-      : filterMatchesForSeason(allMatches, selectedSeasonIndex);
 
+    const computed = getComputedStats();
+
+    // Build player list — from profiles (overall) or pre-computed season stats
     const players = scope === "overall"
       ? allProfiles
       : (() => {
-          const seasonAggregate = aggregateSeasonStats(parsedMatches, allProfiles);
-          const seasonById = new Map(seasonAggregate.players.map((p) => [p.$id, p]));
+          const seasonData = computed.seasonStats[String(selectedSeasonIndex)] || {};
           return allProfiles.map((profile) => {
-            const seasonRow = seasonById.get(profile.$id) ?? buildEmptySeasonPlayer(profile.$id);
+            const s = seasonData[profile.$id];
+            if (!s) return { ...buildEmptySeasonPlayer(profile.$id), $id: profile.$id, userId: profile.userId, username: profile.username, selectedBadge: profile.selectedBadge, xp: profile.xp, elo: scope === "current" ? profile.elo : 500, coins: profile.coins };
             return {
-              ...seasonRow,
-              $id: profile.$id,
-              userId: profile.userId,
-              username: profile.username,
-              selectedBadge: profile.selectedBadge,
-              xp: profile.xp ?? seasonRow.xp,
-              elo: scope === "current" ? profile.elo : seasonRow.elo,
-              coins: profile.coins ?? seasonRow.coins,
+              ...profile,
+              wins: s.wins, loses: s.loses,
+              ultimate_wins: s.ultimate_wins, ultimate_loses: s.ultimate_loses,
+              xp: profile.xp,
+              elo: scope === "current" ? profile.elo : s.elo,
+              vyrazecky: s.vyrazecky, goals_scored: s.goals_scored, goals_conceded: s.goals_conceded,
+              ten_zero_wins: s.ten_zero_wins, ten_zero_loses: s.ten_zero_loses,
+              coins: profile.coins,
             };
           });
         })();
 
-    const duoMatches = parsedMatches.map((match: MatchHistoryDoc) => ({
-      $id: match.$id,
-      createdAt: match.createdAt,
-      players: (match.players || []).map((p: HistoryPlayers) => ({
-        id: p.id,
-        username: p.username,
+    // Duo stats from pre-computed (convert to the format LeaderboardPage expects)
+    const duoMatches = (computed.duoStats || []).map((d, i) => ({
+      $id: `duo-${i}`,
+      createdAt: '',
+      players: d.ids.map((id, j) => ({ id, username: d.names[j] || id })),
+      scores: Array.from({ length: d.total }, (_, k) => ({
+        a: d.ids, b: [],
+        scoreA: k < d.wins ? 10 : 0,
+        scoreB: k < d.wins ? 0 : 10,
       })),
-      scores: (match.scores || []).map((s: any) => ({
-        a: s.a,
-        b: s.b,
-        scoreA: s.scoreA,
-        scoreB: s.scoreB,
-      })),
+      _precomputed: { wins: d.wins, losses: d.losses, total: d.total, names: d.names },
     }));
-
-    const goldenScoredMap = new Map<string, {
-      teamIds: string[];
-      teamNames: string[];
-      count: number;
-      scorers: Map<string, { id: string; username: string; count: number }>;
-    }>();
-    const goldenReceivedMap = new Map<string, {
-      teamIds: string[];
-      teamNames: string[];
-      count: number;
-      scorers: Map<string, { id: string; username: string; count: number }>;
-    }>();
-
-    parsedMatches.forEach((match: MatchHistoryDoc) => {
-      const nameById = new Map<string, string>();
-      (match.players || []).forEach((p: HistoryPlayers) => nameById.set(p.id, p.username));
-
-      const rounds = match.scores || [];
-      rounds.forEach((s: any) => {
-        const golden = s?.goldenVyrazacka;
-        if (!golden || !golden.playerId) return;
-
-        const a = Array.isArray(s.a) ? s.a : [];
-        const b = Array.isArray(s.b) ? s.b : [];
-        if (!a.length || !b.length) return;
-
-        let scoringSide = golden.side;
-        if (scoringSide !== 'a' && scoringSide !== 'b') {
-          if (a.includes(golden.playerId)) scoringSide = 'a';
-          else if (b.includes(golden.playerId)) scoringSide = 'b';
-        }
-        if (scoringSide !== 'a' && scoringSide !== 'b') return;
-
-        const scoringTeamIds = scoringSide === 'a' ? a : b;
-        const receivingTeamIds = scoringSide === 'a' ? b : a;
-
-        const scoringTeamNames = scoringTeamIds.map((id: string) => nameById.get(id) || id);
-        const receivingTeamNames = receivingTeamIds.map((id: string) => nameById.get(id) || id);
-
-        const scorerName = nameById.get(golden.playerId) || golden.playerId;
-
-        addGoldenStat(goldenScoredMap, scoringTeamIds, scoringTeamNames, golden.playerId, scorerName);
-        addGoldenStat(goldenReceivedMap, receivingTeamIds, receivingTeamNames, golden.playerId, scorerName);
-      });
-    });
-
-    const goldenTeamsScored = Array.from(goldenScoredMap.values()).map((row) => ({
-      teamIds: row.teamIds,
-      teamNames: row.teamNames,
-      count: row.count,
-      scorers: Array.from(row.scorers.values()).sort((a, b) => b.count - a.count),
-    })).sort((a, b) => b.count - a.count);
-
-    const goldenTeamsReceived = Array.from(goldenReceivedMap.values()).map((row) => ({
-      teamIds: row.teamIds,
-      teamNames: row.teamNames,
-      count: row.count,
-      scorers: Array.from(row.scorers.values()).sort((a, b) => b.count - a.count),
-    })).sort((a, b) => b.count - a.count);
 
     return c.html(
       <MainLayout c={c}>
@@ -858,8 +816,8 @@ app.get("/v1/leaderboard", async (c) => {
           players={players}
           currentPlayer={username}
           duoMatches={duoMatches}
-          goldenTeamsScored={goldenTeamsScored}
-          goldenTeamsReceived={goldenTeamsReceived}
+          goldenTeamsScored={computed.goldenScored}
+          goldenTeamsReceived={computed.goldenReceived}
           statsScope={scope}
           selectedSeasonIndex={selectedSeasonIndex}
           currentSeasonIndex={currentSeasonIndex}
@@ -877,15 +835,14 @@ app.get("/v1/profile/summary/:username", async (c) => {
   try {
     const username = c.req.param("username");
     const viewer = getCookie(c, "user") ?? "";
-    const profile = await getPlayerProfile(username);
+    const profile = await getPlayerProfileFast(username);
     if (!profile) return c.json({ error: "Player not found" }, 404);
 
     const levelInfo = computeLevel(profile.xp || 0);
     const rankInfo = getRankInfoFromElo(profile.elo || 0);
     const achievements = await getAllAchievementsForPlayer(profile.$id);
 
-    // Use cached match history instead of paginating from DB
-    const allMatches = await listAllMatchHistoryDocs();
+    const allMatches = await listRecentMatchHistoryDocs(10);
     const recentMatches: Array<{ matchId: string; createdAt?: string; outcome: string; scoreLine: string }> = [];
 
     for (const match of allMatches) {
@@ -945,12 +902,12 @@ app.post("/v1/achievements/claim", async (c) => {
     const achievementId = String(form.get("achievementId") ?? "").trim();
     if (!achievementId) return c.redirect("/v1/lobby");
 
-    const profile = await getPlayerProfile(username);
+    const profile = await getPlayerProfileFast(username);
     if (!profile) return c.redirect("/v1/lobby");
 
     const claim = await claimAchievementReward(profile.$id, achievementId);
     if (claim.status === 'claimed' && claim.rewardCoins > 0) {
-      await updatePlayerStats(profile.$id, {
+      await updatePlayerStatsAndMemory(profile.$id, {
         coins: (profile.coins || 0) + claim.rewardCoins,
       });
     }
@@ -988,14 +945,14 @@ app.get("/v1/graphs", async (c) => {
 app.post("/v1/auth/register", async (c) => {
   try {
     const form = await c.req.formData();
-    const username = String(form.get("username") ?? "").trim();
+    const usernameRaw = String(form.get("username") ?? "").trim();
     const password = String(form.get("password") ?? "").trim();
     const confirm = String(form.get("confirmPassword") ?? "").trim();
 
-    if (!username || username.length < 3) {
+    if (!usernameRaw || usernameRaw.length < 3) {
       return c.text("Username must be at least 3 characters", 400);
     }
-    if (isAdminUsername(username)) {
+    if (isAdminUsername(usernameRaw)) {
       return c.text("This username is reserved", 400);
     }
     if (!password || password.length < 6) {
@@ -1005,11 +962,21 @@ app.post("/v1/auth/register", async (c) => {
       return c.text("Passwords do not match", 400);
     }
 
+    // Check for existing user with same name (case-insensitive)
+    const allProfiles = await getAllPlayerProfiles();
+    const existing = allProfiles.find(p => p.username.toLowerCase() === usernameRaw.toLowerCase());
+    if (existing) {
+      return c.text("Username already taken", 400);
+    }
+
     // create user in Appwrite
-    await registerUser(username, password);
+    await registerUser(usernameRaw, password);
+
+    // Refresh new profile into memory
+    await refreshProfileFromDb(usernameRaw);
 
     // set a simple cookie and redirect to lobby
-    c.res.headers.set("Set-Cookie", buildUserCookie(username));
+    c.res.headers.set("Set-Cookie", buildUserCookie(usernameRaw));
     return c.redirect("/v1/lobby");
   } catch (err: any) {
     console.error("register error:", err);
@@ -1024,12 +991,17 @@ app.post("/v1/auth/register", async (c) => {
 app.post("/v1/auth/login", async (c) => {
   try {
     const form = await c.req.formData();
-    const username = String(form.get("username") ?? "").trim();
+    const usernameInput = String(form.get("username") ?? "").trim();
     const password = String(form.get("password") ?? "").trim();
 
-    if (!username || !password) {
+    if (!usernameInput || !password) {
       return c.text("Username and password required", 400);
     }
+
+    // Find the canonical username (case-insensitive)
+    const allProfiles = await getAllPlayerProfiles();
+    const match = allProfiles.find(p => p.username.toLowerCase() === usernameInput.toLowerCase());
+    const username = match ? match.username : usernameInput;
 
     // create session using Appwrite; exception thrown on invalid creds
     await loginUser(username, password);
@@ -1124,7 +1096,7 @@ app.post("/v1/admin/reset-coins", async (c) => {
     const players = await getAllPlayerProfilesCached();
     for (const player of players) {
       try {
-        await updatePlayerStats(player.$id, { coins: amount });
+        await updatePlayerStatsAndMemory(player.$id, { coins: amount });
       } catch (error) {
         console.error("failed to reset coins for player", player.$id, error);
       }
@@ -1296,14 +1268,14 @@ app.post("/v1/coins/send", async (c) => {
     if (!Number.isFinite(amount) || amount <= 0) return c.text("Invalid amount", 400);
     if (recipientUsername === senderUsername) return c.text("Cannot send coins to yourself", 400);
 
-    const senderProfile = await getPlayerProfile(senderUsername);
-    const recipientProfile = await getPlayerProfile(recipientUsername);
+    const senderProfile = await getPlayerProfileFast(senderUsername);
+    const recipientProfile = await getPlayerProfileFast(recipientUsername);
 
     if (!senderProfile || !recipientProfile) return c.text("Player not found", 404);
     if ((senderProfile.coins || 0) < amount) return c.text("Insufficient coins", 400);
 
-    await updatePlayerStats(senderProfile.$id, { coins: (senderProfile.coins || 0) - amount });
-    await updatePlayerStats(recipientProfile.$id, { coins: (recipientProfile.coins || 0) + amount });
+    await updatePlayerStatsAndMemory(senderProfile.$id, { coins: (senderProfile.coins || 0) - amount });
+    await updatePlayerStatsAndMemory(recipientProfile.$id, { coins: (recipientProfile.coins || 0) + amount });
     await appendCoinTransferMessage(
       recipientProfile.userId,
       senderUsername,
@@ -1324,12 +1296,15 @@ app.get("/v1/shop", async (c) => {
     const username = getCookie(c, "user") ?? null;
     if (!username) return c.redirect("/v1/auth/login");
 
-    const profile = await getPlayerProfile(username);
+    const profile = await getPlayerProfileFast(username);
     if (!profile) return c.redirect("/v1/auth/login");
+
+    const userOrders = await getUserOrders(profile.userId);
+    const purchasedItemIds = new Set(userOrders.map((o: any) => o.itemId));
 
     return c.html(
       <MainLayout c={c}>
-        <ShopPage c={c} profile={profile} />
+        <ShopPage c={c} profile={profile} purchasedItemIds={purchasedItemIds} />
       </MainLayout>
     );
   } catch (err: any) {
@@ -1344,7 +1319,7 @@ app.post("/v1/shop/purchase", async (c) => {
     const username = getCookie(c, "user") ?? null;
     if (!username) return c.redirect("/v1/auth/login");
 
-    const profile = await getPlayerProfile(username);
+    const profile = await getPlayerProfileFast(username);
     if (!profile) return c.redirect("/v1/auth/login");
 
     const form = await c.req.formData();
@@ -1361,28 +1336,35 @@ app.post("/v1/shop/purchase", async (c) => {
     const result = await purchaseItem(profile.userId, profile.username, itemId);
 
     // Reload profile to get updated coins
-    const updatedProfile = await getPlayerProfile(username);
+    const updatedProfile = await getPlayerProfileFast(username);
     if (!updatedProfile) return c.redirect("/v1/auth/login");
+
+    const userOrders = await getUserOrders(updatedProfile.userId);
+    const purchasedItemIds = new Set(userOrders.map((o: any) => o.itemId));
 
     return c.html(
       <MainLayout c={c}>
         <ShopPage
           c={c}
           profile={updatedProfile}
+          purchasedItemIds={purchasedItemIds}
           message={{ type: result.success ? "success" : "error", text: result.message }}
         />
       </MainLayout>
     );
   } catch (err: any) {
     console.error("Shop purchase error:", err);
-    const profile = await getPlayerProfile(getCookie(c, "user") ?? "");
+    const profile = await getPlayerProfileFast(getCookie(c, "user") ?? "");
     if (!profile) return c.redirect("/v1/auth/login");
-    
+    const userOrders = await getUserOrders(profile.userId);
+    const purchasedItemIds = new Set(userOrders.map((o: any) => o.itemId));
+
     return c.html(
       <MainLayout c={c}>
         <ShopPage
           c={c}
           profile={profile}
+          purchasedItemIds={purchasedItemIds}
           message={{ type: "error", text: "Failed to complete purchase" }}
         />
       </MainLayout>
@@ -1423,7 +1405,7 @@ app.post("/v1/match/join", async (c) => {
     }
 
     // fetch player profile doc by username (we use username as id for profile)
-    const profile = await getPlayerProfile(username);
+    const profile = await getPlayerProfileFast(username);
     const player: MatchPlayer = {
       id: profile ? profile.$id : username,
       username: username,
@@ -1490,7 +1472,7 @@ app.post("/v1/match/create", async (c) => {
     if (!username) return c.redirect("/v1/auth/login");
 
     // fetch player profile doc by username
-    const profile = await getPlayerProfile(username);
+    const profile = await getPlayerProfileFast(username);
     const player: MatchPlayer = {
       id: profile ? profile.$id : username,
       username: username,
@@ -1521,7 +1503,7 @@ app.post("/v1/match/join-specific", async (c) => {
     const matchCheck = await getMatch(matchId);
     if (matchCheck && matchCheck.state === 'playing') {
       // Check if player is in the match
-      const profile = await getPlayerProfile(username);
+      const profile = await getPlayerProfileFast(username);
       const playerId = profile ? profile.$id : username;
       const isPlayerInMatch = matchCheck.players.some(p => p.id === playerId);
       
@@ -1536,7 +1518,7 @@ app.post("/v1/match/join-specific", async (c) => {
     }
 
     // fetch player profile doc by username
-    const profile = await getPlayerProfile(username);
+    const profile = await getPlayerProfileFast(username);
     const player: MatchPlayer = {
       id: profile ? profile.$id : username,
       username: username,
@@ -1567,7 +1549,7 @@ app.post("/v1/match/leave", async (c) => {
     }
 
     // resolve player id same way as join: profile id if exists, otherwise username
-    const profile = await getPlayerProfile(username);
+    const profile = await getPlayerProfileFast(username);
     const playerId = profile ? profile.$id : username;
 
     const res = await leaveMatch(matchId, playerId);
@@ -1824,13 +1806,13 @@ async function buildPlayerStatsMap(
       profile = profilesByKey.get(p.id) || (p.username ? profilesByKey.get(p.username) : null) || null;
     } else {
       try {
-        profile = await getPlayerProfile(p.id);
+        profile = await getPlayerProfileFast(p.id);
       } catch {
         profile = null;
       }
       if (!profile && p.username && p.username !== p.id) {
         try {
-          profile = await getPlayerProfile(p.username);
+          profile = await getPlayerProfileFast(p.username);
         } catch {
           profile = null;
         }
@@ -2326,7 +2308,7 @@ app.post("/v1/match/game/finish", async (c) => {
 
       // update DB profile
       try {
-        const profile = await getPlayerProfile(id); // profile id or username may be used
+        const profile = await getPlayerProfileFast(id); // profile id or username may be used
         if (profile) {
           const oldEloTotal = Math.round(profile.elo || 0);
           const newEloTotal = oldEloTotal + eloDelta;
@@ -2335,7 +2317,7 @@ app.post("/v1/match/game/finish", async (c) => {
           const oldLevel = computeLevel(oldXp).level;
           const newLevel = computeLevel(newXp).level;
           
-          await updatePlayerStats(profile.$id, {
+          await updatePlayerStatsAndMemory(profile.$id, {
             xp: newXp,
             elo: newEloTotal,
             wins: (profile.wins || 0) + winsAdd,
@@ -2499,9 +2481,9 @@ app.post("/v1/match/game/finish", async (c) => {
       const databases = new sdk.Databases(client);
       
       try {
-        const globalStats = await getGlobalStats(); // profile id or username may be used
+        const globalStats = await getGlobalStatsFast(); // profile id or username may be used
         if (globalStats) {
-          await updateGlobalStats({
+          await updateGlobalStatsAndMemory({
             totalGoals: (globalStats.totalGoals || 0) + totalSumGoals,
             totalMatches: (globalStats.totalMatches || 0) + totalSumMatches,
             totalPodlezani: (globalStats.totalPodlezani || 0) + totalSumPodlezani,
@@ -2533,6 +2515,16 @@ app.post("/v1/match/game/finish", async (c) => {
         }
       );
       invalidateMatchHistoryCache();
+
+      // Update in-memory computed stats incrementally
+      try {
+        appendMatch(
+          { players: historyPlayers, scores, createdAt: new Date().toISOString() },
+          (date) => getCurrentSeasonIndex(date),
+        );
+      } catch (e) {
+        console.error('failed to append to computed stats', e);
+      }
     } catch (e) {
       console.error('failed to write match history', e);
     }
@@ -2608,14 +2600,14 @@ app.post("/v1/bet/place", async (c) => {
     const match = await getMatch(matchId);
     if (!match) return c.text("Match not found", 404);
 
-    const profile = await getPlayerProfile(username);
+    const profile = await getPlayerProfileFast(username);
     if (!profile || (profile.coins || 0) < betAmount) {
       return c.text("Insufficient coins", 400);
     }
 
     const playerElosById = buildPlayerEloMap(match);
-    const allHistory = await listAllMatchHistoryDocs();
-    const recentFormById = buildRecentFormMap(match, allHistory);
+    const recentHistory = await listRecentMatchHistoryDocs(20);
+    const recentFormById = buildRecentFormMap(match, recentHistory);
     const roundOdds = buildRoundOdds(match, playerElosById, recentFormById);
     const statsById = await buildPlayerStatsMap(match);
     const vyrazackaOutcomeOdds = buildVyrazackaOutcomeOdds(match, statsById);
@@ -2683,7 +2675,7 @@ app.post("/v1/bet/place", async (c) => {
     }
 
     // Deduct coins
-    await updatePlayerStats(profile.$id, { coins: (profile.coins || 0) - betAmount });
+    await updatePlayerStatsAndMemory(profile.$id, { coins: (profile.coins || 0) - betAmount });
 
     // Create bet
     await placeBet({
@@ -2706,7 +2698,7 @@ app.post("/v1/bet/place", async (c) => {
 app.get("/v1/f-bet", async (c) => {
   try {
     const username = getCookie(c, "user") ?? null;
-    const profile = username ? await getPlayerProfile(username) : null;
+    const profile = username ? await getPlayerProfileFast(username) : null;
     const playerPageRaw = Number(c.req.query("playerPage") ?? 1);
     const allPageRaw = Number(c.req.query("allPage") ?? 1);
     const playerPage = Number.isFinite(playerPageRaw) ? Math.max(1, Math.floor(playerPageRaw)) : 1;
@@ -2715,7 +2707,7 @@ app.get("/v1/f-bet", async (c) => {
     const allPageSize = 24;
 
     const allMatches = await listAvailableMatches();
-    const allHistory = await listAllMatchHistoryDocs();
+    const allHistory = await listRecentMatchHistoryDocs(20);
     const allProfiles = await getAllPlayerProfilesCached();
     const profilesByKey = new Map<string, any>();
     allProfiles.forEach((profileRow: any) => {
@@ -2724,7 +2716,7 @@ app.get("/v1/f-bet", async (c) => {
       if (profileRow?.username) profilesByKey.set(profileRow.username, profileRow);
     });
 
-    const recentBets = await getAllBets(500);
+    const recentBets = await getAllBets(50);
     const betsByMatchId = new Map<string, any[]>();
     recentBets.forEach((bet) => {
       const key = bet.matchId;
@@ -2960,11 +2952,16 @@ app.get("/v1/hall-of-fame", async (c) => {
       : currentSeason;
 
     const allProfiles = await getAllPlayerProfilesCached();
-    const allMatches = await listAllMatchHistoryDocs();
-    const seasonMatches = filterMatchesForSeason(allMatches, selectedSeason);
-    const seasonStats = aggregateSeasonStats(seasonMatches, allProfiles);
-    const topPlayers = [...seasonStats.players]
-      .sort((a, b) => b.elo - a.elo)
+    const computed = getComputedStats();
+    const seasonData = computed.seasonStats[String(selectedSeason)] || {};
+    const topPlayers = allProfiles
+      .map((p) => {
+        const s = seasonData[p.$id];
+        if (!s) return null;
+        return { ...buildEmptySeasonPlayer(p.$id), ...p, elo: s.elo, wins: s.wins, loses: s.loses, vyrazecky: s.vyrazecky, goals_scored: s.goals_scored };
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => b.elo - a.elo)
       .slice(0, 10);
 
     const finishedTournaments = (await listTournaments('finished'))
@@ -3073,7 +3070,7 @@ app.post("/v1/api/tournaments/create", async (c) => {
     const description = body.get("description") as string;
     const maxTeams = parseInt(body.get("maxTeams") as string) || 16;
 
-    const profile = await getPlayerProfile(userId);
+    const profile = await getPlayerProfileFast(userId);
     if (!profile) {
       return c.json({ error: "Player profile not found" }, 400);
     }
@@ -3093,7 +3090,7 @@ app.post("/v1/api/tournaments/:id/teams/create", async (c) => {
     const userId = getCookie(c, "user");
     if (!userId) return c.redirect("/v1/auth/login");
 
-    const profile = await getPlayerProfile(userId);
+    const profile = await getPlayerProfileFast(userId);
     if (!profile) {
       return c.json({ error: "Player profile not found" }, 400);
     }
@@ -3114,7 +3111,7 @@ app.post("/v1/api/tournaments/:tourId/teams/:teamId/join", async (c) => {
     const userId = getCookie(c, "user");
     if (!userId) return c.redirect("/v1/auth/login");
 
-    const profile = await getPlayerProfile(userId);
+    const profile = await getPlayerProfileFast(userId);
     if (!profile) {
       return c.json({ error: "Player profile not found" }, 400);
     }
@@ -3496,5 +3493,21 @@ app.get("/v1/api/achievements/player/:playerId", async (c) => {
     return c.json({ error: 'failed to fetch achievements' }, 500);
   }
 });
+
+// Load all data into memory at server start
+(async () => {
+  try {
+    // Load profiles + global stats into memory (2 DB reads total)
+    await loadAllIntoMemory();
+
+    // Build computed stats from match history (N reads, one-time)
+    console.log('[init] Building computed stats from match history...');
+    const allMatches = await listRecentMatchHistoryDocs(10000);
+    buildFromMatchHistory(allMatches, (date) => getCurrentSeasonIndex(date));
+    console.log('[init] Computed stats ready');
+  } catch (e) {
+    console.error('[init] Failed to initialize:', e);
+  }
+})();
 
 export default app;

@@ -242,6 +242,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                               <label className="block text-xs text-purple-200/70 mb-1">Bet Amount</label>
                               <input type="number" name="betAmount" min="1" max={userCoins} defaultValue="100" className="w-full px-3 py-2 bg-purple-950/60 border border-purple-700 rounded text-white text-sm" required disabled={isPlayerInMatch} />
                             </div>
+                            {/* Vyrážečka betting temporarily disabled
                             <div>
                               <label className="block text-xs text-purple-200/70 mb-1">Vyrážečka Outcome</label>
                               <select name="vyrazackaOutcome" className="w-full px-3 py-2 bg-purple-950/60 border border-purple-700 rounded text-white text-sm" disabled={isPlayerInMatch}>
@@ -252,6 +253,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                                 <option value="gte3" data-odds={match.vyrazackaOutcomeOdds?.gte3 ?? ''}>3+ total (x{match.vyrazackaOutcomeOdds?.gte3 ?? '-'})</option>
                               </select>
                             </div>
+                            */}
                             <div>
                               <label className="block text-xs text-purple-200/70 mb-1">Exact Total Goals</label>
                               <select name="totalGoals" className="w-full px-3 py-2 bg-purple-950/60 border border-purple-700 rounded text-white text-sm" disabled={isPlayerInMatch}>

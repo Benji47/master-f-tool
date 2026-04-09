@@ -20,9 +20,13 @@ export interface Badge {
   bg: string;
   text: string;
   iconUrl?: string;
+  rainbow?: boolean;
 }
 
-export const levelsXp = [75, 150, 225, 300, 400, 500, 650, 800, 1000, 1400, 2000, 2500];
+export const levelsXp = [
+  75, 150, 225, 300, 400, 500, 650, 800, 1000, 1400, 2000, 2500,
+  75, 150, 225, 300, 400, 500, 650, 800, 1000, 1400, 2000, 2500,
+];
 
 export const badges: Badge[] = [
   { name: "Rookie ♖", minLevel: 0, maxLevel: 75, bg: "bg-red-600", text: "text-red-100" },
@@ -45,11 +49,25 @@ export const badges: Badge[] = [
       text: "text-black",
   },
   { name: "XXX0m3g4Pl4y3rXXX", minLevel: 7500, maxLevel: 10000, bg: "bg-pink-600", text: "text-neutral-100" },
+  // Rainbow tier (levels 13-24) — same names with ✦ suffix, rainbow border
+  { name: "Rookie ♖ ✦", minLevel: 10000, maxLevel: 10075, bg: "bg-red-600", text: "text-red-100", rainbow: true },
+  { name: "Šnekpán 🐌 ✦", minLevel: 10075, maxLevel: 10225, bg: "bg-orange-600", text: "text-orange-100", rainbow: true },
+  { name: "Cleaner 🧹 ✦", minLevel: 10225, maxLevel: 10450, bg: "bg-yellow-600", text: "text-yellow-100", rainbow: true },
+  { name: "Own goals master 🥅🫣 ✦", minLevel: 10450, maxLevel: 10750, bg: "bg-lime-600", text: "text-lime-100", rainbow: true },
+  { name: "Zlodej míčku 🫳⚽ ✦", minLevel: 10750, maxLevel: 11150, bg: "bg-green-600", text: "text-green-100", rainbow: true },
+  { name: "Ťukač do tyček ✦", minLevel: 11150, maxLevel: 11650, bg: "bg-cyan-600", text: "text-cyan-100", rainbow: true },
+  { name: "Mad Max 😡 ✦", minLevel: 11650, maxLevel: 12300, bg: "bg-blue-600", text: "text-blue-100", rainbow: true },
+  { name: "Fotograf 📷 ✦", minLevel: 12300, maxLevel: 13100, bg: "bg-indigo-600", text: "text-indigo-100", rainbow: true },
+  { name: "▄︻デ══━一💥 ✦", minLevel: 13100, maxLevel: 14100, bg: "bg-purple-600", text: "text-purple-100", rainbow: true },
+  { name: "Vyrážeč ➜] ✦", minLevel: 14100, maxLevel: 15500, bg: "bg-black", text: "text-neutral-100", rainbow: true },
+  { name: "Zmrd ✦", iconUrl: "https://raw.githubusercontent.com/Benji47/master-f-tool/refs/heads/main/public/obrázek.png", minLevel: 15500, maxLevel: 17500, bg: "bg-white", text: "text-black", rainbow: true },
+  { name: "XXX0m3g4Pl4y3rXXX ✦", minLevel: 17500, maxLevel: 20000, bg: "bg-pink-600", text: "text-neutral-100", rainbow: true },
 ];
 
 // Shop-exclusive badges (not earned by leveling)
 export const shopBadges: Badge[] = [
   { name: "Millionaire 💰", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-yellow-400 to-amber-500", text: "text-black" },
+  { name: "Billionaire 💎", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-emerald-400 to-cyan-500", text: "text-black" },
 ];
 
 // Get all available badges (level-based + shop)
@@ -132,6 +150,19 @@ export function getLevelBadgeColor(level: number): { bg: string; text: string, t
   if (level <= 10) return { bg: "bg-black", text: "text-neutral-100", textInLeaderboards: "text-neutral-500" };
   if (level <= 11) return { bg: "bg-white", text: "text-black", textInLeaderboards: "text-white" };
   if (level <= 12) return { bg: "bg-pink-600", text: "text-black", textInLeaderboards: "text-white" };
+  // Rainbow tier (levels 13-24) — same colors as 1-12
+  if (level <= 13) return { bg: "bg-red-600", text: "text-red-100", textInLeaderboards: "text-red-500" };
+  if (level <= 14) return { bg: "bg-orange-600", text: "text-orange-100", textInLeaderboards: "text-orange-500" };
+  if (level <= 15) return { bg: "bg-yellow-600", text: "text-yellow-100", textInLeaderboards: "text-yellow-500" };
+  if (level <= 16) return { bg: "bg-lime-600", text: "text-lime-100", textInLeaderboards: "text-lime-500" };
+  if (level <= 17) return { bg: "bg-green-600", text: "text-green-100", textInLeaderboards: "text-green-500" };
+  if (level <= 18) return { bg: "bg-cyan-600", text: "text-cyan-100", textInLeaderboards: "text-cyan-500" };
+  if (level <= 19) return { bg: "bg-blue-600", text: "text-blue-100", textInLeaderboards: "text-blue-500" };
+  if (level <= 20) return { bg: "bg-indigo-600", text: "text-indigo-100", textInLeaderboards: "text-indigo-500" };
+  if (level <= 21) return { bg: "bg-purple-600", text: "text-purple-100", textInLeaderboards: "text-purple-500" };
+  if (level <= 22) return { bg: "bg-black", text: "text-neutral-100", textInLeaderboards: "text-neutral-500" };
+  if (level <= 23) return { bg: "bg-white", text: "text-black", textInLeaderboards: "text-white" };
+  if (level <= 24) return { bg: "bg-pink-600", text: "text-black", textInLeaderboards: "text-white" };
   return { bg: "bg-indigo-600", text: "text-indigo-100", textInLeaderboards: "text-red-500" };
 }
 

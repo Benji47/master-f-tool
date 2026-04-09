@@ -54,6 +54,20 @@ export function MainLayout({ children, c }: { children: Child, c: Context }) {
           html, body {
             overflow-x: hidden;
           }
+          @keyframes rainbow-spin {
+            0%   { border-color: #ef4444; }
+            14%  { border-color: #f97316; }
+            28%  { border-color: #eab308; }
+            42%  { border-color: #22c55e; }
+            57%  { border-color: #3b82f6; }
+            71%  { border-color: #8b5cf6; }
+            85%  { border-color: #ec4899; }
+            100% { border-color: #ef4444; }
+          }
+          .rainbow-border {
+            border: 3px solid #ef4444;
+            animation: rainbow-spin 3s linear infinite;
+          }
         `}</style>
       </head>
       <body class="m-0 p-0 min-h-screen bg-neutral-950">

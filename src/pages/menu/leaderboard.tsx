@@ -115,10 +115,11 @@ export function LeaderboardPage({
     const levelBadge = badges[computeLevel(player.xp).level - 1];
     const selectedBadgeName = (player.selectedBadge ?? "").trim();
     const badge = selectedBadgeName ? (getBadgeByName(selectedBadgeName) ?? levelBadge) : levelBadge;
+    const rainbowClass = badge?.rainbow ? "rainbow-border" : "";
     return (
       <span className="inline-flex items-center gap-2">
         <span>{player.username}</span>
-        <span className={`${badge?.bg || "bg-neutral-700"} ${badge?.text || "text-neutral-100"} px-2 py-0.5 rounded text-xs font-semibold`}>
+        <span className={`${badge?.bg || "bg-neutral-700"} ${badge?.text || "text-neutral-100"} ${rainbowClass} px-2 py-0.5 rounded text-xs font-semibold`}>
           {renderBadgeName(badge?.name || "Unranked", badge?.iconUrl)}
         </span>
       </span>

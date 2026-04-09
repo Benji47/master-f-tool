@@ -1,5 +1,4 @@
 import { badges, computeLevel } from "../static/data";
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix, CACHE_KEYS, CACHE_TTL } from "./cache";
 
 const sdk = require('node-appwrite');
 
@@ -83,9 +82,6 @@ export async function getPlayerProfile(userId: string): Promise<PlayerProfile | 
     throw new Error('Appwrite credentials not configured');
   }
 
-  const cached = cacheGet<PlayerProfile>(CACHE_KEYS.PROFILE(userId));
-  if (cached) return cached;
-
   const client = new sdk.Client()
     .setEndpoint(endpoint)
     .setProject(projectId)
@@ -95,7 +91,6 @@ export async function getPlayerProfile(userId: string): Promise<PlayerProfile | 
 
   try {
     const profile = await databases.getDocument(databaseId, collectionId, userId);
-    cacheSet(CACHE_KEYS.PROFILE(userId), profile as PlayerProfile, CACHE_TTL.PROFILES);
     return profile as PlayerProfile;
   } catch (err: any) {
     console.error('Profile fetch error:', err);
@@ -107,9 +102,6 @@ export async function getAllPlayerProfiles(): Promise<PlayerProfile[]> {
   if (!projectId || !apiKey) {
     throw new Error("Appwrite credentials not configured");
   }
-
-  const cached = cacheGet<PlayerProfile[]>(CACHE_KEYS.ALL_PROFILES);
-  if (cached) return cached;
 
   const client = new sdk.Client()
     .setEndpoint(endpoint)
@@ -145,12 +137,6 @@ export async function getAllPlayerProfiles(): Promise<PlayerProfile[]> {
       }
     }
 
-    cacheSet(CACHE_KEYS.ALL_PROFILES, allProfiles, CACHE_TTL.PROFILES);
-    // Also populate individual profile caches
-    for (const p of allProfiles) {
-      cacheSet(CACHE_KEYS.PROFILE(p.$id), p, CACHE_TTL.PROFILES);
-    }
-
     return allProfiles;
   } catch (err: any) {
     console.error("Profiles fetch error:", err);
@@ -175,9 +161,6 @@ export async function updatePlayerStats(
 
   try {
     const profile = await databases.updateDocument(databaseId, collectionId, userId, updates);
-    // Invalidate caches for this profile and the all-profiles list
-    cacheInvalidate(CACHE_KEYS.PROFILE(userId));
-    cacheInvalidate(CACHE_KEYS.ALL_PROFILES);
     return profile as PlayerProfile;
   } catch (err: any) {
     console.error('Profile update error:', err);
@@ -201,7 +184,6 @@ export async function updateGlobalStats(
 
   try {
     const globalStats = await databases.updateDocument(databaseId, 'global_stats', '692e9c56001c048e4beb', updates);
-    cacheInvalidate(CACHE_KEYS.GLOBAL_STATS);
     return globalStats as GlobalStats;
   } catch (err: any) {
     console.error('Profile update error:', err);
@@ -214,9 +196,6 @@ export async function getGlobalStats(): Promise<GlobalStats | null> {
     throw new Error('Appwrite credentials not configured');
   }
 
-  const cached = cacheGet<GlobalStats>(CACHE_KEYS.GLOBAL_STATS);
-  if (cached) return cached;
-
   const client = new sdk.Client()
     .setEndpoint(endpoint)
     .setProject(projectId)
@@ -226,7 +205,6 @@ export async function getGlobalStats(): Promise<GlobalStats | null> {
 
   try {
     const globalStats = await databases.getDocument(databaseId, 'global_stats', '692e9c56001c048e4beb');
-    cacheSet(CACHE_KEYS.GLOBAL_STATS, globalStats as GlobalStats, CACHE_TTL.GLOBAL_STATS);
     return globalStats as GlobalStats;
   } catch (err: any) {
     console.error('Profile fetch error:', err);
@@ -351,8 +329,6 @@ export async function selectBadge(
       await databases.updateDocument(databaseId, collectionId, username, {
         selectedBadge: null,
       });
-      cacheInvalidate(CACHE_KEYS.PROFILE(username));
-      cacheInvalidate(CACHE_KEYS.ALL_PROFILES);
       return { success: true, message: 'Badge unequipped' };
     }
 
@@ -373,8 +349,6 @@ export async function selectBadge(
     await databases.updateDocument(databaseId, collectionId, username, {
       selectedBadge: badgeName,
     });
-    cacheInvalidate(CACHE_KEYS.PROFILE(username));
-    cacheInvalidate(CACHE_KEYS.ALL_PROFILES);
 
     return { success: true, message: `Badge "${badgeName}" equipped!` };
   } catch (err: any) {
@@ -420,8 +394,6 @@ export async function addOwnedBadge(
     await databases.updateDocument(databaseId, collectionId, username, {
       ownedBadges: JSON.stringify(ownedBadges),
     });
-    cacheInvalidate(CACHE_KEYS.PROFILE(username));
-    cacheInvalidate(CACHE_KEYS.ALL_PROFILES);
 
     return true;
   } catch (err: any) {

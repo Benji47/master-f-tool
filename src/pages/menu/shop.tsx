@@ -2,13 +2,15 @@ import { Context } from "hono";
 import { SHOP_ITEMS, ShopItem } from "../../logic/shop";
 import { PlayerProfile } from "../../logic/profile";
 
-export function ShopPage({ 
-  c, 
+export function ShopPage({
+  c,
   profile,
+  purchasedItemIds,
   message,
-}: { 
-  c: Context; 
+}: {
+  c: Context;
   profile: PlayerProfile;
+  purchasedItemIds?: Set<string>;
   message?: { type: 'success' | 'error'; text: string };
 }) {
   return (
@@ -64,7 +66,7 @@ export function ShopPage({
           {/* Shop Items Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {SHOP_ITEMS.map((item) => (
-              <ShopItemCard key={item.id} item={item} playerCoins={profile.coins} />
+              <ShopItemCard key={item.id} item={item} playerCoins={profile.coins} alreadyPurchased={purchasedItemIds?.has(item.id) ?? false} />
             ))}
           </div>
 
@@ -84,14 +86,16 @@ export function ShopPage({
   );
 }
 
-function ShopItemCard({ 
-  item, 
-  playerCoins 
-}: { 
-  item: ShopItem; 
+function ShopItemCard({
+  item,
+  playerCoins,
+  alreadyPurchased,
+}: {
+  item: ShopItem;
   playerCoins: number;
+  alreadyPurchased: boolean;
 }) {
-  const canAfford = playerCoins >= item.price;
+  const canAfford = playerCoins >= item.price && !alreadyPurchased;
   const itemTypeColors = {
     physical: 'from-blue-600 to-blue-800',
     badge: 'from-purple-600 to-purple-800',
@@ -131,11 +135,11 @@ function ShopItemCard({
                 : 'bg-neutral-800 text-neutral-600 cursor-not-allowed'
             }`}
           >
-            {canAfford ? '🛒 Purchase' : '🔒 Not Enough Coins'}
+            {alreadyPurchased ? '✅ Already Purchased' : canAfford ? '🛒 Purchase' : '🔒 Not Enough Coins'}
           </button>
         </form>
 
-        {!canAfford && (
+        {!canAfford && !alreadyPurchased && (
           <div className="text-xs text-red-400 text-center mt-2">
             Need {(item.price - playerCoins).toLocaleString()} more coins
           </div>

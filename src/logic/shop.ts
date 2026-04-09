@@ -63,6 +63,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     type: 'badge',
     badgeName: 'Millionaire 💰',
   },
+  {
+    id: 'badge_billionaire',
+    name: 'Billionaire Badge',
+    description: 'The ultimate status symbol for the richest players',
+    price: 1000000000,
+    icon: '💎',
+    type: 'badge',
+    badgeName: 'Billionaire 💎',
+  },
 ];
 
 export function getShopItem(itemId: string): ShopItem | undefined {
@@ -100,41 +109,38 @@ export async function purchaseItem(
     
     // Check if player has enough coins
     if (profile.coins < item.price) {
-      return { 
-        success: false, 
-        message: `Not enough coins! You need ${item.price.toLocaleString()} coins but only have ${profile.coins.toLocaleString()}.` 
+      return {
+        success: false,
+        message: `Not enough coins! You need ${item.price.toLocaleString()} coins but only have ${profile.coins.toLocaleString()}.`
       };
     }
 
-    // If it's a badge, check if player already owns it
-    if (item.type === 'badge' && item.badgeName) {
-      const ownedBadges: string[] = profile.ownedBadges 
-        ? (typeof profile.ownedBadges === 'string' ? JSON.parse(profile.ownedBadges) : profile.ownedBadges)
-        : [];
-      
-      if (ownedBadges.includes(item.badgeName)) {
-        return { success: false, message: 'You already own this badge!' };
-      }
+    // Check if player already purchased this item (any status)
+    const existingOrders = await databases.listDocuments(
+      databaseId,
+      ordersCollectionId,
+      [
+        sdk.Query.equal('userId', userId),
+        sdk.Query.equal('itemId', itemId),
+        sdk.Query.limit(1),
+      ]
+    );
+    if (existingOrders.documents.length > 0) {
+      return { success: false, message: 'You already purchased this item!' };
     }
 
-    // Deduct coins from player
-    const newCoins = profile.coins - item.price;
-    await databases.updateDocument(databaseId, profileCollectionId, username, {
-      coins: newCoins,
-    });
-
-    // If it's a badge, add to owned badges
+    // Deduct coins (and add badge if applicable) in one update
+    const updateData: Record<string, any> = {
+      coins: profile.coins - item.price,
+    };
     if (item.type === 'badge' && item.badgeName) {
-      const ownedBadges: string[] = profile.ownedBadges 
+      const ownedBadges: string[] = profile.ownedBadges
         ? (typeof profile.ownedBadges === 'string' ? JSON.parse(profile.ownedBadges) : profile.ownedBadges)
         : [];
-      
       ownedBadges.push(item.badgeName);
-      
-      await databases.updateDocument(databaseId, profileCollectionId, username, {
-        ownedBadges: JSON.stringify(ownedBadges),
-      });
+      updateData.ownedBadges = JSON.stringify(ownedBadges);
     }
+    await databases.updateDocument(databaseId, profileCollectionId, username, updateData);
 
     // Create order record
     const order = await databases.createDocument(

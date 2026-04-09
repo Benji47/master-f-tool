@@ -1,6 +1,5 @@
 import * as sdk from "node-appwrite";
 import { computeLevel } from "../static/data";
-import { cacheGet, cacheSet, cacheInvalidate, CACHE_KEYS, CACHE_TTL } from "./cache";
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
 const projectId = process.env.APPWRITE_PROJECT || '';
@@ -297,9 +296,6 @@ export async function unlockAchievement(
       }
     );
 
-    // Invalidate achievement cache for this player
-    cacheInvalidate(CACHE_KEYS.PLAYER_ACHIEVEMENTS(playerId));
-
     return {
       $id: doc.$id,
       playerId: doc.playerId,
@@ -318,10 +314,6 @@ export async function getPlayerAchievements(
   playerId: string
 ): Promise<PlayerAchievementWithDef[]> {
   try {
-    const cacheKey = CACHE_KEYS.PLAYER_ACHIEVEMENTS(playerId);
-    const cached = cacheGet<PlayerAchievementWithDef[]>(cacheKey);
-    if (cached) return cached;
-
     const client = getClient();
     const databases = new sdk.Databases(client);
 
@@ -349,7 +341,6 @@ export async function getPlayerAchievements(
       })
       .filter(Boolean) as unknown as PlayerAchievementWithDef[];
 
-    cacheSet(cacheKey, result, CACHE_TTL.ACHIEVEMENTS);
     return result;
   } catch (error) {
     console.error('Error fetching player achievements:', error);
@@ -359,10 +350,6 @@ export async function getPlayerAchievements(
 
 async function getAchievementClaims(playerId: string): Promise<Set<string>> {
   try {
-    const cacheKey = CACHE_KEYS.ACHIEVEMENT_CLAIMS(playerId);
-    const cached = cacheGet<Set<string>>(cacheKey);
-    if (cached) return cached;
-
     const client = getClient();
     const databases = new sdk.Databases(client);
     const res = await databases.listDocuments(
@@ -374,7 +361,6 @@ async function getAchievementClaims(playerId: string): Promise<Set<string>> {
       ]
     );
     const result = new Set(res.documents.map(doc => String(doc.achievementId)));
-    cacheSet(cacheKey, result, CACHE_TTL.ACHIEVEMENTS);
     return result;
   } catch (error) {
     console.error('Error fetching achievement claims:', error);
@@ -669,8 +655,6 @@ export async function claimAchievementReward(
       rewardCoins: def.rewardCoins,
     }
   );
-
-  cacheInvalidate(CACHE_KEYS.ACHIEVEMENT_CLAIMS(playerId));
 
   return { rewardCoins: def.rewardCoins, status: 'claimed' };
 }

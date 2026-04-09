@@ -82,7 +82,7 @@ export default function PlayerProfilePanel({ playerProfile, players, walletCoins
         {/* Level Card */}
         <div className="bg-neutral-800/50 rounded-lg border border-purple-600/30 p-4">
           <div className="space-y-3">
-            <span className={`${badgeToShow?.bg || badgeColor.bg} ${badgeToShow?.text || badgeColor.text} w-full mx-auto min-h-[92px] px-5 py-3 rounded text-lg font-bold inline-flex items-center justify-center text-center`}>
+            <span className={`${badgeToShow?.bg || badgeColor.bg} ${badgeToShow?.text || badgeColor.text} ${badgeToShow?.rainbow ? "rainbow-border" : ""} w-full mx-auto min-h-[92px] px-5 py-3 rounded text-lg font-bold inline-flex items-center justify-center text-center`}>
               {renderBadgeName(`Level ${lvl.level} • ${badgeToShow?.name || "Unranked"}`, badgeToShow?.iconUrl)}
             </span>
 

@@ -1,5 +1,4 @@
 const sdk = require('node-appwrite');
-import { cacheGet, cacheSet, CACHE_KEYS, CACHE_TTL } from './cache';
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
 const projectId = process.env.APPWRITE_PROJECT;
@@ -59,10 +58,6 @@ export type PlayerGamesHistory = {
  * All 4 graph functions use this instead of making separate DB calls.
  */
 async function fetchMatchHistoryForGraphs(): Promise<any[]> {
-  const cacheKey = CACHE_KEYS.MATCH_HISTORY_ALL;
-  const cached = cacheGet<any[]>(cacheKey);
-  if (cached) return cached;
-
   if (!projectId || !apiKey || !databaseId) {
     throw new Error('Appwrite credentials not configured');
   }
@@ -83,7 +78,6 @@ async function fetchMatchHistoryForGraphs(): Promise<any[]> {
     ]
   );
 
-  cacheSet(cacheKey, response.documents, CACHE_TTL.MATCH_HISTORY);
   return response.documents;
 }
 
