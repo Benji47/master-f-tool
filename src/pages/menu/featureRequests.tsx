@@ -11,8 +11,8 @@ export function FeatureRequestsPage({
   isAdmin?: boolean;
   message?: { type: 'success' | 'error'; text: string };
 }) {
-  const openRequests = requests.filter(r => r.status === 'open').sort((a, b) => b.upvotes - a.upvotes);
-  const doneRequests = requests.filter(r => r.status === 'done');
+  const openRequests = requests.filter(r => r.status === 'open' || (r.status !== 'rejected' && !(r.isDone && r.isTested))).sort((a, b) => b.upvotes - a.upvotes);
+  const doneRequests = requests.filter(r => r.isDone && r.isTested && r.status !== 'rejected');
   const rejectedRequests = requests.filter(r => r.status === 'rejected');
 
   return (
@@ -125,7 +125,30 @@ function RequestCard({ req, currentUser, currentUserId, isAdmin, done, rejected 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h3 className={`font-bold ${done ? 'text-green-300 line-through' : rejected ? 'text-red-300 line-through' : 'text-white'}`}>{req.title}</h3>
-            <span className="text-xs text-neutral-500 flex-shrink-0">{timeAgo}</span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Done / Tested checkboxes */}
+              {!rejected && (
+                <>
+                  <form method="post" action="/v1/feature-requests/toggle" className="inline">
+                    <input type="hidden" name="id" value={req.$id} />
+                    <input type="hidden" name="flag" value="isDone" />
+                    <button type="submit" title="Done" className={`w-5 h-5 rounded border text-xs flex items-center justify-center transition-colors ${
+                      req.isDone ? 'bg-green-600 border-green-500 text-white' : 'bg-neutral-800 border-neutral-600 text-neutral-500 hover:border-green-500'
+                    }`}>{req.isDone ? '✓' : ''}</button>
+                  </form>
+                  <span className="text-[10px] text-neutral-500">D</span>
+                  <form method="post" action="/v1/feature-requests/toggle" className="inline">
+                    <input type="hidden" name="id" value={req.$id} />
+                    <input type="hidden" name="flag" value="isTested" />
+                    <button type="submit" title="Tested" className={`w-5 h-5 rounded border text-xs flex items-center justify-center transition-colors ${
+                      req.isTested ? 'bg-blue-600 border-blue-500 text-white' : 'bg-neutral-800 border-neutral-600 text-neutral-500 hover:border-blue-500'
+                    }`}>{req.isTested ? '✓' : ''}</button>
+                  </form>
+                  <span className="text-[10px] text-neutral-500">T</span>
+                </>
+              )}
+              <span className="text-xs text-neutral-500">{timeAgo}</span>
+            </div>
           </div>
           {req.description && (
             <p className="text-neutral-400 text-sm mt-1 whitespace-pre-wrap">{req.description}</p>
@@ -146,13 +169,6 @@ function RequestCard({ req, currentUser, currentUserId, isAdmin, done, rejected 
             )}
 
             {/* Admin actions */}
-            {isAdmin && !done && (
-              <form method="post" action="/v1/feature-requests/status" className="inline">
-                <input type="hidden" name="id" value={req.$id} />
-                <input type="hidden" name="status" value="done" />
-                <button type="submit" className="text-xs text-green-400 hover:text-green-300">Oznacit hotove</button>
-              </form>
-            )}
             {isAdmin && !rejected && (
               <form method="post" action="/v1/feature-requests/status" className="inline">
                 <input type="hidden" name="id" value={req.$id} />

@@ -18,6 +18,8 @@ export interface FeatureRequest {
   title: string;
   description: string;
   status: 'open' | 'done' | 'rejected';
+  isDone: boolean;
+  isTested: boolean;
   upvotes: number;
   upvotedBy: string[];
   createdAt: string;
@@ -31,6 +33,8 @@ function parseDoc(doc: any): FeatureRequest {
     title: doc.title || '',
     description: doc.description || '',
     status: doc.status || 'open',
+    isDone: doc.isDone === true || doc.isDone === 'true',
+    isTested: doc.isTested === true || doc.isTested === 'true',
     upvotes: Number(doc.upvotes || 0),
     upvotedBy: doc.upvotedBy ? (typeof doc.upvotedBy === 'string' ? JSON.parse(doc.upvotedBy) : doc.upvotedBy) : [],
     createdAt: doc.$createdAt || doc.createdAt || '',
@@ -96,5 +100,25 @@ export async function toggleUpvote(id: string, userId: string): Promise<FeatureR
 export async function setRequestStatus(id: string, status: 'open' | 'done' | 'rejected'): Promise<FeatureRequest> {
   const databases = getDb();
   const doc = await databases.updateDocument(databaseId, collectionId, id, { status });
+  return parseDoc(doc);
+}
+
+export async function toggleFlag(id: string, flag: 'isDone' | 'isTested'): Promise<FeatureRequest> {
+  const databases = getDb();
+  const raw = await databases.getDocument(databaseId, collectionId, id);
+  const current = raw[flag] === true || raw[flag] === 'true';
+  const newVal = !current;
+  const update: any = { [flag]: newVal };
+
+  // Auto-move to 'done' when both flags are true, back to 'open' when unchecked
+  const otherFlag = flag === 'isDone' ? 'isTested' : 'isDone';
+  const otherVal = raw[otherFlag] === true || raw[otherFlag] === 'true';
+  if (newVal && otherVal) {
+    update.status = 'done';
+  } else if (!newVal && raw.status === 'done') {
+    update.status = 'open';
+  }
+
+  const doc = await databases.updateDocument(databaseId, collectionId, id, update);
   return parseDoc(doc);
 }

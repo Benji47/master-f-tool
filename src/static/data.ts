@@ -67,6 +67,10 @@ export const badges: Badge[] = [
 // Shop-exclusive badges (not earned by leveling)
 export const shopBadges: Badge[] = [
   { name: "Millionaire 💰", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-yellow-400 to-amber-500", text: "text-black" },
+  { name: "Dragon 🐉", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-red-600 to-orange-500", text: "text-white" },
+  { name: "Alien 👽", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-green-400 to-lime-300", text: "text-black" },
+  { name: "Skull 💀", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-gray-800 to-gray-600", text: "text-white" },
+  { name: "Crown 👑", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500", text: "text-black" },
   { name: "Billionaire 💎", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-emerald-400 to-cyan-500", text: "text-black" },
 ];
 

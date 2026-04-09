@@ -53,7 +53,7 @@ import {
 } from "./logic/siteContent";
 import { HallOfFamePage } from "./pages/menu/hallOfFame";
 import { FeatureRequestsPage } from "./pages/menu/featureRequests";
-import { listFeatureRequests, createFeatureRequest, updateFeatureRequest, deleteFeatureRequest, toggleUpvote, setRequestStatus } from "./logic/featureRequests";
+import { listFeatureRequests, createFeatureRequest, updateFeatureRequest, deleteFeatureRequest, toggleUpvote, setRequestStatus, toggleFlag } from "./logic/featureRequests";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { updateAchievementProgressAndUnlock, claimAchievementReward, getAllAchievementsForPlayer, getPlayerAchievements, unlockAchievement } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
@@ -3571,6 +3571,17 @@ app.post("/v1/feature-requests/status", async (c) => {
   const status = String(form.get("status") ?? "") as any;
   if (!id || !['open', 'done', 'rejected'].includes(status)) return c.text("Invalid data", 400);
   await setRequestStatus(id, status);
+  return c.redirect("/v1/feature-requests");
+});
+
+app.post("/v1/feature-requests/toggle", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  const flag = String(form.get("flag") ?? "");
+  if (!id || (flag !== 'isDone' && flag !== 'isTested')) return c.text("Invalid data", 400);
+  await toggleFlag(id, flag);
   return c.redirect("/v1/feature-requests");
 });
 
