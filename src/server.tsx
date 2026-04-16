@@ -1431,10 +1431,15 @@ app.post("/v1/match/join", async (c) => {
 app.get("/v1/match/lobby", async (c) => {
   try {
     const username = getCookie(c, "user") ?? 'Player';
+    const profiles = await getAllPlayerProfilesCached();
+    const allUsernames = (profiles || [])
+      .map((p: any) => p?.username)
+      .filter((u: any) => typeof u === 'string' && u.length > 0)
+      .sort((a: string, b: string) => a.localeCompare(b));
 
     return c.html(
       <MainLayout c={c}>
-        <MatchLobbyPage c={c} currentUser={username} />
+        <MatchLobbyPage c={c} currentUser={username} allUsernames={allUsernames} />
       </MainLayout>
     );
   } catch (err: any) {
@@ -1488,6 +1493,60 @@ app.post("/v1/match/create", async (c) => {
   } catch (err: any) {
     console.error("create match error:", err);
     return c.text('Failed to create match', 500);
+  }
+});
+
+// Quick match: type in 4 usernames, create and start immediately
+app.post("/v1/match/create-quick", async (c) => {
+  try {
+    const form = await c.req.formData();
+    const rawNames = [1, 2, 3, 4].map((i) => String(form.get(`player${i}`) ?? '').trim()).filter(Boolean);
+    if (rawNames.length !== 4) return c.text('Vyplň všetkých 4 hráčov.', 400);
+
+    // Validate all distinct (case-insensitive)
+    const lower = rawNames.map((n) => n.toLowerCase());
+    const dedup = new Set(lower);
+    if (dedup.size !== 4) return c.text('Hráči musia byť rôzni.', 400);
+
+    // Resolve profiles using memory cache: match by username or $id (case-insensitive)
+    const allProfiles = await getAllPlayerProfilesCached();
+    const byLowerUsername = new Map<string, any>();
+    for (const p of (allProfiles || [])) {
+      if (p?.username) byLowerUsername.set(String(p.username).toLowerCase(), p);
+      if (p?.$id) byLowerUsername.set(String(p.$id).toLowerCase(), p);
+    }
+
+    const players: MatchPlayer[] = [];
+    for (const name of rawNames) {
+      const profile = byLowerUsername.get(name.toLowerCase()) || await getPlayerProfileFast(name);
+      if (!profile) return c.text(`Hráč '${name}' neexistuje.`, 400);
+      players.push({
+        id: profile.$id,
+        username: profile.username ?? name,
+        wins: profile.wins ?? 0,
+        loses: profile.loses ?? 0,
+        elo: profile.elo ?? 500,
+      });
+    }
+
+    // Create match with first player, join the remaining three, then start
+    const match = await createMatch(players[0], 4);
+    for (let i = 1; i < players.length; i++) {
+      await joinMatch(match.$id, players[i]);
+    }
+    await startMatch(match.$id);
+
+    // If caller is one of the 4 players, send them to the game; otherwise back to lobby
+    const callerUsername = (getCookie(c, "user") ?? '').toLowerCase();
+    const callerIsPlayer = players.some((p) => (p.username || '').toLowerCase() === callerUsername);
+    if (callerIsPlayer) {
+      c.res.headers.set("Set-Cookie", `match_id=${encodeURIComponent(match.$id)}; Path=/; HttpOnly; SameSite=Lax`);
+      return c.redirect("/v1/match/game");
+    }
+    return c.redirect("/v1/match/lobby");
+  } catch (err: any) {
+    console.error('create-quick match error', err);
+    return c.text('Failed to create quick match', 500);
   }
 });
 

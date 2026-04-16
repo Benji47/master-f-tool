@@ -1,12 +1,15 @@
 import { Context } from "hono";
 
-export function MatchLobbyPage({ c, currentUser }: { c: Context; currentUser: string }) {
+export function MatchLobbyPage({ c, currentUser, allUsernames = [] }: { c: Context; currentUser: string; allUsernames?: string[] }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-green-950 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
           <h1 className="text-2xl sm:text-4xl font-bold text-white font-[Orbitron]">Match Lobbies</h1>
-          <div className="flex gap-2 sm:gap-3">
+          <div className="flex gap-2 sm:gap-3 flex-wrap">
+            <button type="button" id="quickMatchToggle" className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold rounded-md transition-all text-sm sm:text-base">
+              ⚡ Quick Match
+            </button>
             <form action="/v1/match/create" method="post">
               <button type="submit" className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-bold rounded-md transition-all text-sm sm:text-base">
                 ➕ Create Match
@@ -18,6 +21,49 @@ export function MatchLobbyPage({ c, currentUser }: { c: Context; currentUser: st
               </button>
             </a>
           </div>
+        </div>
+
+        {/* Quick Match panel */}
+        <div id="quickMatchPanel" className="hidden bg-neutral-900/70 border border-yellow-500/40 rounded-lg p-4 sm:p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-yellow-400">⚡ Quick Match</h2>
+              <p className="text-xs sm:text-sm text-neutral-400 mt-1">Natukaj 4 hráčov a zápas sa hneď spustí.</p>
+            </div>
+            <button type="button" id="quickMatchClose" className="text-neutral-400 hover:text-white text-2xl leading-none">×</button>
+          </div>
+          <form action="/v1/match/create-quick" method="post" id="quickMatchForm" className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div>
+                  <label className="block text-xs text-neutral-400 mb-1">Hráč #{i}</label>
+                  <input
+                    type="text"
+                    name={`player${i}`}
+                    list="allPlayersList"
+                    autocomplete="off"
+                    required
+                    placeholder={`Username hráča ${i}`}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 focus:border-yellow-500 focus:outline-none text-white rounded text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+            <datalist id="allPlayersList">
+              {allUsernames.map((u) => (
+                <option value={u}></option>
+              ))}
+            </datalist>
+            <div id="quickMatchError" className="hidden text-red-400 text-sm"></div>
+            <div className="flex gap-2 pt-2">
+              <button type="submit" className="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold rounded-md transition-all text-sm">
+                🚀 VYTVORIŤ A SPUSTIŤ
+              </button>
+              <button type="button" id="quickMatchCancel" className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-bold rounded-md transition-all text-sm">
+                Zrušiť
+              </button>
+            </div>
+          </form>
         </div>
 
         {/* Matches Grid */}
@@ -35,6 +81,33 @@ export function MatchLobbyPage({ c, currentUser }: { c: Context; currentUser: st
   var container = document.getElementById('matchesContainer');
   var pollInterval = null;
   var playerCurrentMatchId = null;
+
+  // Quick match panel toggle + validation
+  var qmPanel = document.getElementById('quickMatchPanel');
+  var qmToggle = document.getElementById('quickMatchToggle');
+  var qmClose = document.getElementById('quickMatchClose');
+  var qmCancel = document.getElementById('quickMatchCancel');
+  var qmForm = document.getElementById('quickMatchForm');
+  var qmError = document.getElementById('quickMatchError');
+  function showQm(show){ if(qmPanel){ qmPanel.classList[show?'remove':'add']('hidden'); } }
+  if(qmToggle) qmToggle.addEventListener('click', function(){ showQm(qmPanel.classList.contains('hidden')); });
+  if(qmClose) qmClose.addEventListener('click', function(){ showQm(false); });
+  if(qmCancel) qmCancel.addEventListener('click', function(){ showQm(false); });
+  if(qmForm) qmForm.addEventListener('submit', function(e){
+    var names = [];
+    for(var i=1;i<=4;i++){
+      var el = qmForm.querySelector('input[name=player'+i+']');
+      var v = el ? (el.value || '').trim() : '';
+      if(!v){ e.preventDefault(); qmError.textContent = 'Vyplň všetkých 4 hráčov.'; qmError.classList.remove('hidden'); return; }
+      names.push(v.toLowerCase());
+    }
+    var seen = {};
+    for(var j=0;j<names.length;j++){
+      if(seen[names[j]]){ e.preventDefault(); qmError.textContent = 'Hráči musia byť rôzni.'; qmError.classList.remove('hidden'); return; }
+      seen[names[j]] = true;
+    }
+    qmError.classList.add('hidden');
+  });
 
   function safeDecode(s){
     try{
