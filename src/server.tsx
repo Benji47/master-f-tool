@@ -1386,6 +1386,11 @@ app.post("/v1/profile/select-badge", async (c) => {
     // If empty string, unequip badge (set to null)
     const result = await selectBadge(username, badgeName || null);
 
+    // Refresh in-memory profile so the lobby shows the updated badge immediately
+    if (result.success) {
+      await refreshProfileFromDb(username);
+    }
+
     // Always redirect back to lobby
     return c.redirect("/v1/lobby");
   } catch (err: any) {
