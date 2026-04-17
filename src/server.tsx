@@ -120,13 +120,13 @@ function getGlobalStatsFast() {
 
 // Wrapper that updates memory after DB write
 async function updatePlayerStatsAndMemory(userId: string, updates: any) {
-  const result = await updatePlayerStatsAndMemory(userId, updates);
+  const result = await updatePlayerStats(userId, updates);
   updateProfileInMemory(result);
   return result;
 }
 
 async function updateGlobalStatsAndMemory(updates: any) {
-  const result = await updateGlobalStatsAndMemory(updates);
+  const result = await updateGlobalStats(updates);
   updateGlobalStatsInMemory(result);
   return result;
 }

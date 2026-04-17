@@ -119,98 +119,98 @@ export async function LobbyPage({
           </div>
           <div className="grid grid-cols-3 gap-4 sm:gap-8 w-full max-w-sm sm:max-w-none sm:w-fit px-2 sm:px-0">
             {/* Row 1 */}
-            <a href="/v1/leaderboard" className="group relative flex flex-col items-center">
+            <a href="/v1/leaderboard" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-blue-500/50">
                 🪜
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Leaderboards</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Leaderboards</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Leaderboards</span>
             </a>
 
-            <a href="/v1/match-history" className="group relative flex flex-col items-center">
+            <a href="/v1/match-history" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-indigo-500/50">
                 📜
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">History</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Match History</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Match History</span>
             </a>
 
-            <a href="/v1/graphs" className="group relative flex flex-col items-center">
+            <a href="/v1/graphs" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-purple-500 to-purple-700 hover:from-purple-400 hover:to-purple-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-purple-500/50">
                 📊
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Graphs</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Graphs</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Graphs</span>
             </a>
 
             {/* Row 2 */}
-            <a href="/v1/changes-log" className="group relative flex flex-col items-center">
+            <a href="/v1/changes-log" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-gray-600 to-gray-800 hover:from-gray-500 hover:to-gray-700 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-gray-500/50">
                 🛠️
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Changes</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Changes & Fixes</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Changes & Fixes</span>
             </a>
 
-            <a href="/v1/match/lobby" className="group relative flex flex-col items-center">
+            <a href="/v1/match/lobby" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-green-500 to-green-700 hover:from-green-400 hover:to-green-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-green-500/50">
                 ⚔️
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center font-bold">PLAY</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">PLAY</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">PLAY</span>
             </a>
 
-            <a href="/v1/f-bet" className="group relative flex flex-col items-center">
+            <a href="/v1/f-bet" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-yellow-500 to-yellow-700 hover:from-yellow-400 hover:to-yellow-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-yellow-500/50">
                 🎲
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">F Bet</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">F Bet</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">F Bet</span>
             </a>
 
             {/* Row 3 */}
-            <a href="/v1/tournaments" className="group relative flex flex-col items-center">
+            <a href="/v1/tournaments" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-orange-500 to-orange-700 hover:from-orange-400 hover:to-orange-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-orange-500/50">
                 🏆
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Tournaments</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Tournaments</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Tournaments</span>
             </a>
 
-            <a href="/v1/shop" className="group relative flex flex-col items-center">
+            <a href="/v1/shop" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-amber-500/50">
                 🛒
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Shop</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Shop</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Shop</span>
             </a>
 
             {/* Row 4 */}
-            <a href="/v1/hall-of-fame" className="group relative flex flex-col items-center">
+            <a href="/v1/hall-of-fame" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-amber-500/50">
                 🏛️
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Hall of Fame</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Hall of Fame</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Hall of Fame</span>
             </a>
 
-            <a href="/v1/faq" className="group relative flex flex-col items-center">
+            <a href="/v1/faq" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-cyan-500 to-cyan-700 hover:from-cyan-400 hover:to-cyan-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-cyan-500/50">
                 ❓
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">FAQ</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">FAQ</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">FAQ</span>
             </a>
 
-            <a href="/v1/feature-requests" className="group relative flex flex-col items-center">
+            <a href="/v1/feature-requests" className="group relative flex flex-col items-center hover:z-10">
               <div className="w-full aspect-square max-w-24 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-400 hover:to-pink-600 rounded-lg flex items-center justify-center text-4xl sm:text-5xl transition-all transform hover:scale-110 shadow-lg hover:shadow-pink-500/50">
                 💡
               </div>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Navrhy</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Feature Requests</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Feature Requests</span>
             </a>
 
-            <form action="/v1/auth/logout" method="post" className="group relative flex flex-col items-center">
+            <form action="/v1/auth/logout" method="post" className="group relative flex flex-col items-center hover:z-10">
               <button
                 type="submit"
                 className="w-full aspect-square max-w-24 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 rounded-lg flex items-center justify-center text-3xl sm:text-4xl transition-all transform hover:scale-110 shadow-lg hover:shadow-red-500/50 text-white"
@@ -218,7 +218,7 @@ export async function LobbyPage({
                 🚪
               </button>
               <span className="text-white text-[10px] sm:text-xs mt-1 lg:hidden text-center">Logout</span>
-              <span className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Logout</span>
+              <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Logout</span>
             </form>
           </div>
 
