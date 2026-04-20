@@ -58,7 +58,7 @@ import { recordAchievement } from "./logic/dailyAchievements";
 import { updateAchievementProgressAndUnlock, claimAchievementReward, getAllAchievementsForPlayer, getPlayerAchievements, unlockAchievement } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
 import { placeBet, getAllBets, getAllBetsPaginated, getBetsForMatch, getBetsForPlayerPaginated, resolveBets, getRoundOdds, getTotalGoalsOdds, getVyrazackaOutcomeOdds, VyrazackaOutcome } from "./logic/betting";
-import { spin, getSpinState, SPIN_PRIZES, FREE_SPINS_PER_DAY } from "./logic/freeSpins";
+import { spin, getSpinState, getSpinStats, getNextResetIso, RESET_HOUR, SPIN_PRIZES, FREE_SPINS_PER_DAY } from "./logic/freeSpins";
 import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
 import { buildFromMatchHistory, appendMatch, getComputedStats, isReady as computedStatsReady } from "./logic/computedStats";
 import { loadAllIntoMemory, getProfileFromMemory, getAllProfilesFromMemory, getGlobalStatsFromMemory, updateProfileInMemory, updateGlobalStatsInMemory, refreshProfileFromDb, isMemoryReady } from "./logic/memoryStore";
@@ -2781,7 +2781,9 @@ app.get("/v1/f-bet", async (c) => {
   try {
     const username = getCookie(c, "user") ?? null;
     const profile = username ? await getPlayerProfileFast(username) : null;
-    const spinState = profile ? await getSpinState(profile.userId) : { dayKey: "", used: 0, totalWon: 0 };
+    const spinState = profile ? await getSpinState(profile.userId) : { dayKey: "", used: 0, totalWon: 0, hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0 };
+    const spinStatsData = getSpinStats();
+    const spinNextReset = getNextResetIso();
     const playerPageRaw = Number(c.req.query("playerPage") ?? 1);
     const allPageRaw = Number(c.req.query("allPage") ?? 1);
     const playerPage = Number.isFinite(playerPageRaw) ? Math.max(1, Math.floor(playerPageRaw)) : 1;
@@ -2985,6 +2987,14 @@ app.get("/v1/f-bet", async (c) => {
           spinsTotalWon={spinState.totalWon}
           spinPrizes={SPIN_PRIZES}
           freeSpinsPerDay={FREE_SPINS_PER_DAY}
+          spinHitsByIndex={spinStatsData.hitsByIndex}
+          spinTotalSpins={spinStatsData.totalSpins}
+          spinJackpotHits={spinStatsData.jackpotHits}
+          spinNextResetIso={spinNextReset}
+          spinResetHour={RESET_HOUR}
+          myHitsByIndex={spinState.hitsByIndex}
+          myTotalSpins={spinState.totalSpins}
+          myTotalWonAllTime={spinState.totalWonAllTime}
         />
       </MainLayout>
     );
@@ -2992,7 +3002,7 @@ app.get("/v1/f-bet", async (c) => {
     console.error("f-bet page error:", err);
     return c.html(
       <MainLayout c={c}>
-        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} allBetsHistory={[]} playerBetsPage={1} playerBetsTotalPages={1} allBetsPage={1} allBetsTotalPages={1} matchTeamInfoByMatchId={{}} spinsUsed={0} spinsTotalWon={0} spinPrizes={SPIN_PRIZES} freeSpinsPerDay={FREE_SPINS_PER_DAY} />
+        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} allBetsHistory={[]} playerBetsPage={1} playerBetsTotalPages={1} allBetsPage={1} allBetsTotalPages={1} matchTeamInfoByMatchId={{}} spinsUsed={0} spinsTotalWon={0} spinPrizes={SPIN_PRIZES} freeSpinsPerDay={FREE_SPINS_PER_DAY} spinHitsByIndex={{}} spinTotalSpins={0} spinJackpotHits={[]} spinNextResetIso={getNextResetIso()} spinResetHour={RESET_HOUR} myHitsByIndex={{}} myTotalSpins={0} myTotalWonAllTime={0} />
       </MainLayout>
     );
   }

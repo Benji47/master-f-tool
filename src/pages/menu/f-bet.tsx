@@ -7,6 +7,7 @@ export interface SpinPrizeView {
   coins: number;
   label: string;
   color: string;
+  weight: number;
 }
 
 export interface FBetPageProps {
@@ -25,6 +26,14 @@ export interface FBetPageProps {
   spinsTotalWon: number;
   spinPrizes: SpinPrizeView[];
   freeSpinsPerDay: number;
+  spinHitsByIndex: Record<string, number>;
+  spinTotalSpins: number;
+  spinJackpotHits: { username: string; coins: number; timestamp: number }[];
+  spinNextResetIso: string;
+  spinResetHour: number;
+  myHitsByIndex: Record<string, number>;
+  myTotalSpins: number;
+  myTotalWonAllTime: number;
 }
 
 type PredictionLine =
@@ -112,14 +121,13 @@ function SubBetMarker({ result }: { result?: 'correct' | 'wrong' | 'pending' }) 
   return null;
 }
 
-export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, playerBetsPage, playerBetsTotalPages, allBetsPage, allBetsTotalPages, matchTeamInfoByMatchId, spinsUsed, spinsTotalWon, spinPrizes, freeSpinsPerDay }: FBetPageProps) {
+export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, playerBetsPage, playerBetsTotalPages, allBetsPage, allBetsTotalPages, matchTeamInfoByMatchId, spinsUsed, spinsTotalWon, spinPrizes, freeSpinsPerDay, spinHitsByIndex, spinTotalSpins, spinJackpotHits, spinNextResetIso, spinResetHour, myHitsByIndex, myTotalSpins, myTotalWonAllTime }: FBetPageProps) {
   const userCoins = currentUserProfile?.coins || 0;
   const spinsRemaining = Math.max(0, (freeSpinsPerDay || 0) - (spinsUsed || 0));
   const jackpotCoins = spinPrizes.reduce((max, p) => p.coins > max ? p.coins : max, 0);
+  const totalWeight = spinPrizes.reduce((sum, p) => sum + (p.weight || 0), 0) || 1;
 
-  // Build SVG wheel segments
-  const segmentCount = spinPrizes.length;
-  const sliceDeg = 360 / Math.max(1, segmentCount);
+  // Build SVG wheel segments — proportional to weight
   const cx = 160, cy = 160, r = 150;
   const toRad = (deg: number) => (deg - 90) * (Math.PI / 180);
   const segmentPath = (startDeg: number, endDeg: number) => {
@@ -132,10 +140,20 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
     const largeArc = endDeg - startDeg > 180 ? 1 : 0;
     return `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc} 1 ${x2},${y2} Z`;
   };
-  const labelPos = (deg: number) => {
+  const labelPos = (deg: number, radiusFactor: number = 0.65) => {
     const rad = toRad(deg);
-    return { x: cx + (r * 0.65) * Math.cos(rad), y: cy + (r * 0.65) * Math.sin(rad), rot: deg };
+    return { x: cx + (r * radiusFactor) * Math.cos(rad), y: cy + (r * radiusFactor) * Math.sin(rad), rot: deg };
   };
+
+  let cumulative = 0;
+  const segments = spinPrizes.map((prize) => {
+    const span = ((prize.weight || 0) / totalWeight) * 360;
+    const startDeg = cumulative;
+    const endDeg = cumulative + span;
+    const midDeg = startDeg + span / 2;
+    cumulative = endDeg;
+    return { prize, startDeg, endDeg, midDeg, span, percent: (prize.weight || 0) / totalWeight * 100 };
+  });
   const wonBets = playerBets.filter((b: any) => b.status === 'won');
   const lostBets = playerBets.filter((b: any) => b.status === 'lost');
   const totalWinnings = wonBets.reduce((sum: number, b: any) => sum + b.winnings, 0);
@@ -191,24 +209,27 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                 {/* Wheel */}
                 <svg viewBox="0 0 320 320" className="relative w-full h-full drop-shadow-[0_0_20px_rgba(251,191,36,0.5)]" id="free-spin-wheel" style={{ transition: 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' }}>
                   <circle cx={cx} cy={cy} r={r + 6} fill="#1e1b4b" stroke="#fbbf24" strokeWidth="4" />
-                  {spinPrizes.map((prize, i) => {
-                    const startDeg = i * sliceDeg;
-                    const endDeg = (i + 1) * sliceDeg;
-                    const midDeg = startDeg + sliceDeg / 2;
-                    const pos = labelPos(midDeg);
+                  {segments.map(({ prize, startDeg, endDeg, midDeg, span }) => {
+                    const isJackpot = prize.coins === jackpotCoins;
+                    const narrow = span < 12;
+                    const radiusFactor = narrow ? 0.78 : 0.62;
+                    const pos = labelPos(midDeg, radiusFactor);
+                    const fontSize = isJackpot ? 16 : narrow ? 11 : 14;
+                    // For narrow slices, run text radially (outward from center) so it fits.
+                    const rotation = narrow ? midDeg - 90 : midDeg;
                     return (
                       <g key={prize.index}>
                         <path d={segmentPath(startDeg, endDeg)} fill={prize.color} stroke="#1e1b4b" strokeWidth="2" />
                         <text
                           x={pos.x}
                           y={pos.y}
-                          fill={prize.coins === jackpotCoins ? '#1e1b4b' : '#fff'}
-                          fontSize={prize.coins === jackpotCoins ? 20 : 15}
-                          fontWeight={prize.coins === jackpotCoins ? '900' : 'bold'}
-                          textAnchor="middle"
+                          fill={isJackpot ? '#1e1b4b' : '#fff'}
+                          fontSize={fontSize}
+                          fontWeight={isJackpot ? '900' : 'bold'}
+                          textAnchor={narrow ? 'end' : 'middle'}
                           dominantBaseline="middle"
-                          transform={`rotate(${pos.rot} ${pos.x} ${pos.y})`}
-                          style={{ textShadow: prize.coins === jackpotCoins ? '0 0 4px #fbbf24' : '0 1px 3px rgba(0,0,0,0.8)' }}
+                          transform={`rotate(${rotation} ${pos.x} ${pos.y})`}
+                          style={{ textShadow: isJackpot ? '0 0 4px #fbbf24' : '0 1px 3px rgba(0,0,0,0.8)' }}
                         >
                           {prize.label}
                         </text>
@@ -234,8 +255,13 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
               <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-amber-300 via-pink-300 to-purple-300 bg-clip-text text-transparent mb-2">
                 Free Spins
               </h2>
-              <p className="text-purple-100/80 text-sm mb-4">
+              <p className="text-purple-100/80 text-sm mb-2">
                 Spin the wheel for free coins. You get <span className="font-bold text-amber-300">{freeSpinsPerDay}</span> spins every day.
+              </p>
+              <p className="text-xs text-purple-200/70 mb-4">
+                🕗 Resets daily at <span className="font-bold text-amber-200">{String(spinResetHour).padStart(2,'0')}:00</span>
+                {' • '}
+                Next reset in <span data-spin-countdown className="font-bold text-amber-200" data-reset-iso={spinNextResetIso}>…</span>
               </p>
 
               {/* JACKPOT CALLOUT */}
@@ -275,8 +301,149 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                 )}
               </button>
               <div id="free-spin-result" className="mt-4 min-h-[2rem] text-center lg:text-left text-lg font-bold"></div>
+
+              {/* CHANCES TABLE */}
+              <div className="mt-5">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-amber-200/80 font-bold">
+                    <span className="inline-block w-2 h-2 rounded-full bg-amber-400" />
+                    Chances & Hits
+                    <span className="ml-1 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/40 text-[0.6rem] tracking-normal normal-case text-purple-100/90 font-semibold">
+                      🌍 all players
+                    </span>
+                  </div>
+                  <div className="text-xs text-purple-200/70">
+                    Total spins: <span className="font-bold text-white">{formatCoins(spinTotalSpins)}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {segments.map(({ prize, percent }) => {
+                    const isJackpot = prize.coins === jackpotCoins;
+                    const hits = spinHitsByIndex[String(prize.index)] || 0;
+                    return (
+                      <div
+                        key={prize.index}
+                        className={`rounded-lg px-2 py-2 text-center border ${
+                          isJackpot
+                            ? 'bg-gradient-to-br from-amber-500/30 to-yellow-400/20 border-amber-400/70 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                            : 'bg-black/30 border-purple-700/40'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center gap-1.5 mb-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: prize.color }} />
+                          <span className={`text-xs font-bold ${isJackpot ? 'text-amber-200' : 'text-white'}`}>{prize.label}</span>
+                        </div>
+                        <div className={`text-sm font-black ${isJackpot ? 'text-amber-300' : 'text-purple-200'}`}>
+                          {percent.toFixed(percent < 1 ? 2 : 1)}%
+                        </div>
+                        <div className="text-[0.65rem] uppercase tracking-wider text-purple-300/70 mt-1">
+                          hit <span className={`font-bold ${hits > 0 ? (isJackpot ? 'text-amber-300' : 'text-emerald-300') : 'text-neutral-400'}`}>{formatCoins(hits)}×</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 text-xs text-purple-300/60 italic">
+                  Wedge size on the wheel = chance of landing. Jackpot is the thin slice. 🎯
+                </div>
+              </div>
+
+              {/* MY PERSONAL HITS */}
+              <div className="mt-5">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-emerald-200/80 font-bold">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
+                    Your Hits
+                    <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[0.6rem] tracking-normal normal-case text-emerald-100/90 font-semibold">
+                      👤 {currentUser || 'you'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-emerald-200/70 whitespace-nowrap">
+                    Your spins: <span className="font-bold text-white">{formatCoins(myTotalSpins)}</span> • Won: <span className="font-bold text-emerald-300">{formatCoins(myTotalWonAllTime)}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {segments.map(({ prize }) => {
+                    const isJackpot = prize.coins === jackpotCoins;
+                    const myHits = myHitsByIndex[String(prize.index)] || 0;
+                    return (
+                      <div
+                        key={prize.index}
+                        className={`rounded-lg px-2 py-2 text-center border ${
+                          myHits > 0 && isJackpot
+                            ? 'bg-gradient-to-br from-amber-500/30 to-yellow-400/20 border-amber-400/70 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                            : myHits > 0
+                            ? 'bg-emerald-900/30 border-emerald-600/50'
+                            : 'bg-black/20 border-neutral-700/40 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center gap-1.5 mb-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: prize.color }} />
+                          <span className={`text-xs font-bold ${isJackpot && myHits > 0 ? 'text-amber-200' : 'text-white'}`}>{prize.label}</span>
+                        </div>
+                        <div className={`text-lg font-black ${
+                          myHits === 0 ? 'text-neutral-500' : isJackpot ? 'text-amber-300' : 'text-emerald-300'
+                        }`}>
+                          {formatCoins(myHits)}×
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* JACKPOT HALL OF FAME */}
+      {currentUser && (
+        <div className="mb-8 relative rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-950/50 via-yellow-950/40 to-black/60 p-5 shadow-[0_0_25px_rgba(251,191,36,0.12)]">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🏆</span>
+              <div>
+                <h3 className="text-xl font-black bg-gradient-to-r from-yellow-200 via-amber-300 to-yellow-400 bg-clip-text text-transparent">
+                  Jackpot Hall of Fame
+                </h3>
+                <div className="text-xs text-amber-200/70">Every player who hit the {formatCoins(jackpotCoins)} jackpot</div>
+              </div>
+            </div>
+            <div className="text-xs text-amber-200/80 whitespace-nowrap">
+              Total jackpots: <span className="font-black text-amber-300 text-base">{spinJackpotHits.length}</span>
+            </div>
+          </div>
+          {spinJackpotHits.length === 0 ? (
+            <div className="text-center py-8 text-amber-200/60 italic">
+              Nobody has hit the jackpot yet. Will you be the first? 💫
+            </div>
+          ) : (
+            <div className="max-h-[22rem] overflow-y-auto rounded-lg border border-amber-500/20">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-amber-950/80 backdrop-blur">
+                  <tr className="text-left text-xs uppercase tracking-wider text-amber-200/70 border-b border-amber-500/30">
+                    <th className="px-3 py-2 w-10">#</th>
+                    <th className="px-3 py-2">Player</th>
+                    <th className="px-3 py-2 text-right">Coins</th>
+                    <th className="px-3 py-2 text-right">When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {spinJackpotHits.map((hit, i) => (
+                    <tr key={`${hit.username}-${hit.timestamp}`} className={`${i === 0 ? 'bg-amber-400/10' : 'hover:bg-amber-500/5'} border-b border-amber-500/10 transition`}>
+                      <td className="px-3 py-2 text-amber-200/70 font-mono">{i + 1}</td>
+                      <td className="px-3 py-2 font-bold text-white">
+                        {i === 0 && <span className="mr-1.5">👑</span>}
+                        {hit.username}
+                      </td>
+                      <td className="px-3 py-2 text-right font-black text-amber-300">+{formatCoins(hit.coins)}</td>
+                      <td className="px-3 py-2 text-right text-xs text-purple-200/70">{new Date(hit.timestamp).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -713,6 +880,28 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
             wireSingleSubmit(form);
           });
 
+          // ----- COUNTDOWN TO SPIN RESET -----
+          (function(){
+            const el = document.querySelector('[data-spin-countdown]');
+            if (!el) return;
+            const resetIso = el.getAttribute('data-reset-iso');
+            if (!resetIso) return;
+            const resetMs = new Date(resetIso).getTime();
+            function tick() {
+              const diff = resetMs - Date.now();
+              if (diff <= 0) {
+                el.textContent = 'now';
+                return;
+              }
+              const h = Math.floor(diff / 3600000);
+              const m = Math.floor((diff % 3600000) / 60000);
+              const s = Math.floor((diff % 60000) / 1000);
+              el.textContent = (h > 0 ? h + 'h ' : '') + (m < 10 ? '0' + m : m) + 'm ' + (s < 10 ? '0' + s : s) + 's';
+            }
+            tick();
+            setInterval(tick, 1000);
+          })();
+
           // ----- FREE SPINS WHEEL -----
           (function(){
             const wheel = document.getElementById('free-spin-wheel');
@@ -722,7 +911,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
             const spinsWonEl = document.querySelector('[data-spins-won]');
             const userCoinsEl = document.querySelector('[data-user-coins]');
             if (!wheel || !btn) return;
-            const segmentCount = ${JSON.stringify(segmentCount)};
+            const segmentMidsByIndex = ${JSON.stringify(Object.fromEntries(segments.map(s => [s.prize.index, s.midDeg])))};
             let currentRotation = 0;
             let spinning = false;
 
@@ -758,11 +947,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
               }
 
               const prizeIndex = data.prize ? data.prize.index : 0;
-              const sliceDeg = 360 / segmentCount;
-              // Segment i center sits at (i + 0.5) * sliceDeg degrees clockwise from top.
-              // After rotation R (clockwise), that center moves to ((i+0.5)*sliceDeg + R) mod 360.
-              // Pointer is at top (0°), so we need final R such that ((i+0.5)*sliceDeg + R) mod 360 == 0.
-              const targetMid = (prizeIndex + 0.5) * sliceDeg;
+              const targetMid = Number(segmentMidsByIndex[prizeIndex] || 0);
               const desiredMod = (360 - targetMid) % 360;
               const currentMod = ((currentRotation % 360) + 360) % 360;
               let delta = desiredMod - currentMod;
