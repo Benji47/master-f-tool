@@ -1,4 +1,5 @@
 import { badges, computeLevel } from "../static/data";
+import { updateProfileInMemory, updateGlobalStatsInMemory } from "./memoryStore";
 
 const sdk = require('node-appwrite');
 
@@ -161,6 +162,7 @@ export async function updatePlayerStats(
 
   try {
     const profile = await databases.updateDocument(databaseId, collectionId, userId, updates);
+    updateProfileInMemory(profile);
     return profile as PlayerProfile;
   } catch (err: any) {
     console.error('Profile update error:', err);
@@ -184,6 +186,7 @@ export async function updateGlobalStats(
 
   try {
     const globalStats = await databases.updateDocument(databaseId, 'global_stats', '692e9c56001c048e4beb', updates);
+    updateGlobalStatsInMemory(globalStats);
     return globalStats as GlobalStats;
   } catch (err: any) {
     console.error('Profile update error:', err);
@@ -326,9 +329,10 @@ export async function selectBadge(
 
     // If badgeName is null, unequip badge
     if (badgeName === null) {
-      await databases.updateDocument(databaseId, collectionId, username, {
+      const updated = await databases.updateDocument(databaseId, collectionId, username, {
         selectedBadge: null,
       });
+      updateProfileInMemory(updated);
       return { success: true, message: 'Badge unequipped' };
     }
 
@@ -346,9 +350,10 @@ export async function selectBadge(
     }
 
     // Update selected badge
-    await databases.updateDocument(databaseId, collectionId, username, {
+    const updated = await databases.updateDocument(databaseId, collectionId, username, {
       selectedBadge: badgeName,
     });
+    updateProfileInMemory(updated);
 
     return { success: true, message: `Badge "${badgeName}" equipped!` };
   } catch (err: any) {
@@ -391,9 +396,10 @@ export async function addOwnedBadge(
 
     ownedBadges.push(badgeName);
 
-    await databases.updateDocument(databaseId, collectionId, username, {
+    const updated = await databases.updateDocument(databaseId, collectionId, username, {
       ownedBadges: JSON.stringify(ownedBadges),
     });
+    updateProfileInMemory(updated);
 
     return true;
   } catch (err: any) {

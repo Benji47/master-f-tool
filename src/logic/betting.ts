@@ -453,12 +453,14 @@ export async function resolveBets(matchId: string, scores: any[]): Promise<void>
     if (won) {
       try {
         const { getPlayerProfile, updatePlayerStats } = await import('./profile');
+        const { updateProfileInMemory } = await import('./memoryStore');
         const { recordAchievement } = await import('./dailyAchievements');
         const profile = await getPlayerProfile(bet.playerId);
         if (profile) {
-          await updatePlayerStats(profile.$id, {
+          const updated = await updatePlayerStats(profile.$id, {
             coins: (profile.coins || 0) + winnings,
           });
+          updateProfileInMemory(updated);
         }
 
         await recordAchievement({

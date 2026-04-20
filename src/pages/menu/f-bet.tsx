@@ -2,6 +2,13 @@ import { Context } from "hono";
 import { MatchDoc } from "../../logic/match";
 import { formatCoins } from "../../logic/format";
 
+export interface SpinPrizeView {
+  index: number;
+  coins: number;
+  label: string;
+  color: string;
+}
+
 export interface FBetPageProps {
   c: Context;
   currentUser: string | null;
@@ -14,6 +21,10 @@ export interface FBetPageProps {
   allBetsPage: number;
   allBetsTotalPages: number;
   matchTeamInfoByMatchId: Record<string, { match1?: { a: string[]; b: string[] }; match2?: { a: string[]; b: string[] }; match3?: { a: string[]; b: string[] } }>;
+  spinsUsed: number;
+  spinsTotalWon: number;
+  spinPrizes: SpinPrizeView[];
+  freeSpinsPerDay: number;
 }
 
 type PredictionLine =
@@ -101,8 +112,30 @@ function SubBetMarker({ result }: { result?: 'correct' | 'wrong' | 'pending' }) 
   return null;
 }
 
-export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, playerBetsPage, playerBetsTotalPages, allBetsPage, allBetsTotalPages, matchTeamInfoByMatchId }: FBetPageProps) {
+export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, playerBetsPage, playerBetsTotalPages, allBetsPage, allBetsTotalPages, matchTeamInfoByMatchId, spinsUsed, spinsTotalWon, spinPrizes, freeSpinsPerDay }: FBetPageProps) {
   const userCoins = currentUserProfile?.coins || 0;
+  const spinsRemaining = Math.max(0, (freeSpinsPerDay || 0) - (spinsUsed || 0));
+  const jackpotCoins = spinPrizes.reduce((max, p) => p.coins > max ? p.coins : max, 0);
+
+  // Build SVG wheel segments
+  const segmentCount = spinPrizes.length;
+  const sliceDeg = 360 / Math.max(1, segmentCount);
+  const cx = 160, cy = 160, r = 150;
+  const toRad = (deg: number) => (deg - 90) * (Math.PI / 180);
+  const segmentPath = (startDeg: number, endDeg: number) => {
+    const s = toRad(startDeg);
+    const e = toRad(endDeg);
+    const x1 = cx + r * Math.cos(s);
+    const y1 = cy + r * Math.sin(s);
+    const x2 = cx + r * Math.cos(e);
+    const y2 = cy + r * Math.sin(e);
+    const largeArc = endDeg - startDeg > 180 ? 1 : 0;
+    return `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc} 1 ${x2},${y2} Z`;
+  };
+  const labelPos = (deg: number) => {
+    const rad = toRad(deg);
+    return { x: cx + (r * 0.65) * Math.cos(rad), y: cy + (r * 0.65) * Math.sin(rad), rot: deg };
+  };
   const wonBets = playerBets.filter((b: any) => b.status === 'won');
   const lostBets = playerBets.filter((b: any) => b.status === 'lost');
   const totalWinnings = wonBets.reduce((sum: number, b: any) => sum + b.winnings, 0);
@@ -131,7 +164,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-gradient-to-br from-yellow-900/65 to-amber-900/55 p-4 rounded-lg border border-yellow-500/70">
           <div className="text-yellow-100/80 text-sm">Your Coins</div>
-          <div className="text-3xl font-bold text-yellow-200">{formatCoins(userCoins)}</div>
+          <div className="text-3xl font-bold text-yellow-200" data-user-coins>{formatCoins(userCoins)}</div>
         </div>
         <div className="bg-gradient-to-br from-green-900/65 to-emerald-900/55 p-4 rounded-lg border border-green-500/70">
           <div className="text-green-100/80 text-sm">Total Winnings</div>
@@ -142,6 +175,110 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
           <div className="text-3xl font-bold text-rose-300">{formatCoins(totalLosings)}</div>
         </div>
       </div>
+
+      {/* FREE SPINS */}
+      {currentUser && (
+        <div className="mb-8 relative overflow-hidden rounded-2xl border border-amber-500/60 bg-gradient-to-br from-purple-950/80 via-fuchsia-950/70 to-amber-900/40 p-6 shadow-[0_0_40px_rgba(251,191,36,0.15)]">
+          <div className="absolute inset-0 pointer-events-none opacity-30" style={{
+            backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(251,191,36,0.4) 0%, transparent 40%), radial-gradient(circle at 80% 80%, rgba(236,72,153,0.4) 0%, transparent 40%)',
+          }} />
+          <div className="relative flex flex-col lg:flex-row items-center gap-6">
+            {/* WHEEL */}
+            <div className="relative flex-shrink-0">
+              <div className="relative w-[320px] h-[320px]">
+                {/* Outer ring glow */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-400 via-fuchsia-500 to-purple-600 blur-lg opacity-60" />
+                {/* Wheel */}
+                <svg viewBox="0 0 320 320" className="relative w-full h-full drop-shadow-[0_0_20px_rgba(251,191,36,0.5)]" id="free-spin-wheel" style={{ transition: 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' }}>
+                  <circle cx={cx} cy={cy} r={r + 6} fill="#1e1b4b" stroke="#fbbf24" strokeWidth="4" />
+                  {spinPrizes.map((prize, i) => {
+                    const startDeg = i * sliceDeg;
+                    const endDeg = (i + 1) * sliceDeg;
+                    const midDeg = startDeg + sliceDeg / 2;
+                    const pos = labelPos(midDeg);
+                    return (
+                      <g key={prize.index}>
+                        <path d={segmentPath(startDeg, endDeg)} fill={prize.color} stroke="#1e1b4b" strokeWidth="2" />
+                        <text
+                          x={pos.x}
+                          y={pos.y}
+                          fill={prize.coins === jackpotCoins ? '#1e1b4b' : '#fff'}
+                          fontSize={prize.coins === jackpotCoins ? 20 : 15}
+                          fontWeight={prize.coins === jackpotCoins ? '900' : 'bold'}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          transform={`rotate(${pos.rot} ${pos.x} ${pos.y})`}
+                          style={{ textShadow: prize.coins === jackpotCoins ? '0 0 4px #fbbf24' : '0 1px 3px rgba(0,0,0,0.8)' }}
+                        >
+                          {prize.label}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  <circle cx={cx} cy={cy} r="20" fill="#fbbf24" stroke="#1e1b4b" strokeWidth="3" />
+                </svg>
+                {/* Pointer */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }}>
+                  <svg width="32" height="40" viewBox="0 0 32 40">
+                    <polygon points="16,40 0,0 32,0" fill="#fbbf24" stroke="#7c2d12" strokeWidth="2" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* INFO & BUTTON */}
+            <div className="flex-1 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 border border-amber-400/60 text-amber-200 text-xs font-bold uppercase tracking-wider mb-3">
+                ✨ Daily Bonus
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-amber-300 via-pink-300 to-purple-300 bg-clip-text text-transparent mb-2">
+                Free Spins
+              </h2>
+              <p className="text-purple-100/80 text-sm mb-4">
+                Spin the wheel for free coins. You get <span className="font-bold text-amber-300">{freeSpinsPerDay}</span> spins every day.
+              </p>
+
+              {/* JACKPOT CALLOUT */}
+              <div className="mb-4 inline-flex items-center gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 border-2 border-amber-400/70 shadow-[0_0_25px_rgba(251,191,36,0.35)] w-full sm:w-auto justify-center lg:justify-start">
+                <span className="text-3xl">🏆</span>
+                <div className="text-left">
+                  <div className="text-[0.65rem] uppercase tracking-[0.25em] text-amber-200/80 font-bold">Jackpot</div>
+                  <div className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-yellow-200 via-amber-300 to-yellow-400 bg-clip-text text-transparent leading-none drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]">
+                    {formatCoins(jackpotCoins)}
+                  </div>
+                  <div className="text-[0.7rem] text-amber-100/70 mt-1">coins</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-4 max-w-sm mx-auto lg:mx-0">
+                <div className="bg-black/40 border border-amber-500/40 rounded-lg p-3">
+                  <div className="text-xs text-amber-200/70">Spins left today</div>
+                  <div className="text-2xl font-bold text-amber-200" data-spins-remaining>{spinsRemaining}</div>
+                </div>
+                <div className="bg-black/40 border border-emerald-500/40 rounded-lg p-3">
+                  <div className="text-xs text-emerald-200/70">Won today</div>
+                  <div className="text-2xl font-bold text-emerald-300" data-spins-won>{formatCoins(spinsTotalWon)}</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                id="free-spin-btn"
+                disabled={spinsRemaining === 0}
+                className={`relative group w-full sm:w-auto px-10 py-4 rounded-xl font-black text-lg uppercase tracking-widest transition-all shadow-2xl ${
+                  spinsRemaining > 0
+                    ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-400 hover:via-orange-400 hover:to-rose-400 text-white hover:scale-105 hover:shadow-amber-500/40 shadow-amber-600/20'
+                    : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
+                }`}
+              >
+                <span className="relative z-10">🎰 {spinsRemaining > 0 ? 'SPIN!' : 'Come back tomorrow'}</span>
+                {spinsRemaining > 0 && (
+                  <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-400 to-rose-400 blur opacity-50 group-hover:opacity-75 transition -z-0" />
+                )}
+              </button>
+              <div id="free-spin-result" className="mt-4 min-h-[2rem] text-center lg:text-left text-lg font-bold"></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MAIN CONTENT */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -575,6 +712,88 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
             wireUncheckableMatchRadios(form);
             wireSingleSubmit(form);
           });
+
+          // ----- FREE SPINS WHEEL -----
+          (function(){
+            const wheel = document.getElementById('free-spin-wheel');
+            const btn = document.getElementById('free-spin-btn');
+            const result = document.getElementById('free-spin-result');
+            const spinsRemainingEl = document.querySelector('[data-spins-remaining]');
+            const spinsWonEl = document.querySelector('[data-spins-won]');
+            const userCoinsEl = document.querySelector('[data-user-coins]');
+            if (!wheel || !btn) return;
+            const segmentCount = ${JSON.stringify(segmentCount)};
+            let currentRotation = 0;
+            let spinning = false;
+
+            function formatCoinsJs(n) {
+              const num = Number(n) || 0;
+              const sign = num < 0 ? '-' : '';
+              const digits = String(Math.trunc(Math.abs(num)));
+              return sign + digits.replace(/\\B(?=(\\d{3})+(?!\\d))/g, ' ');
+            }
+
+            btn.addEventListener('click', async function() {
+              if (spinning || btn.disabled) return;
+              spinning = true;
+              btn.disabled = true;
+              if (result) result.innerHTML = '<span class="text-amber-200 animate-pulse">Spinning...</span>';
+
+              let data;
+              try {
+                const res = await fetch('/v1/f-bet/spin', { method: 'POST' });
+                data = await res.json();
+              } catch (e) {
+                result.innerHTML = '<span class="text-rose-300">Network error</span>';
+                spinning = false;
+                btn.disabled = false;
+                return;
+              }
+
+              if (!data.ok) {
+                result.innerHTML = '<span class="text-rose-300">' + (data.message || 'Failed') + '</span>';
+                spinning = false;
+                btn.disabled = (data.remaining === 0);
+                return;
+              }
+
+              const prizeIndex = data.prize ? data.prize.index : 0;
+              const sliceDeg = 360 / segmentCount;
+              // Segment i center sits at (i + 0.5) * sliceDeg degrees clockwise from top.
+              // After rotation R (clockwise), that center moves to ((i+0.5)*sliceDeg + R) mod 360.
+              // Pointer is at top (0°), so we need final R such that ((i+0.5)*sliceDeg + R) mod 360 == 0.
+              const targetMid = (prizeIndex + 0.5) * sliceDeg;
+              const desiredMod = (360 - targetMid) % 360;
+              const currentMod = ((currentRotation % 360) + 360) % 360;
+              let delta = desiredMod - currentMod;
+              if (delta < 0) delta += 360;
+              const fullSpins = 6;
+              const finalRotation = currentRotation + fullSpins * 360 + delta;
+              currentRotation = finalRotation;
+              wheel.style.transform = 'rotate(' + finalRotation + 'deg)';
+
+              setTimeout(function() {
+                const coins = data.prize ? data.prize.coins : 0;
+                const label = data.prize ? data.prize.label : '';
+                if (coins > 0) {
+                  result.innerHTML = '<span class="text-emerald-300">🎉 You won <span class="text-amber-300 text-2xl">' + formatCoinsJs(coins) + '</span> coins! (' + label + ')</span>';
+                } else {
+                  result.innerHTML = '<span class="text-purple-200">😅 Try again! Better luck next spin.</span>';
+                }
+                if (spinsRemainingEl) spinsRemainingEl.textContent = String(data.remaining);
+                if (spinsWonEl) spinsWonEl.textContent = formatCoinsJs(data.totalWonToday);
+                if (userCoinsEl && typeof data.newCoins === 'number') userCoinsEl.textContent = formatCoinsJs(data.newCoins);
+                spinning = false;
+                if (data.remaining > 0) {
+                  btn.disabled = false;
+                } else {
+                  btn.disabled = true;
+                  btn.innerHTML = '<span class="relative z-10">🎰 Come back tomorrow</span>';
+                  btn.className = 'relative group w-full sm:w-auto px-10 py-4 rounded-xl font-black text-lg uppercase tracking-widest transition-all shadow-2xl bg-neutral-700 text-neutral-400 cursor-not-allowed';
+                }
+              }, 4100);
+            });
+          })();
         `
       }} />
     </div>

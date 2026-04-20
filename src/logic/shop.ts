@@ -1,3 +1,5 @@
+import { updateProfileInMemory } from "./memoryStore";
+
 const sdk = require('node-appwrite');
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
@@ -168,7 +170,8 @@ export async function purchaseItem(
       ownedBadges.push(item.badgeName);
       updateData.ownedBadges = JSON.stringify(ownedBadges);
     }
-    await databases.updateDocument(databaseId, profileCollectionId, username, updateData);
+    const updatedProfile = await databases.updateDocument(databaseId, profileCollectionId, username, updateData);
+    updateProfileInMemory(updatedProfile);
 
     // Create order record
     const order = await databases.createDocument(
