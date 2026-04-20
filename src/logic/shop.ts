@@ -1,4 +1,5 @@
 import { updateProfileInMemory } from "./memoryStore";
+import { addBonusSpins } from "./freeSpins";
 
 const sdk = require('node-appwrite');
 
@@ -15,8 +16,10 @@ export interface ShopItem {
   description: string;
   price: number;
   icon: string;
-  type: 'physical' | 'badge' | 'cosmetic';
+  type: 'physical' | 'badge' | 'cosmetic' | 'spins';
   badgeName?: string; // For badge items
+  spinCount?: number; // For spins items
+  repeatable?: boolean; // If true, player can buy multiple times
 }
 
 export interface ShopOrder {
@@ -32,6 +35,36 @@ export interface ShopOrder {
 
 // Available shop items
 export const SHOP_ITEMS: ShopItem[] = [
+  {
+    id: 'spins_5',
+    name: '5 Extra Spins',
+    description: '5 bonus spins on the wheel — use them anytime on top of your daily 10',
+    price: 750,
+    icon: '🎰',
+    type: 'spins',
+    spinCount: 5,
+    repeatable: true,
+  },
+  {
+    id: 'spins_20',
+    name: '20 Extra Spins',
+    description: '20 bonus spins at a better price — great value pack',
+    price: 2500,
+    icon: '🎰',
+    type: 'spins',
+    spinCount: 20,
+    repeatable: true,
+  },
+  {
+    id: 'spins_100',
+    name: '100 Extra Spins',
+    description: 'The whale pack — 100 spins for the rich and brave',
+    price: 10000,
+    icon: '💎',
+    type: 'spins',
+    spinCount: 100,
+    repeatable: true,
+  },
   {
     id: 'icecream',
     name: 'Ice Cream',
@@ -145,18 +178,20 @@ export async function purchaseItem(
       };
     }
 
-    // Check if player already purchased this item (any status)
-    const existingOrders = await databases.listDocuments(
-      databaseId,
-      ordersCollectionId,
-      [
-        sdk.Query.equal('userId', userId),
-        sdk.Query.equal('itemId', itemId),
-        sdk.Query.limit(1),
-      ]
-    );
-    if (existingOrders.documents.length > 0) {
-      return { success: false, message: 'You already purchased this item!' };
+    // One-time-purchase items (badges, physical): block re-purchase.
+    if (!item.repeatable) {
+      const existingOrders = await databases.listDocuments(
+        databaseId,
+        ordersCollectionId,
+        [
+          sdk.Query.equal('userId', userId),
+          sdk.Query.equal('itemId', itemId),
+          sdk.Query.limit(1),
+        ]
+      );
+      if (existingOrders.documents.length > 0) {
+        return { success: false, message: 'You already purchased this item!' };
+      }
     }
 
     // Deduct coins (and add badge if applicable) in one update
@@ -173,7 +208,23 @@ export async function purchaseItem(
     const updatedProfile = await databases.updateDocument(databaseId, profileCollectionId, username, updateData);
     updateProfileInMemory(updatedProfile);
 
-    // Create order record
+    // Spins items: instantly grant bonus spins (auto-fulfilled).
+    if (item.type === 'spins' && item.spinCount && item.spinCount > 0) {
+      try {
+        await addBonusSpins(username, item.spinCount);
+      } catch (e: any) {
+        console.error('failed to grant bonus spins', e);
+        // Refund if spin grant failed
+        try {
+          const refunded = await databases.updateDocument(databaseId, profileCollectionId, username, { coins: profile.coins });
+          updateProfileInMemory(refunded);
+        } catch {}
+        return { success: false, message: 'Failed to grant spins, purchase refunded.' };
+      }
+    }
+
+    // Create order record — fulfilled instantly for digital items.
+    const autoFulfilled = item.type === 'spins' || item.type === 'badge' || item.type === 'cosmetic';
     const order = await databases.createDocument(
       databaseId,
       ordersCollectionId,
@@ -184,14 +235,18 @@ export async function purchaseItem(
         itemId: item.id,
         itemName: item.name,
         price: item.price,
-        status: 'pending',
+        status: autoFulfilled ? 'fulfilled' : 'pending',
         purchasedAt: new Date().toISOString(),
       }
     );
 
+    const successMsg = item.type === 'spins'
+      ? `🎰 ${item.spinCount} bonus spins added to your account!`
+      : `Successfully purchased ${item.name}!`;
+
     return {
       success: true,
-      message: `Successfully purchased ${item.name}!`,
+      message: successMsg,
       order,
     };
   } catch (error: any) {

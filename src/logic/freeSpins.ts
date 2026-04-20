@@ -5,6 +5,7 @@ const sdk = require('node-appwrite');
 const databaseId = process.env.APPWRITE_DATABASE_ID;
 const STATS_COLLECTION = 'spin_stats';
 const STATS_DOC_ID = 'main';
+const PLAYER_STATS_COLLECTION = 'player_spin_stats';
 const MAX_JACKPOT_LOG = 200;
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
@@ -44,6 +45,7 @@ export interface SpinState {
   hitsByIndex: Record<string, number>;
   totalSpins: number;
   totalWonAllTime: number;
+  bonusSpins: number;
 }
 
 export interface JackpotHit {
@@ -57,6 +59,13 @@ export interface SpinStats {
   jackpotHits: JackpotHit[];
   totalSpins: number;
 }
+
+function client() {
+  if (!projectId || !apiKey) throw new Error('Appwrite credentials not configured');
+  return new sdk.Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+}
+
+// ---------- Global stats (spin_stats collection) ----------
 
 function parseStatsDoc(doc: any): SpinStats {
   let hits: Record<string, number> = {};
@@ -98,10 +107,11 @@ export async function getSpinStats(): Promise<SpinStats> {
   return readStats();
 }
 
+// ---------- Per-player stats (player_spin_stats collection) ----------
+
 export const RESET_HOUR = 8; // Spins reset at 08:00 local time
 
 function todayKey(): string {
-  // Day boundary is 08:00 local. Before 08:00 counts as the previous day.
   const d = new Date();
   d.setHours(d.getHours() - RESET_HOUR);
   const y = d.getFullYear();
@@ -120,44 +130,84 @@ export function getNextResetIso(): string {
   return reset.toISOString();
 }
 
-function client() {
-  if (!projectId || !apiKey) throw new Error('Appwrite credentials not configured');
-  return new sdk.Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
-}
-
-async function readPrefs(userId: string): Promise<{ prefs: any; state: SpinState }> {
-  const users = new sdk.Users(client());
-  const user = await users.get(userId);
-  const prefs = (user?.prefs && typeof user.prefs === 'object') ? user.prefs : {};
-  const raw = prefs.freeSpins;
+function parsePlayerStats(doc: any): SpinState {
   const today = todayKey();
-  const allTimeHits = (raw && typeof raw.hitsByIndex === 'object' && raw.hitsByIndex) ? raw.hitsByIndex : {};
-  const totalSpins = Math.max(0, Number(raw?.totalSpins || 0));
-  const totalWonAllTime = Math.max(0, Number(raw?.totalWonAllTime || 0));
-  let state: SpinState = {
+  let hits: Record<string, number> = {};
+  try { hits = JSON.parse(doc?.hitsByIndex || '{}') || {}; } catch { hits = {}; }
+  const storedDayKey = String(doc?.dayKey || '');
+  const isToday = storedDayKey === today;
+  return {
     dayKey: today,
-    used: 0,
-    totalWon: 0,
-    hitsByIndex: allTimeHits,
-    totalSpins,
-    totalWonAllTime,
+    used: isToday ? Math.max(0, Number(doc?.used || 0)) : 0,
+    totalWon: isToday ? Math.max(0, Number(doc?.totalWon || 0)) : 0,
+    hitsByIndex: hits,
+    totalSpins: Math.max(0, Number(doc?.totalSpins || 0)),
+    totalWonAllTime: Math.max(0, Number(doc?.totalWonAllTime || 0)),
+    bonusSpins: Math.max(0, Number(doc?.bonusSpins || 0)),
   };
-  if (raw && typeof raw === 'object' && raw.dayKey === today) {
-    state.used = Math.max(0, Math.min(FREE_SPINS_PER_DAY, Number(raw.used || 0)));
-    state.totalWon = Math.max(0, Number(raw.totalWon || 0));
-  }
-  return { prefs, state };
 }
 
-export async function getSpinState(userId: string): Promise<SpinState> {
+async function readPlayerStats(profileId: string): Promise<SpinState> {
   try {
-    const { state } = await readPrefs(userId);
-    return state;
-  } catch (e) {
-    console.error('getSpinState error', e);
-    return { dayKey: todayKey(), used: 0, totalWon: 0, hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0 };
+    const databases = new sdk.Databases(client());
+    const doc = await databases.getDocument(databaseId, PLAYER_STATS_COLLECTION, profileId);
+    return parsePlayerStats(doc);
+  } catch (e: any) {
+    if (e?.code === 404) {
+      return {
+        dayKey: todayKey(), used: 0, totalWon: 0,
+        hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0, bonusSpins: 0,
+      };
+    }
+    console.error('readPlayerStats error', e);
+    return {
+      dayKey: todayKey(), used: 0, totalWon: 0,
+      hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0, bonusSpins: 0,
+    };
   }
 }
+
+async function writePlayerStats(profileId: string, state: SpinState): Promise<void> {
+  const payload = {
+    hitsByIndex: JSON.stringify(state.hitsByIndex || {}),
+    totalSpins: Number(state.totalSpins || 0),
+    totalWonAllTime: Number(state.totalWonAllTime || 0),
+    dayKey: String(state.dayKey || ''),
+    used: Number(state.used || 0),
+    totalWon: Number(state.totalWon || 0),
+    bonusSpins: Number(state.bonusSpins || 0),
+  };
+  const databases = new sdk.Databases(client());
+  try {
+    await databases.updateDocument(databaseId, PLAYER_STATS_COLLECTION, profileId, payload);
+  } catch (e: any) {
+    if (e?.code === 404) {
+      await databases.createDocument(databaseId, PLAYER_STATS_COLLECTION, profileId, payload);
+    } else {
+      console.error('writePlayerStats error', e);
+      throw e;
+    }
+  }
+}
+
+export async function getSpinState(profileId: string): Promise<SpinState> {
+  return readPlayerStats(profileId);
+}
+
+export async function addBonusSpins(profileId: string, amount: number): Promise<SpinState> {
+  const state = await readPlayerStats(profileId);
+  state.bonusSpins = Math.max(0, (state.bonusSpins || 0) + Math.floor(amount));
+  await writePlayerStats(profileId, state);
+  return state;
+}
+
+// Remaining spins available right now (daily allowance + bonus).
+export function computeRemainingSpins(state: Pick<SpinState, 'used' | 'bonusSpins'>): number {
+  const daily = Math.max(0, FREE_SPINS_PER_DAY - (state.used || 0));
+  return daily + (state.bonusSpins || 0);
+}
+
+// ---------- Spin logic ----------
 
 function pickPrize(): SpinPrize {
   const total = SPIN_PRIZES.reduce((s, p) => s + p.weight, 0);
@@ -176,19 +226,21 @@ export interface SpinResult {
   remaining?: number;
   newCoins?: number;
   totalWonToday?: number;
+  bonusSpinsLeft?: number;
 }
 
 const jackpotCoins = SPIN_PRIZES.reduce((m, p) => p.coins > m ? p.coins : m, 0);
 
-export async function spin(userId: string, profileId: string): Promise<SpinResult> {
+export async function spin(profileId: string): Promise<SpinResult> {
   try {
-    const { prefs, state } = await readPrefs(userId);
-    if (state.used >= FREE_SPINS_PER_DAY) {
-      return { ok: false, message: 'No free spins left today. Come back tomorrow!' };
+    const state = await readPlayerStats(profileId);
+    const dailyLeft = Math.max(0, FREE_SPINS_PER_DAY - (state.used || 0));
+    const bonusLeft = Math.max(0, state.bonusSpins || 0);
+    if (dailyLeft + bonusLeft <= 0) {
+      return { ok: false, message: 'No spins left. Come back tomorrow or buy more in the Shop!' };
     }
 
     const prize = pickPrize();
-
     const profile = await getPlayerProfile(profileId);
     if (!profile) return { ok: false, message: 'Profile not found' };
 
@@ -197,23 +249,32 @@ export async function spin(userId: string, profileId: string): Promise<SpinResul
       await updatePlayerStats(profileId, { coins: newCoins });
     }
 
+    // Consume daily spin first; once daily are exhausted, burn bonus spins.
+    let nextUsed = state.used || 0;
+    let nextBonus = state.bonusSpins || 0;
+    if (dailyLeft > 0) {
+      nextUsed = nextUsed + 1;
+    } else {
+      nextBonus = nextBonus - 1;
+    }
+
     const key = String(prize.index);
     const nextHitsByIndex = { ...(state.hitsByIndex || {}) };
     nextHitsByIndex[key] = (Number(nextHitsByIndex[key]) || 0) + 1;
 
     const nextState: SpinState = {
       dayKey: state.dayKey,
-      used: state.used + 1,
-      totalWon: state.totalWon + prize.coins,
+      used: nextUsed,
+      totalWon: (state.totalWon || 0) + prize.coins,
       hitsByIndex: nextHitsByIndex,
       totalSpins: (state.totalSpins || 0) + 1,
       totalWonAllTime: (state.totalWonAllTime || 0) + prize.coins,
+      bonusSpins: nextBonus,
     };
 
-    const users = new sdk.Users(client());
-    await users.updatePrefs(userId, { ...prefs, freeSpins: nextState });
+    await writePlayerStats(profileId, nextState);
 
-    // Update persistent stats (Appwrite doc)
+    // Update global stats doc
     try {
       const stats = await readStats();
       stats.hitsByIndex[key] = (stats.hitsByIndex[key] || 0) + 1;
@@ -230,15 +291,16 @@ export async function spin(userId: string, profileId: string): Promise<SpinResul
       }
       await writeStats(stats);
     } catch (e) {
-      console.error('failed to update spin stats', e);
+      console.error('failed to update global spin stats', e);
     }
 
     return {
       ok: true,
       prize,
-      remaining: FREE_SPINS_PER_DAY - nextState.used,
+      remaining: computeRemainingSpins(nextState),
       newCoins,
       totalWonToday: nextState.totalWon,
+      bonusSpinsLeft: nextState.bonusSpins,
     };
   } catch (e: any) {
     console.error('spin error', e);

@@ -34,6 +34,7 @@ export interface FBetPageProps {
   myHitsByIndex: Record<string, number>;
   myTotalSpins: number;
   myTotalWonAllTime: number;
+  myBonusSpins: number;
 }
 
 type PredictionLine =
@@ -121,9 +122,11 @@ function SubBetMarker({ result }: { result?: 'correct' | 'wrong' | 'pending' }) 
   return null;
 }
 
-export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, playerBetsPage, playerBetsTotalPages, allBetsPage, allBetsTotalPages, matchTeamInfoByMatchId, spinsUsed, spinsTotalWon, spinPrizes, freeSpinsPerDay, spinHitsByIndex, spinTotalSpins, spinJackpotHits, spinNextResetIso, spinResetHour, myHitsByIndex, myTotalSpins, myTotalWonAllTime }: FBetPageProps) {
+export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, playerBetsPage, playerBetsTotalPages, allBetsPage, allBetsTotalPages, matchTeamInfoByMatchId, spinsUsed, spinsTotalWon, spinPrizes, freeSpinsPerDay, spinHitsByIndex, spinTotalSpins, spinJackpotHits, spinNextResetIso, spinResetHour, myHitsByIndex, myTotalSpins, myTotalWonAllTime, myBonusSpins }: FBetPageProps) {
   const userCoins = currentUserProfile?.coins || 0;
-  const spinsRemaining = Math.max(0, (freeSpinsPerDay || 0) - (spinsUsed || 0));
+  const dailyLeft = Math.max(0, (freeSpinsPerDay || 0) - (spinsUsed || 0));
+  const bonusLeft = Math.max(0, myBonusSpins || 0);
+  const spinsRemaining = dailyLeft + bonusLeft;
   const jackpotCoins = spinPrizes.reduce((max, p) => p.coins > max ? p.coins : max, 0);
   const totalWeight = spinPrizes.reduce((sum, p) => sum + (p.weight || 0), 0) || 1;
 
@@ -277,16 +280,23 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                   <div className="text-[0.7rem] text-amber-100/70 mt-1">coins</div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 mb-4 max-w-sm mx-auto lg:mx-0">
+              <div className="grid grid-cols-3 gap-3 mb-4 max-w-lg mx-auto lg:mx-0">
                 <div className="bg-black/40 border border-amber-500/40 rounded-lg p-3">
-                  <div className="text-xs text-amber-200/70">Spins left today</div>
-                  <div className="text-2xl font-bold text-amber-200" data-spins-remaining>{spinsRemaining}</div>
+                  <div className="text-xs text-amber-200/70">Daily left</div>
+                  <div className="text-2xl font-bold text-amber-200" data-daily-left>{dailyLeft}</div>
+                  <div className="text-[0.6rem] text-amber-200/50">of {freeSpinsPerDay}</div>
+                </div>
+                <div className={`border rounded-lg p-3 ${bonusLeft > 0 ? 'bg-fuchsia-900/40 border-fuchsia-500/50' : 'bg-black/40 border-fuchsia-500/20 opacity-70'}`}>
+                  <div className="text-xs text-fuchsia-200/70">Bonus spins</div>
+                  <div className="text-2xl font-bold text-fuchsia-200" data-bonus-left>{bonusLeft}</div>
+                  <div className="text-[0.6rem] text-fuchsia-200/50">from shop</div>
                 </div>
                 <div className="bg-black/40 border border-emerald-500/40 rounded-lg p-3">
                   <div className="text-xs text-emerald-200/70">Won today</div>
                   <div className="text-2xl font-bold text-emerald-300" data-spins-won>{formatCoins(spinsTotalWon)}</div>
                 </div>
               </div>
+              <div className="hidden" data-spins-remaining>{spinsRemaining}</div>
               <button
                 type="button"
                 id="free-spin-btn"
@@ -912,6 +922,8 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
             const spinsRemainingEl = document.querySelector('[data-spins-remaining]');
             const spinsWonEl = document.querySelector('[data-spins-won]');
             const userCoinsEl = document.querySelector('[data-user-coins]');
+            const dailyLeftEl = document.querySelector('[data-daily-left]');
+            const bonusLeftEl = document.querySelector('[data-bonus-left]');
             if (!wheel || !btn) return;
             const segmentMidsByIndex = ${JSON.stringify(Object.fromEntries(segments.map(s => [s.prize.index, s.midDeg])))};
             let currentRotation = 0;
@@ -970,6 +982,11 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                 if (spinsRemainingEl) spinsRemainingEl.textContent = String(data.remaining);
                 if (spinsWonEl) spinsWonEl.textContent = formatCoinsJs(data.totalWonToday);
                 if (userCoinsEl && typeof data.newCoins === 'number') userCoinsEl.textContent = formatCoinsJs(data.newCoins);
+                if (bonusLeftEl && typeof data.bonusSpinsLeft === 'number') bonusLeftEl.textContent = String(data.bonusSpinsLeft);
+                if (dailyLeftEl) {
+                  const daily = Math.max(0, Number(data.remaining || 0) - Number(data.bonusSpinsLeft || 0));
+                  dailyLeftEl.textContent = String(daily);
+                }
                 spinning = false;
                 if (data.remaining > 0) {
                   btn.disabled = false;

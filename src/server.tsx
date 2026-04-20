@@ -2780,7 +2780,7 @@ app.post("/v1/f-bet/spin", async (c) => {
     if (!username) return c.json({ ok: false, message: "Not logged in" }, 401);
     const profile = await getPlayerProfileFast(username);
     if (!profile) return c.json({ ok: false, message: "Profile not found" }, 404);
-    const result = await spin(profile.userId, profile.$id);
+    const result = await spin(profile.$id);
     return c.json(result);
   } catch (err: any) {
     console.error("spin endpoint error:", err);
@@ -2793,7 +2793,7 @@ app.get("/v1/f-bet", async (c) => {
   try {
     const username = getCookie(c, "user") ?? null;
     const profile = username ? await getPlayerProfileFast(username) : null;
-    const spinState = profile ? await getSpinState(profile.userId) : { dayKey: "", used: 0, totalWon: 0, hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0 };
+    const spinState = profile ? await getSpinState(profile.$id) : { dayKey: "", used: 0, totalWon: 0, hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0, bonusSpins: 0 };
     const spinStatsData = await getSpinStats();
     const spinNextReset = getNextResetIso();
     const playerPageRaw = Number(c.req.query("playerPage") ?? 1);
@@ -3007,6 +3007,7 @@ app.get("/v1/f-bet", async (c) => {
           myHitsByIndex={spinState.hitsByIndex}
           myTotalSpins={spinState.totalSpins}
           myTotalWonAllTime={spinState.totalWonAllTime}
+          myBonusSpins={spinState.bonusSpins}
         />
       </MainLayout>
     );
@@ -3014,7 +3015,7 @@ app.get("/v1/f-bet", async (c) => {
     console.error("f-bet page error:", err);
     return c.html(
       <MainLayout c={c}>
-        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} allBetsHistory={[]} playerBetsPage={1} playerBetsTotalPages={1} allBetsPage={1} allBetsTotalPages={1} matchTeamInfoByMatchId={{}} spinsUsed={0} spinsTotalWon={0} spinPrizes={SPIN_PRIZES} freeSpinsPerDay={FREE_SPINS_PER_DAY} spinHitsByIndex={{}} spinTotalSpins={0} spinJackpotHits={[]} spinNextResetIso={getNextResetIso()} spinResetHour={RESET_HOUR} myHitsByIndex={{}} myTotalSpins={0} myTotalWonAllTime={0} />
+        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} allBetsHistory={[]} playerBetsPage={1} playerBetsTotalPages={1} allBetsPage={1} allBetsTotalPages={1} matchTeamInfoByMatchId={{}} spinsUsed={0} spinsTotalWon={0} spinPrizes={SPIN_PRIZES} freeSpinsPerDay={FREE_SPINS_PER_DAY} spinHitsByIndex={{}} spinTotalSpins={0} spinJackpotHits={[]} spinNextResetIso={getNextResetIso()} spinResetHour={RESET_HOUR} myHitsByIndex={{}} myTotalSpins={0} myTotalWonAllTime={0} myBonusSpins={0} />
       </MainLayout>
     );
   }

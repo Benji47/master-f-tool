@@ -65,9 +65,13 @@ export function ShopPage({
 
           {/* Shop Items Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {SHOP_ITEMS.map((item) => (
-              <ShopItemCard key={item.id} item={item} playerCoins={profile.coins} alreadyPurchased={purchasedItemIds?.has(item.id) ?? false} />
-            ))}
+            {SHOP_ITEMS.map((item) => {
+              // Repeatable items (e.g. spin packs) can always be re-bought.
+              const alreadyPurchased = item.repeatable ? false : (purchasedItemIds?.has(item.id) ?? false);
+              return (
+                <ShopItemCard key={item.id} item={item} playerCoins={profile.coins} alreadyPurchased={alreadyPurchased} />
+              );
+            })}
           </div>
 
           {/* Info Section */}
@@ -96,10 +100,11 @@ function ShopItemCard({
   alreadyPurchased: boolean;
 }) {
   const canAfford = playerCoins >= item.price && !alreadyPurchased;
-  const itemTypeColors = {
+  const itemTypeColors: Record<string, string> = {
     physical: 'from-blue-600 to-blue-800',
     badge: 'from-purple-600 to-purple-800',
     cosmetic: 'from-pink-600 to-pink-800',
+    spins: 'from-amber-500 to-orange-600',
   };
 
   return (
@@ -135,7 +140,7 @@ function ShopItemCard({
                 : 'bg-neutral-800 text-neutral-600 cursor-not-allowed'
             }`}
           >
-            {alreadyPurchased ? '✅ Already Purchased' : canAfford ? '🛒 Purchase' : '🔒 Not Enough Coins'}
+            {alreadyPurchased ? '✅ Already Purchased' : canAfford ? (item.repeatable ? '🛒 Buy' : '🛒 Purchase') : '🔒 Not Enough Coins'}
           </button>
         </form>
 
