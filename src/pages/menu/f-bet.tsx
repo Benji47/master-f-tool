@@ -154,6 +154,8 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
     cumulative = endDeg;
     return { prize, startDeg, endDeg, midDeg, span, percent: (prize.weight || 0) / totalWeight * 100 };
   });
+  // Stats tables are sorted by chance (highest first). Wheel keeps the interleaved order.
+  const segmentsByChance = [...segments].sort((a, b) => b.percent - a.percent);
   const wonBets = playerBets.filter((b: any) => b.status === 'won');
   const lostBets = playerBets.filter((b: any) => b.status === 'lost');
   const totalWinnings = wonBets.reduce((sum: number, b: any) => sum + b.winnings, 0);
@@ -317,7 +319,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {segments.map(({ prize, percent }) => {
+                  {segmentsByChance.map(({ prize, percent }) => {
                     const isJackpot = prize.coins === jackpotCoins;
                     const hits = spinHitsByIndex[String(prize.index)] || 0;
                     return (
@@ -363,7 +365,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {segments.map(({ prize }) => {
+                  {segmentsByChance.map(({ prize }) => {
                     const isJackpot = prize.coins === jackpotCoins;
                     const myHits = myHitsByIndex[String(prize.index)] || 0;
                     return (
