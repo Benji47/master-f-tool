@@ -325,6 +325,18 @@ app.use("/static/*", serveStatic({ root: "./" }));
 // app.get('/favicon.ico', serveStatic({ root: './public' }));
 // app.get('/icon.jpg', serveStatic({ root: './public' }));
 
+// Prevent browsers from caching dynamic HTML — leaderboards, lobby, f-bet etc.
+// must reflect the latest DB state on every request.
+app.use(async (c, next) => {
+  await next();
+  const contentType = c.res.headers.get('content-type') || '';
+  if (contentType.includes('text/html') || contentType.includes('application/json')) {
+    c.res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    c.res.headers.set('Pragma', 'no-cache');
+    c.res.headers.set('Expires', '0');
+  }
+});
+
 app.get("/favicon.ico", (c) => {
   const file = readFileSync("./public/favicon.ico");
   return c.body(file, 200, {
@@ -2782,7 +2794,7 @@ app.get("/v1/f-bet", async (c) => {
     const username = getCookie(c, "user") ?? null;
     const profile = username ? await getPlayerProfileFast(username) : null;
     const spinState = profile ? await getSpinState(profile.userId) : { dayKey: "", used: 0, totalWon: 0, hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0 };
-    const spinStatsData = getSpinStats();
+    const spinStatsData = await getSpinStats();
     const spinNextReset = getNextResetIso();
     const playerPageRaw = Number(c.req.query("playerPage") ?? 1);
     const allPageRaw = Number(c.req.query("allPage") ?? 1);

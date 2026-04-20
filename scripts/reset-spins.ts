@@ -6,12 +6,12 @@
  *
  * Run: bun run scripts/reset-spins.ts
  */
-import { existsSync, writeFileSync } from 'node:fs';
 const sdk = require('node-appwrite');
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
 const projectId = process.env.APPWRITE_PROJECT;
 const apiKey = process.env.APPWRITE_KEY;
+const databaseId = process.env.APPWRITE_DATABASE_ID;
 
 if (!projectId || !apiKey) {
   console.error('Missing APPWRITE_PROJECT or APPWRITE_KEY env vars');
@@ -20,6 +20,7 @@ if (!projectId || !apiKey) {
 
 const client = new sdk.Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
 const users = new sdk.Users(client);
+const databases = new sdk.Databases(client);
 
 async function resetAllUsers() {
   let cleared = 0;
@@ -54,15 +55,22 @@ async function resetAllUsers() {
   console.log(`\nScanned ${scanned} users, cleared freeSpins on ${cleared}`);
 }
 
-function resetGlobalStats() {
-  const empty = { hitsByIndex: {}, jackpotHits: [], totalSpins: 0 };
-  writeFileSync('./.spin-stats.json', JSON.stringify(empty, null, 2), 'utf-8');
-  console.log('Wiped .spin-stats.json');
+async function resetGlobalStats() {
+  try {
+    await databases.updateDocument(databaseId, 'spin_stats', 'main', {
+      hitsByIndex: '{}',
+      jackpotHits: '[]',
+      totalSpins: 0,
+    });
+    console.log('✓ Wiped spin_stats/main in Appwrite');
+  } catch (e: any) {
+    console.error('✗ failed resetting spin_stats doc:', e?.message || e);
+  }
 }
 
 (async () => {
   console.log('Resetting global spin stats...');
-  resetGlobalStats();
+  await resetGlobalStats();
   console.log('\nResetting per-user freeSpins prefs...');
   await resetAllUsers();
   console.log('\nDone.');

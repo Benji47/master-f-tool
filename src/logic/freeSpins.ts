@@ -1,9 +1,10 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { getPlayerProfile, updatePlayerStats } from "./profile";
 
 const sdk = require('node-appwrite');
 
-const STATS_FILE = "./.spin-stats.json";
+const databaseId = process.env.APPWRITE_DATABASE_ID;
+const STATS_COLLECTION = 'spin_stats';
+const STATS_DOC_ID = 'main';
 const MAX_JACKPOT_LOG = 200;
 
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
@@ -57,30 +58,43 @@ export interface SpinStats {
   totalSpins: number;
 }
 
-function readStats(): SpinStats {
+function parseStatsDoc(doc: any): SpinStats {
+  let hits: Record<string, number> = {};
+  let jackpots: JackpotHit[] = [];
+  try { hits = JSON.parse(doc?.hitsByIndex || '{}') || {}; } catch { hits = {}; }
+  try { const arr = JSON.parse(doc?.jackpotHits || '[]'); if (Array.isArray(arr)) jackpots = arr; } catch { jackpots = []; }
+  return {
+    hitsByIndex: hits,
+    jackpotHits: jackpots,
+    totalSpins: Number(doc?.totalSpins || 0),
+  };
+}
+
+async function readStats(): Promise<SpinStats> {
   try {
-    if (!existsSync(STATS_FILE)) return { hitsByIndex: {}, jackpotHits: [], totalSpins: 0 };
-    const raw = readFileSync(STATS_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    return {
-      hitsByIndex: parsed.hitsByIndex || {},
-      jackpotHits: Array.isArray(parsed.jackpotHits) ? parsed.jackpotHits : [],
-      totalSpins: Number(parsed.totalSpins || 0),
-    };
-  } catch {
+    const databases = new sdk.Databases(client());
+    const doc = await databases.getDocument(databaseId, STATS_COLLECTION, STATS_DOC_ID);
+    return parseStatsDoc(doc);
+  } catch (e) {
+    console.error('readStats error (is the spin_stats collection set up?)', e);
     return { hitsByIndex: {}, jackpotHits: [], totalSpins: 0 };
   }
 }
 
-function writeStats(stats: SpinStats): void {
+async function writeStats(stats: SpinStats): Promise<void> {
   try {
-    writeFileSync(STATS_FILE, JSON.stringify(stats, null, 2), "utf-8");
+    const databases = new sdk.Databases(client());
+    await databases.updateDocument(databaseId, STATS_COLLECTION, STATS_DOC_ID, {
+      hitsByIndex: JSON.stringify(stats.hitsByIndex || {}),
+      jackpotHits: JSON.stringify(stats.jackpotHits || []),
+      totalSpins: Number(stats.totalSpins || 0),
+    });
   } catch (e) {
-    console.error("failed to write spin stats", e);
+    console.error('writeStats error', e);
   }
 }
 
-export function getSpinStats(): SpinStats {
+export async function getSpinStats(): Promise<SpinStats> {
   return readStats();
 }
 
@@ -199,9 +213,9 @@ export async function spin(userId: string, profileId: string): Promise<SpinResul
     const users = new sdk.Users(client());
     await users.updatePrefs(userId, { ...prefs, freeSpins: nextState });
 
-    // Update persistent stats
+    // Update persistent stats (Appwrite doc)
     try {
-      const stats = readStats();
+      const stats = await readStats();
       stats.hitsByIndex[key] = (stats.hitsByIndex[key] || 0) + 1;
       stats.totalSpins = (stats.totalSpins || 0) + 1;
       if (prize.coins === jackpotCoins) {
@@ -214,7 +228,7 @@ export async function spin(userId: string, profileId: string): Promise<SpinResul
           stats.jackpotHits = stats.jackpotHits.slice(0, MAX_JACKPOT_LOG);
         }
       }
-      writeStats(stats);
+      await writeStats(stats);
     } catch (e) {
       console.error('failed to update spin stats', e);
     }
