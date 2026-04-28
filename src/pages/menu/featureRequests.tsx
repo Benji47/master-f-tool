@@ -12,11 +12,13 @@ export function FeatureRequestsPage({
   message?: { type: 'success' | 'error'; text: string };
 }) {
   const netScore = (r: FeatureRequest) => (r.upvotes || 0) - (r.downvotes || 0);
+  const pendingDeleteRequests = requests.filter(r => r.pendingDelete);
   const openRequests = requests
-    .filter(r => r.status === 'open' || (r.status !== 'rejected' && !(r.isDone && r.isTested)))
+    .filter(r => !r.pendingDelete && r.status !== 'rejected' && !r.isDone)
     .sort((a, b) => netScore(b) - netScore(a));
-  const doneRequests = requests.filter(r => r.isDone && r.isTested && r.status !== 'rejected');
-  const rejectedRequests = requests.filter(r => r.status === 'rejected');
+  const needTestingRequests = requests.filter(r => !r.pendingDelete && r.isDone && !r.isTested && r.status !== 'rejected');
+  const doneRequests = requests.filter(r => !r.pendingDelete && r.isDone && r.isTested && r.status !== 'rejected');
+  const rejectedRequests = requests.filter(r => !r.pendingDelete && r.status === 'rejected');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-purple-950 p-4 sm:p-6">
@@ -66,6 +68,18 @@ export function FeatureRequestsPage({
           )}
         </div>
 
+        {/* Need testing */}
+        {needTestingRequests.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg font-bold text-yellow-400 font-[Orbitron] mb-3">Need Testing ({needTestingRequests.length})</h2>
+            <div className="space-y-3">
+              {needTestingRequests.map(req => (
+                <RequestCard key={req.$id} req={req} currentUser={currentUser} currentUserId={currentUserId} isAdmin={isAdmin} needTesting />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Done requests */}
         {doneRequests.length > 0 && (
           <div className="mb-6">
@@ -73,6 +87,18 @@ export function FeatureRequestsPage({
             <div className="space-y-3">
               {doneRequests.map(req => (
                 <RequestCard key={req.$id} req={req} currentUser={currentUser} currentUserId={currentUserId} isAdmin={isAdmin} done />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Needs confirmation to be deleted */}
+        {pendingDeleteRequests.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg font-bold text-orange-400 font-[Orbitron] mb-3">Needs confirmation to be deleted ({pendingDeleteRequests.length})</h2>
+            <div className="space-y-3">
+              {pendingDeleteRequests.map(req => (
+                <RequestCard key={req.$id} req={req} currentUser={currentUser} currentUserId={currentUserId} isAdmin={isAdmin} pendingDelete />
               ))}
             </div>
           </div>
@@ -94,21 +120,21 @@ export function FeatureRequestsPage({
   );
 }
 
-function RequestCard({ req, currentUser, currentUserId, isAdmin, done, rejected }: {
-  req: FeatureRequest; currentUser: string; currentUserId: string; isAdmin?: boolean; done?: boolean; rejected?: boolean;
+function RequestCard({ req, currentUser, currentUserId, isAdmin, done, rejected, needTesting, pendingDelete }: {
+  req: FeatureRequest; currentUser: string; currentUserId: string; isAdmin?: boolean; done?: boolean; rejected?: boolean; needTesting?: boolean; pendingDelete?: boolean;
 }) {
   const isOwner = req.username === currentUser;
   const hasUpvoted = req.upvotedBy.includes(currentUserId);
   const hasDownvoted = req.downvotedBy.includes(currentUserId);
   const netScore = (req.upvotes || 0) - (req.downvotes || 0);
-  const borderColor = done ? 'border-green-600/40' : rejected ? 'border-red-600/30' : 'border-neutral-700';
+  const borderColor = pendingDelete ? 'border-orange-600/50' : done ? 'border-green-600/40' : needTesting ? 'border-yellow-600/40' : rejected ? 'border-red-600/30' : 'border-neutral-700';
   const timeAgo = formatTimeAgo(req.createdAt);
 
   return (
     <div className={`bg-neutral-900/60 border ${borderColor} rounded-lg p-4`} id={`req-${req.$id}`}>
       <div className="flex gap-3">
         {/* Vote column */}
-        {!done && !rejected ? (
+        {!done && !rejected && !pendingDelete ? (
           <div className="flex-shrink-0 flex flex-col items-stretch gap-1">
             <form method="post" action="/v1/feature-requests/upvote">
               <input type="hidden" name="id" value={req.$id} />
@@ -145,7 +171,7 @@ function RequestCard({ req, currentUser, currentUserId, isAdmin, done, rejected 
             <h3 className={`font-bold ${done ? 'text-green-300 line-through' : rejected ? 'text-red-300 line-through' : 'text-white'}`}>{req.title}</h3>
             <div className="flex items-center gap-2 flex-shrink-0">
               {/* Done / Tested checkboxes */}
-              {!rejected && (
+              {!rejected && !pendingDelete && (
                 <>
                   <form method="post" action="/v1/feature-requests/toggle" className="inline">
                     <input type="hidden" name="id" value={req.$id} />
@@ -175,19 +201,38 @@ function RequestCard({ req, currentUser, currentUserId, isAdmin, done, rejected 
             <span className="text-xs text-neutral-500">od {req.username}</span>
 
             {/* Owner actions */}
-            {isOwner && !done && !rejected && (
+            {isOwner && !done && !rejected && !pendingDelete && (
               <button type="button" className="text-xs text-blue-400 hover:text-blue-300"
                 onclick={`document.getElementById('edit-${req.$id}')?.showModal()`}>Upravit</button>
             )}
 
-            {/* Delete — anyone can drop a shit request */}
-            <form method="post" action="/v1/feature-requests/delete" className="inline" onsubmit="return confirm('Naozaj vymazat?')">
-              <input type="hidden" name="id" value={req.$id} />
-              <button type="submit" className="text-xs text-red-400 hover:text-red-300">Vymazat</button>
-            </form>
+            {/* Mark for deletion — anyone can request, only owner can confirm */}
+            {!pendingDelete && (
+              <form method="post" action="/v1/feature-requests/delete" className="inline" onsubmit="return confirm('Oznacit na vymazanie? Autor musi potvrdit.')">
+                <input type="hidden" name="id" value={req.$id} />
+                <button type="submit" className="text-xs text-red-400 hover:text-red-300">Vymazat</button>
+              </form>
+            )}
+
+            {/* Pending delete — confirm/cancel (owner only) */}
+            {pendingDelete && isOwner && (
+              <>
+                <form method="post" action="/v1/feature-requests/confirm-delete" className="inline" onsubmit="return confirm('Naozaj definitivne vymazat?')">
+                  <input type="hidden" name="id" value={req.$id} />
+                  <button type="submit" className="text-xs text-red-400 hover:text-red-300 font-bold">Potvrdit vymazanie</button>
+                </form>
+                <form method="post" action="/v1/feature-requests/cancel-delete" className="inline">
+                  <input type="hidden" name="id" value={req.$id} />
+                  <button type="submit" className="text-xs text-neutral-400 hover:text-neutral-200">Zrusit</button>
+                </form>
+              </>
+            )}
+            {pendingDelete && !isOwner && (
+              <span className="text-xs text-orange-400">Caka na potvrdenie od {req.username}</span>
+            )}
 
             {/* Admin actions */}
-            {isAdmin && !rejected && (
+            {isAdmin && !rejected && !pendingDelete && (
               <form method="post" action="/v1/feature-requests/status" className="inline">
                 <input type="hidden" name="id" value={req.$id} />
                 <input type="hidden" name="status" value="rejected" />

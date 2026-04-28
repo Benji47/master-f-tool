@@ -53,7 +53,7 @@ import {
 } from "./logic/siteContent";
 import { HallOfFamePage } from "./pages/menu/hallOfFame";
 import { FeatureRequestsPage } from "./pages/menu/featureRequests";
-import { listFeatureRequests, createFeatureRequest, updateFeatureRequest, deleteFeatureRequest, toggleUpvote, toggleDownvote, setRequestStatus, toggleFlag } from "./logic/featureRequests";
+import { listFeatureRequests, createFeatureRequest, updateFeatureRequest, deleteFeatureRequest, toggleUpvote, toggleDownvote, setRequestStatus, toggleFlag, setPendingDelete, getFeatureRequest } from "./logic/featureRequests";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { updateAchievementProgressAndUnlock, claimAchievementReward, getAllAchievementsForPlayer, getPlayerAchievements, unlockAchievement } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
@@ -4119,7 +4119,33 @@ app.post("/v1/feature-requests/delete", async (c) => {
   const form = await c.req.formData();
   const id = String(form.get("id") ?? "");
   if (!id) return c.text("Missing id", 400);
+  await setPendingDelete(id, true);
+  return c.redirect("/v1/feature-requests");
+});
+
+app.post("/v1/feature-requests/confirm-delete", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  if (!id) return c.text("Missing id", 400);
+  const req = await getFeatureRequest(id);
+  if (!req) return c.text("Not found", 404);
+  if (req.username !== username) return c.text("Iba autor moze potvrdit vymazanie", 403);
   await deleteFeatureRequest(id);
+  return c.redirect("/v1/feature-requests");
+});
+
+app.post("/v1/feature-requests/cancel-delete", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  if (!id) return c.text("Missing id", 400);
+  const req = await getFeatureRequest(id);
+  if (!req) return c.text("Not found", 404);
+  if (req.username !== username) return c.text("Iba autor moze zrusit vymazanie", 403);
+  await setPendingDelete(id, false);
   return c.redirect("/v1/feature-requests");
 });
 

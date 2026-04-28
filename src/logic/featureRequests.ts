@@ -20,6 +20,7 @@ export interface FeatureRequest {
   status: 'open' | 'done' | 'rejected';
   isDone: boolean;
   isTested: boolean;
+  pendingDelete: boolean;
   upvotes: number;
   upvotedBy: string[];
   downvotes: number;
@@ -37,6 +38,7 @@ function parseDoc(doc: any): FeatureRequest {
     status: doc.status || 'open',
     isDone: doc.isDone === true || doc.isDone === 'true',
     isTested: doc.isTested === true || doc.isTested === 'true',
+    pendingDelete: doc.pendingDelete === true || doc.pendingDelete === 'true',
     upvotes: Number(doc.upvotes || 0),
     upvotedBy: doc.upvotedBy ? (typeof doc.upvotedBy === 'string' ? JSON.parse(doc.upvotedBy) : doc.upvotedBy) : [],
     downvotes: Number(doc.downvotes || 0),
@@ -83,6 +85,22 @@ export async function updateFeatureRequest(id: string, title: string, descriptio
 export async function deleteFeatureRequest(id: string): Promise<void> {
   const databases = getDb();
   await databases.deleteDocument(databaseId, collectionId, id);
+}
+
+export async function setPendingDelete(id: string, pending: boolean): Promise<FeatureRequest> {
+  const databases = getDb();
+  const doc = await databases.updateDocument(databaseId, collectionId, id, { pendingDelete: pending });
+  return parseDoc(doc);
+}
+
+export async function getFeatureRequest(id: string): Promise<FeatureRequest | null> {
+  try {
+    const databases = getDb();
+    const doc = await databases.getDocument(databaseId, collectionId, id);
+    return parseDoc(doc);
+  } catch {
+    return null;
+  }
 }
 
 export async function toggleUpvote(id: string, userId: string): Promise<FeatureRequest> {
