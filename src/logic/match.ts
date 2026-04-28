@@ -75,7 +75,7 @@ export function parseMatchHistoryDoc(raw: any): MatchHistoryDoc {
  
   try {
     if (typeof scoresJsonRaw === 'string' && scoresJsonRaw.trim()) {
-      scores = JSON.parse(scoresJsonRaw);
+      scores = JSON.parse(scoresJsonRaw);  // ✅ only parse non-empty trimmed strings
     } else {
       scores = [];
     }
