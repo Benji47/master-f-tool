@@ -35,6 +35,12 @@ export interface FBetPageProps {
   myTotalSpins: number;
   myTotalWonAllTime: number;
   myBonusSpins: number;
+  superSpinsAvailable: number;
+  mySuperSpinsTotal: number;
+  wonTockar: boolean;
+  superSpinLog: { username: string; won: boolean; timestamp: number }[];
+  superSpinWinRate: number;
+  tockarBadgeName: string;
 }
 
 type PredictionLine =
@@ -122,7 +128,38 @@ function SubBetMarker({ result }: { result?: 'correct' | 'wrong' | 'pending' }) 
   return null;
 }
 
-export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, playerBetsPage, playerBetsTotalPages, allBetsPage, allBetsTotalPages, matchTeamInfoByMatchId, spinsUsed, spinsTotalWon, spinPrizes, freeSpinsPerDay, spinHitsByIndex, spinTotalSpins, spinJackpotHits, spinNextResetIso, spinResetHour, myHitsByIndex, myTotalSpins, myTotalWonAllTime, myBonusSpins }: FBetPageProps) {
+export function FBetPage({ c, currentUser, currentUserProfile, availableMatches, playerBets, allBetsHistory, playerBetsPage, playerBetsTotalPages, allBetsPage, allBetsTotalPages, matchTeamInfoByMatchId, spinsUsed, spinsTotalWon, spinPrizes, freeSpinsPerDay, spinHitsByIndex, spinTotalSpins, spinJackpotHits, spinNextResetIso, spinResetHour, myHitsByIndex, myTotalSpins, myTotalWonAllTime, myBonusSpins, superSpinsAvailable, mySuperSpinsTotal, wonTockar, superSpinLog, superSpinWinRate, tockarBadgeName }: FBetPageProps) {
+  // Super spin leaderboard: aggregate spins per username from log + identify winners.
+  const superSpinAggregates = (() => {
+    const counts = new Map<string, { spins: number; wins: number }>();
+    (superSpinLog || []).forEach(entry => {
+      const row = counts.get(entry.username) || { spins: 0, wins: 0 };
+      row.spins += 1;
+      if (entry.won) row.wins += 1;
+      counts.set(entry.username, row);
+    });
+    return Array.from(counts.entries())
+      .map(([username, v]) => ({ username, ...v }))
+      .sort((a, b) => b.spins - a.spins);
+  })();
+  const superSpinWinners = (superSpinLog || [])
+    .filter(e => e.won)
+    .sort((a, b) => a.timestamp - b.timestamp);
+  const totalSuperSpinsAll = (superSpinLog || []).length;
+  // Jackpot leaderboard: count hits per player from spinJackpotHits.
+  const jackpotByPlayer = (() => {
+    const counts = new Map<string, { count: number; total: number; firstAt: number }>();
+    (spinJackpotHits || []).forEach(hit => {
+      const row = counts.get(hit.username) || { count: 0, total: 0, firstAt: hit.timestamp };
+      row.count += 1;
+      row.total += Number(hit.coins || 0);
+      if (hit.timestamp < row.firstAt) row.firstAt = hit.timestamp;
+      counts.set(hit.username, row);
+    });
+    return Array.from(counts.entries())
+      .map(([username, v]) => ({ username, ...v }))
+      .sort((a, b) => b.count - a.count || b.total - a.total);
+  })();
   const userCoins = currentUserProfile?.coins || 0;
   const dailyLeft = Math.max(0, (freeSpinsPerDay || 0) - (spinsUsed || 0));
   const bonusLeft = Math.max(0, myBonusSpins || 0);
@@ -159,11 +196,6 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
   });
   // Stats tables are sorted by chance (highest first). Wheel keeps the interleaved order.
   const segmentsByChance = [...segments].sort((a, b) => b.percent - a.percent);
-  const wonBets = playerBets.filter((b: any) => b.status === 'won');
-  const lostBets = playerBets.filter((b: any) => b.status === 'lost');
-  const totalWinnings = wonBets.reduce((sum: number, b: any) => sum + b.winnings, 0);
-  const totalLosings = lostBets.reduce((sum: number, b: any) => sum + Number(b.betAmount || 0), 0);
-
   const buildBetPageHref = (nextPlayerPage: number, nextAllBetsPage: number) => {
     const safePlayerPage = Math.max(1, nextPlayerPage);
     const safeAllBetsPage = Math.max(1, nextAllBetsPage);
@@ -184,24 +216,37 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
       </div>
 
       {/* COINS DISPLAY */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-yellow-900/65 to-amber-900/55 p-4 rounded-lg border border-yellow-500/70">
+      <div className="mb-8">
+        <div className="bg-gradient-to-br from-yellow-900/65 to-amber-900/55 p-4 rounded-lg border border-yellow-500/70 inline-block min-w-[14rem]">
           <div className="text-yellow-100/80 text-sm">Your Coins</div>
           <div className="text-3xl font-bold text-yellow-200" data-user-coins>{formatCoins(userCoins)}</div>
         </div>
-        <div className="bg-gradient-to-br from-green-900/65 to-emerald-900/55 p-4 rounded-lg border border-green-500/70">
-          <div className="text-green-100/80 text-sm">Total Winnings</div>
-          <div className="text-3xl font-bold text-emerald-300">{formatCoins(totalWinnings)}</div>
-        </div>
-        <div className="bg-gradient-to-br from-red-900/65 to-rose-900/55 p-4 rounded-lg border border-rose-500/70">
-          <div className="text-rose-100/80 text-sm">Total Losings</div>
-          <div className="text-3xl font-bold text-rose-300">{formatCoins(totalLosings)}</div>
-        </div>
       </div>
+
+      {/* TAB SWITCHER */}
+      {currentUser && (
+        <div className="mb-6 flex flex-wrap gap-2 border-b border-purple-700/40 pb-3" id="fbet-tab-bar">
+          <button type="button" data-tab-btn="bet" className="px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider transition-colors bg-purple-600 text-white">
+            🎲 Bet
+          </button>
+          <button type="button" data-tab-btn="your-bets" className="px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider transition-colors bg-neutral-800 text-neutral-300 hover:bg-neutral-700">
+            📒 Your Bets
+          </button>
+          <button type="button" data-tab-btn="all-bets" className="px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider transition-colors bg-neutral-800 text-neutral-300 hover:bg-neutral-700">
+            🌍 All History
+          </button>
+          <button type="button" data-tab-btn="spin" className="px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider transition-colors bg-neutral-800 text-neutral-300 hover:bg-neutral-700">
+            🎰 Spins
+          </button>
+          <button type="button" data-tab-btn="super" className="px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider transition-colors bg-neutral-800 text-neutral-300 hover:bg-neutral-700">
+            🍀 Super Spin
+          </button>
+        </div>
+      )}
 
       {/* FREE SPINS */}
       {currentUser && (
-        <div className="mb-8 relative overflow-hidden rounded-2xl border border-amber-500/60 bg-gradient-to-br from-purple-950/80 via-fuchsia-950/70 to-amber-900/40 p-6 shadow-[0_0_40px_rgba(251,191,36,0.15)]">
+        <div data-tab-pane="spin" className="mb-8 relative overflow-hidden rounded-2xl border border-amber-500/60 bg-gradient-to-br from-purple-950/80 via-fuchsia-950/70 to-amber-900/40 p-6 shadow-[0_0_40px_rgba(251,191,36,0.15)]">
           <div className="absolute inset-0 pointer-events-none opacity-30" style={{
             backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(251,191,36,0.4) 0%, transparent 40%), radial-gradient(circle at 80% 80%, rgba(236,72,153,0.4) 0%, transparent 40%)',
           }} />
@@ -408,9 +453,157 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
         </div>
       )}
 
+      {/* SUPER SPIN — 1:100 chance for the Točkář badge */}
+      {currentUser && (
+        <div data-tab-pane="super" className="mb-8 relative overflow-hidden rounded-2xl border border-fuchsia-500/60 bg-gradient-to-br from-purple-950/85 via-fuchsia-900/55 to-emerald-900/35 p-6 shadow-[0_0_45px_rgba(217,70,239,0.18)]">
+          <div className="absolute inset-0 pointer-events-none opacity-30" style={{
+            backgroundImage: 'radial-gradient(circle at 25% 30%, rgba(34,197,94,0.3) 0%, transparent 45%), radial-gradient(circle at 80% 70%, rgba(217,70,239,0.45) 0%, transparent 45%)',
+          }} />
+          <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* LEFT: Tockar visual + button */}
+            <div className="lg:col-span-1 flex flex-col items-center text-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-fuchsia-400/20 border border-fuchsia-400/60 text-fuchsia-100 text-xs font-bold uppercase tracking-wider mb-3">
+                🍀 Lucky Spin
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-cyan-200 via-fuchsia-300 to-emerald-300 bg-clip-text text-transparent mb-3">
+                Super Spin
+              </h2>
+
+              {/* Točkář badge preview */}
+              <div className="relative mb-4">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400 via-fuchsia-500 to-purple-600 blur-xl opacity-70 animate-pulse" />
+                <div className="relative w-44 h-44 rounded-full bg-gradient-to-br from-cyan-300 via-fuchsia-500 to-purple-700 border-4 border-emerald-300/80 shadow-[0_0_30px_rgba(74,222,128,0.5)] flex flex-col items-center justify-center">
+                  <div className="text-5xl mb-1 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">🍀</div>
+                  <div className="text-white font-black text-sm tracking-wider drop-shadow">Točkář</div>
+                  <div className="text-emerald-100 text-[10px] font-bold uppercase tracking-[0.18em] mt-1">Exclusive</div>
+                </div>
+              </div>
+
+              <p className="text-purple-100/80 text-sm mb-1">
+                <span className="font-bold text-emerald-300">1:{Math.round(1 / Math.max(0.0001, superSpinWinRate))}</span> chance to win the exclusive badge.
+              </p>
+              <p className="text-xs text-purple-200/60 mb-3">
+                1 free spin per day (resets at {String(spinResetHour).padStart(2, '0')}:00). Buy more in the Shop.
+              </p>
+
+              <div className="grid grid-cols-3 gap-2 w-full mb-4">
+                <div className={`rounded-lg p-2 border ${superSpinsAvailable > 0 ? 'bg-emerald-900/40 border-emerald-500/60' : 'bg-black/40 border-neutral-700/40 opacity-70'}`}>
+                  <div className="text-[10px] uppercase tracking-wider text-emerald-200/70">Available</div>
+                  <div className="text-2xl font-black text-emerald-300" data-super-available>{superSpinsAvailable}</div>
+                </div>
+                <div className="rounded-lg p-2 bg-fuchsia-950/50 border border-fuchsia-500/40">
+                  <div className="text-[10px] uppercase tracking-wider text-fuchsia-200/70">My spins</div>
+                  <div className="text-2xl font-black text-fuchsia-200" data-super-mytotal>{mySuperSpinsTotal}</div>
+                </div>
+                <div className={`rounded-lg p-2 border ${wonTockar ? 'bg-amber-900/40 border-amber-400/60' : 'bg-black/40 border-neutral-700/40'}`}>
+                  <div className="text-[10px] uppercase tracking-wider text-amber-200/70">Status</div>
+                  <div className="text-sm font-black text-amber-300" data-super-status>{wonTockar ? 'Won!' : 'Pending'}</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                id="super-spin-btn"
+                disabled={superSpinsAvailable <= 0 || wonTockar}
+                className={`relative group w-full px-6 py-4 rounded-xl font-black text-base uppercase tracking-widest transition-all shadow-2xl ${
+                  superSpinsAvailable > 0 && !wonTockar
+                    ? 'bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-purple-600 hover:from-cyan-400 hover:via-fuchsia-400 hover:to-purple-500 text-white hover:scale-105 hover:shadow-fuchsia-500/40 shadow-fuchsia-600/20'
+                    : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
+                }`}
+              >
+                <span className="relative z-10">
+                  🍀 {wonTockar ? 'Already won' : superSpinsAvailable > 0 ? 'Try your luck!' : 'No spin left'}
+                </span>
+                {superSpinsAvailable > 0 && !wonTockar && (
+                  <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-400 to-fuchsia-400 blur opacity-50 group-hover:opacity-75 transition -z-0" />
+                )}
+              </button>
+              <div id="super-spin-result" className="mt-3 min-h-[2rem] text-center text-base font-bold"></div>
+            </div>
+
+            {/* RIGHT: Leaderboard */}
+            <div className="lg:col-span-2">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-emerald-200/80 font-bold">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
+                  Super Spin Leaderboard
+                </div>
+                <div className="text-xs text-purple-200/70 whitespace-nowrap">
+                  Total spins: <span className="font-bold text-white">{totalSuperSpinsAll}</span>
+                  {' • '}Winners: <span className="font-bold text-emerald-300">{superSpinWinners.length}</span>
+                </div>
+              </div>
+
+              {/* Winners hall of fame */}
+              <div className="mb-4 rounded-lg border border-emerald-500/30 bg-gradient-to-br from-emerald-950/50 to-black/40 p-3">
+                <div className="flex items-center gap-2 mb-2 text-xs uppercase tracking-wider text-emerald-200/80 font-bold">
+                  <span>🏅</span> Točkář Hall of Fame
+                </div>
+                {superSpinWinners.length === 0 ? (
+                  <div className="text-sm text-emerald-200/60 italic text-center py-2">
+                    Nobody won yet. Be the first! 🍀
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {superSpinWinners.map((w, i) => (
+                      <div
+                        key={`${w.username}-${w.timestamp}`}
+                        className="px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/30 via-fuchsia-500/30 to-purple-500/30 border border-emerald-400/60 text-xs font-bold text-white shadow-[0_0_8px_rgba(74,222,128,0.3)]"
+                        title={new Date(w.timestamp).toLocaleString()}
+                      >
+                        {i === 0 && <span className="mr-1">👑</span>}🍀 {w.username}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Spin counts by player */}
+              <div className="rounded-lg border border-purple-500/30 bg-black/30 max-h-[18rem] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-purple-950/85 backdrop-blur z-10">
+                    <tr className="text-left text-xs uppercase tracking-wider text-purple-200/70 border-b border-purple-500/30">
+                      <th className="px-3 py-2 w-10">#</th>
+                      <th className="px-3 py-2">Player</th>
+                      <th className="px-3 py-2 text-right">Spins</th>
+                      <th className="px-3 py-2 text-right">Wins</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {superSpinAggregates.length === 0 && (
+                      <tr><td colSpan={4} className="px-3 py-4 text-center text-purple-200/50 italic">Nobody spun yet — be the first.</td></tr>
+                    )}
+                    {superSpinAggregates.map((row, i) => (
+                      <tr
+                        key={row.username}
+                        className={`${row.wins > 0 ? 'bg-emerald-500/10' : 'hover:bg-purple-500/5'} border-b border-purple-500/10 transition`}
+                      >
+                        <td className="px-3 py-2 text-purple-200/70 font-mono">{i + 1}</td>
+                        <td className="px-3 py-2 font-bold text-white">
+                          {row.username === currentUser && <span className="text-xs text-emerald-300 mr-1">★</span>}
+                          {row.username}
+                        </td>
+                        <td className="px-3 py-2 text-right font-black text-purple-200">{row.spins}</td>
+                        <td className="px-3 py-2 text-right">
+                          {row.wins > 0 ? (
+                            <span className="font-black text-emerald-300">🍀 {row.wins}</span>
+                          ) : (
+                            <span className="text-neutral-500">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* JACKPOT HALL OF FAME */}
       {currentUser && (
-        <div className="mb-8 relative rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-950/50 via-yellow-950/40 to-black/60 p-5 shadow-[0_0_25px_rgba(251,191,36,0.12)]">
+        <div data-tab-pane="spin" className="mb-8 relative rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-950/50 via-yellow-950/40 to-black/60 p-5 shadow-[0_0_25px_rgba(251,191,36,0.12)]">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-3">
               <span className="text-2xl">🏆</span>
@@ -425,6 +618,39 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
               Total jackpots: <span className="font-black text-amber-300 text-base">{spinJackpotHits.length}</span>
             </div>
           </div>
+          {/* Jackpot leaderboard — top winners by count */}
+          {jackpotByPlayer.length > 0 && (
+            <div className="mb-4 rounded-lg border border-amber-500/30 bg-gradient-to-br from-amber-950/40 to-black/40 p-3">
+              <div className="flex items-center gap-2 mb-3 text-xs uppercase tracking-wider text-amber-200/80 font-bold">
+                <span>👑</span> Jackpot Leaderboard
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {jackpotByPlayer.map((row, i) => (
+                  <div
+                    key={row.username}
+                    className={`rounded-lg px-3 py-2 border flex items-center justify-between gap-3 ${
+                      i === 0
+                        ? 'bg-gradient-to-r from-amber-500/30 to-yellow-400/20 border-amber-400/70 shadow-[0_0_8px_rgba(251,191,36,0.25)]'
+                        : 'bg-black/30 border-amber-500/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-amber-200/70 font-mono text-xs flex-shrink-0">#{i + 1}</span>
+                      <span className="font-bold text-white truncate">
+                        {i === 0 && <span className="mr-1">👑</span>}
+                        {row.username}
+                      </span>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-amber-300 font-black">{row.count}×</div>
+                      <div className="text-[10px] text-amber-200/60">+{formatCoins(row.total)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {spinJackpotHits.length === 0 ? (
             <div className="text-center py-8 text-amber-200/60 italic">
               Nobody has hit the jackpot yet. Will you be the first? 💫
@@ -459,10 +685,26 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
         </div>
       )}
 
+      {/* YOUR BETS — lazy loaded */}
+      <div data-tab-pane="your-bets" className="mb-8" style={{ display: 'none' }}>
+        <h2 className="text-2xl font-bold mb-4">Your Bets</h2>
+        <div id="your-bets-container" data-loaded="false" data-current-page="1" className="bg-neutral-900/40 border border-purple-700/40 rounded-lg p-4 min-h-[10rem]">
+          <div className="text-sm text-purple-200/60 italic text-center py-6">Loading…</div>
+        </div>
+      </div>
+
+      {/* ALL BETS HISTORY — lazy loaded */}
+      <div data-tab-pane="all-bets" className="mb-8" style={{ display: 'none' }}>
+        <h2 className="text-2xl font-bold mb-4">All Players Bet History</h2>
+        <div id="all-bets-container" data-loaded="false" data-current-page="1" className="bg-neutral-900/40 border border-purple-700/40 rounded-lg p-4 min-h-[10rem]">
+          <div className="text-sm text-purple-200/60 italic text-center py-6">Loading…</div>
+        </div>
+      </div>
+
       {/* MAIN CONTENT */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div data-tab-pane="bet" className="grid grid-cols-1 gap-6 items-start">
         {/* LEFT: AVAILABLE MATCHES */}
-        <div className="lg:col-span-2">
+        <div className="w-full">
           <h2 className="text-2xl font-bold mb-4">Available Matches</h2>
           {availableMatches.length === 0 ? (
             <div className="bg-neutral-900/70 p-8 rounded-lg text-center text-neutral-300 border border-purple-700/60">
@@ -637,167 +879,6 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
           )}
         </div>
 
-        {/* RIGHT: BET HISTORY */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Your Bets</h2>
-          <div className="flex flex-col gap-3 max-h-[30rem] overflow-y-auto pr-1">
-            {playerBets.length === 0 ? (
-              <div className="bg-neutral-900/70 border border-purple-700/60 p-4 rounded-lg text-center text-purple-200/70 text-sm">
-                No bets placed yet
-              </div>
-            ) : (
-              playerBets.map((bet: any) => (
-                (() => {
-                  const subBetResultMap = getSubBetResultMap(bet);
-                  return (
-                <div
-                  key={bet.$id}
-                  className={`p-3 rounded-lg border text-sm ${
-                    bet.status === 'won'
-                      ? 'bg-emerald-900/25 border-emerald-600'
-                      : bet.status === 'lost'
-                      ? 'bg-rose-900/25 border-rose-600'
-                      : 'bg-purple-900/30 border-purple-600'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-semibold">
-                      {formatCoins(bet.betAmount)} coins
-                    </span>
-                    <span
-                      className={`text-xs font-bold px-2 py-1 rounded ${
-                        bet.status === 'won'
-                          ? 'bg-emerald-600 text-emerald-50'
-                          : bet.status === 'lost'
-                          ? 'bg-rose-600 text-rose-50'
-                          : 'bg-purple-600 text-purple-100'
-                      }`}
-                    >
-                      {bet.status === 'pending'
-                          ? `${bet.correctPredictions}/${bet.totalLegs ?? bet.numMatches}`
-                        : bet.status === 'won'
-                        ? `+${formatCoins(bet.winnings)}`
-                        : 'LOST'}
-                    </span>
-                  </div>
-                  <div className="text-xs text-purple-200/70">
-                      ID: {bet.matchId.substring(0, 8)}... • Odds: {bet.odds?.total ? `x${bet.odds.total}` : 'n/a'}
-                  </div>
-                  <div className="text-xs text-purple-200/70 space-y-1">
-                    {buildPredictionLines(bet, matchTeamInfoByMatchId).map((line, lineIdx) => (
-                      line.type === "match" ? (
-                        <div key={lineIdx}>
-                          <span>Match {line.matchNo}: </span>
-                          <span className={line.pickedSide === 'a' ? 'font-bold underline text-purple-100' : ''}>Team A: {line.teamA}</span>
-                          <span> | </span>
-                          <span className={line.pickedSide === 'b' ? 'font-bold underline text-purple-100' : ''}>Team B: {line.teamB}</span>
-                          <span> | Odds: {line.oddsLabel}</span>
-                          <SubBetMarker result={subBetResultMap[`match${line.matchNo}`]} />
-                        </div>
-                      ) : (
-                        <div key={lineIdx}>
-                          <span>{line.label}</span>
-                          {line.label.startsWith('Vyrazecka:') && <SubBetMarker result={subBetResultMap['vyrazackaOutcome']} />}
-                          {line.label.startsWith('Total Goals:') && <SubBetMarker result={subBetResultMap['totalGoals']} />}
-                        </div>
-                      )
-                    ))}
-                  </div>
-                  <div className="text-xs text-purple-200/60">{new Date(bet.$createdAt || '').toLocaleString()}</div>
-                </div>
-                  );
-                })()
-              ))
-            )}
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs text-purple-200/80">
-            <span>Page {playerBetsPage} / {Math.max(1, playerBetsTotalPages)}</span>
-            <div className="flex gap-2">
-              <a
-                href={buildBetPageHref(playerBetsPage - 1, allBetsPage)}
-                className={`px-2 py-1 rounded border ${playerBetsPage > 1 ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 pointer-events-none'}`}
-              >
-                Prev
-              </a>
-              <a
-                href={buildBetPageHref(playerBetsPage + 1, allBetsPage)}
-                className={`px-2 py-1 rounded border ${playerBetsPage < Math.max(1, playerBetsTotalPages) ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 pointer-events-none'}`}
-              >
-                Next
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* GLOBAL BET HISTORY */}
-      <div className="mt-8">
-        <h2 className="text-2xl font-bold mb-4">All Players Bet History</h2>
-        <div className="bg-neutral-900/70 border border-purple-700/60 rounded-lg p-4 max-h-[26rem] overflow-y-auto">
-          {allBetsHistory.length === 0 ? (
-            <div className="text-sm text-purple-200/70">No bet history available.</div>
-          ) : (
-            <div className="space-y-2">
-              {allBetsHistory.map((bet: any) => (
-                (() => {
-                  const subBetResultMap = getSubBetResultMap(bet);
-                  return (
-                <div key={bet.$id} className="p-3 rounded border border-purple-900/70 bg-neutral-950/70 flex justify-between gap-4 text-sm">
-                  <div>
-                    <div className="font-semibold text-white">{bet.username}</div>
-                    <div className="text-xs text-purple-200/70">Match {String(bet.matchId || '').substring(0, 8)}... • Bet {formatCoins(bet.betAmount || 0)} • Odds {bet.odds?.total ? `x${bet.odds.total}` : 'n/a'}</div>
-                    <div className="text-xs text-purple-200/70 space-y-1">
-                      {buildPredictionLines(bet, matchTeamInfoByMatchId).map((line, lineIdx) => (
-                        line.type === "match" ? (
-                          <div key={lineIdx}>
-                            <span>Match {line.matchNo}: </span>
-                            <span className={line.pickedSide === 'a' ? 'font-bold underline text-purple-100' : ''}>Team A: {line.teamA}</span>
-                            <span> | </span>
-                            <span className={line.pickedSide === 'b' ? 'font-bold underline text-purple-100' : ''}>Team B: {line.teamB}</span>
-                            <span> | Odds: {line.oddsLabel}</span>
-                            <SubBetMarker result={subBetResultMap[`match${line.matchNo}`]} />
-                          </div>
-                        ) : (
-                          <div key={lineIdx}>
-                            <span>{line.label}</span>
-                            {line.label.startsWith('Vyrazecka:') && <SubBetMarker result={subBetResultMap['vyrazackaOutcome']} />}
-                            {line.label.startsWith('Total Goals:') && <SubBetMarker result={subBetResultMap['totalGoals']} />}
-                          </div>
-                        )
-                      ))}
-                    </div>
-                    <div className="text-xs text-purple-200/60">{new Date(bet.$createdAt || '').toLocaleString()}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-bold ${bet.status === 'won' ? 'text-emerald-300' : bet.status === 'lost' ? 'text-rose-300' : 'text-indigo-200'}`}>
-                      {bet.status === 'won' ? `+${formatCoins(bet.winnings || 0)}` : bet.status === 'lost' ? 'LOST' : 'PENDING'}
-                    </div>
-                    <div className="text-xs text-purple-200/60">Correct {bet.correctPredictions || 0}/{bet.totalLegs ?? bet.numMatches ?? 0}</div>
-                  </div>
-                </div>
-                  );
-                })()
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="mt-3 flex items-center justify-between text-xs text-purple-200/80">
-          <span>Page {allBetsPage} / {Math.max(1, allBetsTotalPages)}</span>
-          <div className="flex gap-2">
-            <a
-              href={buildBetPageHref(playerBetsPage, allBetsPage - 1)}
-              className={`px-2 py-1 rounded border ${allBetsPage > 1 ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 pointer-events-none'}`}
-            >
-              Prev
-            </a>
-            <a
-              href={buildBetPageHref(playerBetsPage, allBetsPage + 1)}
-              className={`px-2 py-1 rounded border ${allBetsPage < Math.max(1, allBetsTotalPages) ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 pointer-events-none'}`}
-            >
-              Next
-            </a>
-          </div>
-        </div>
       </div>
 
       <script dangerouslySetInnerHTML={{
@@ -891,6 +972,84 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
             wireUncheckableMatchRadios(form);
             wireSingleSubmit(form);
           });
+
+          // ----- TAB SWITCHING + LAZY BETS PANEL FETCH -----
+          (function(){
+            const bar = document.getElementById('fbet-tab-bar');
+            if (!bar) return;
+            const buttons = bar.querySelectorAll('[data-tab-btn]');
+            const panes = document.querySelectorAll('[data-tab-pane]');
+
+            async function loadBetsPanel(target, page) {
+              const containerId = target === 'your-bets' ? 'your-bets-container' : 'all-bets-container';
+              const url = target === 'your-bets'
+                ? '/v1/f-bet/your-bets?page=' + page
+                : '/v1/f-bet/all-bets?page=' + page;
+              const container = document.getElementById(containerId);
+              if (!container) return;
+              container.innerHTML = '<div class="text-sm text-purple-200/60 italic text-center py-6">Loading…</div>';
+              try {
+                const res = await fetch(url, { headers: { 'Accept': 'text/html' } });
+                if (!res.ok) throw new Error('http ' + res.status);
+                const html = await res.text();
+                container.innerHTML = html;
+                container.setAttribute('data-loaded', 'true');
+                container.setAttribute('data-current-page', String(page));
+                wireBetsPanelPagination(container, target);
+              } catch (e) {
+                container.innerHTML = '<div class="text-sm text-rose-300 text-center py-6">Failed to load. Click the tab again to retry.</div>';
+                container.setAttribute('data-loaded', 'false');
+              }
+            }
+
+            function wireBetsPanelPagination(container, target) {
+              const pagBtns = container.querySelectorAll('[data-bets-page]');
+              pagBtns.forEach(function(btn){
+                btn.addEventListener('click', function(ev){
+                  ev.preventDefault();
+                  if (btn.disabled) return;
+                  const page = Number(btn.getAttribute('data-bets-page')) || 1;
+                  loadBetsPanel(target, page);
+                });
+              });
+            }
+
+            function activate(name) {
+              buttons.forEach(function(b){
+                if (b.getAttribute('data-tab-btn') === name) {
+                  b.className = 'px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider transition-colors bg-purple-600 text-white';
+                } else {
+                  b.className = 'px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider transition-colors bg-neutral-800 text-neutral-300 hover:bg-neutral-700';
+                }
+              });
+              panes.forEach(function(p){
+                if (p.getAttribute('data-tab-pane') === name) {
+                  p.style.display = '';
+                } else {
+                  p.style.display = 'none';
+                }
+              });
+              try { localStorage.setItem('fbet-active-tab', name); } catch (e) {}
+
+              if (name === 'your-bets' || name === 'all-bets') {
+                const containerId = name === 'your-bets' ? 'your-bets-container' : 'all-bets-container';
+                const c = document.getElementById(containerId);
+                if (c && c.getAttribute('data-loaded') !== 'true') {
+                  loadBetsPanel(name, 1);
+                }
+              }
+            }
+
+            buttons.forEach(function(b){
+              b.addEventListener('click', function(){
+                activate(b.getAttribute('data-tab-btn'));
+              });
+            });
+
+            let initial = 'bet';
+            try { initial = localStorage.getItem('fbet-active-tab') || 'bet'; } catch (e) {}
+            activate(initial);
+          })();
 
           // ----- COUNTDOWN TO SPIN RESET -----
           (function(){
@@ -998,8 +1157,258 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
               }, 4100);
             });
           })();
+
+          // ----- SUPER SPIN -----
+          (function(){
+            const btn = document.getElementById('super-spin-btn');
+            if (!btn) return;
+            const result = document.getElementById('super-spin-result');
+            const availableEl = document.querySelector('[data-super-available]');
+            const myTotalEl = document.querySelector('[data-super-mytotal]');
+            const statusEl = document.querySelector('[data-super-status]');
+            let busy = false;
+            btn.addEventListener('click', async function() {
+              if (busy || btn.disabled) return;
+              busy = true;
+              btn.disabled = true;
+              if (result) result.innerHTML = '<span class="text-fuchsia-200 animate-pulse">Spinning...</span>';
+              let data;
+              try {
+                const res = await fetch('/v1/f-bet/super-spin', { method: 'POST' });
+                data = await res.json();
+              } catch (e) {
+                if (result) result.innerHTML = '<span class="text-rose-300">Network error</span>';
+                busy = false;
+                btn.disabled = false;
+                return;
+              }
+              if (!data.ok) {
+                if (result) result.innerHTML = '<span class="text-rose-300">' + (data.message || 'Failed') + '</span>';
+                busy = false;
+                btn.disabled = !((data.superSpinsAvailable || 0) > 0 && !data.wonTockar);
+                return;
+              }
+              if (availableEl && typeof data.superSpinsAvailable === 'number') availableEl.textContent = String(data.superSpinsAvailable);
+              if (myTotalEl && typeof data.superSpinsTotal === 'number') myTotalEl.textContent = String(data.superSpinsTotal);
+              if (data.won) {
+                if (statusEl) statusEl.textContent = 'Won!';
+                if (result) result.innerHTML = '<span class="text-emerald-300">🎉 JACKPOT! You won the <span class="text-amber-300">' + (data.badgeName || 'Točkář 🍀') + '</span> badge! Refresh to equip.</span>';
+                btn.disabled = true;
+                btn.innerHTML = '<span class="relative z-10">🍀 Already won</span>';
+                btn.className = 'relative group w-full px-6 py-4 rounded-xl font-black text-base uppercase tracking-widest transition-all shadow-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white cursor-not-allowed';
+              } else {
+                if (result) result.innerHTML = '<span class="text-purple-200">😅 No luck — try again or buy more spins in the Shop.</span>';
+                if ((data.superSpinsAvailable || 0) > 0) {
+                  busy = false;
+                  btn.disabled = false;
+                } else {
+                  btn.disabled = true;
+                  btn.innerHTML = '<span class="relative z-10">🍀 No spin left</span>';
+                  btn.className = 'relative group w-full px-6 py-4 rounded-xl font-black text-base uppercase tracking-widest transition-all shadow-2xl bg-neutral-700 text-neutral-400 cursor-not-allowed';
+                }
+              }
+              busy = false;
+            });
+          })();
         `
       }} />
+    </div>
+  );
+}
+
+// Lazy-loaded panel: player's own bets, paginated. Rendered HTML-only by
+// /v1/f-bet/your-bets?page=N — never on the initial page load.
+export function YourBetsPanel({
+  playerBets,
+  matchTeamInfoByMatchId,
+  page,
+  totalPages,
+}: {
+  playerBets: any[];
+  matchTeamInfoByMatchId: Record<string, { match1?: { a: string[]; b: string[] }; match2?: { a: string[]; b: string[] }; match3?: { a: string[]; b: string[] } }>;
+  page: number;
+  totalPages: number;
+}) {
+  const safeTotal = Math.max(1, totalPages);
+  return (
+    <div data-bets-content="your-bets" data-current-page={page} data-total-pages={safeTotal}>
+      <div className="flex flex-col gap-3">
+        {playerBets.length === 0 ? (
+          <div className="bg-neutral-900/70 border border-purple-700/60 p-4 rounded-lg text-center text-purple-200/70 text-sm">
+            No bets placed yet
+          </div>
+        ) : (
+          playerBets.map((bet: any) => {
+            const subBetResultMap = getSubBetResultMap(bet);
+            return (
+              <div
+                key={bet.$id}
+                className={`p-3 rounded-lg border text-sm ${
+                  bet.status === 'won'
+                    ? 'bg-emerald-900/25 border-emerald-600'
+                    : bet.status === 'lost'
+                    ? 'bg-rose-900/25 border-rose-600'
+                    : 'bg-purple-900/30 border-purple-600'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-semibold">{formatCoins(bet.betAmount)} coins</span>
+                  <span
+                    className={`text-xs font-bold px-2 py-1 rounded ${
+                      bet.status === 'won'
+                        ? 'bg-emerald-600 text-emerald-50'
+                        : bet.status === 'lost'
+                        ? 'bg-rose-600 text-rose-50'
+                        : 'bg-purple-600 text-purple-100'
+                    }`}
+                  >
+                    {bet.status === 'pending'
+                      ? `${bet.correctPredictions}/${bet.totalLegs ?? bet.numMatches}`
+                      : bet.status === 'won'
+                      ? `+${formatCoins(bet.winnings)}`
+                      : 'LOST'}
+                  </span>
+                </div>
+                <div className="text-xs text-purple-200/70">
+                  ID: {String(bet.matchId || '').substring(0, 8)}... • Odds: {bet.odds?.total ? `x${bet.odds.total}` : 'n/a'}
+                </div>
+                <div className="text-xs text-purple-200/70 space-y-1">
+                  {buildPredictionLines(bet, matchTeamInfoByMatchId).map((line, lineIdx) => (
+                    line.type === 'match' ? (
+                      <div key={lineIdx}>
+                        <span>Match {line.matchNo}: </span>
+                        <span className={line.pickedSide === 'a' ? 'font-bold underline text-purple-100' : ''}>Team A: {line.teamA}</span>
+                        <span> | </span>
+                        <span className={line.pickedSide === 'b' ? 'font-bold underline text-purple-100' : ''}>Team B: {line.teamB}</span>
+                        <span> | Odds: {line.oddsLabel}</span>
+                        <SubBetMarker result={subBetResultMap[`match${line.matchNo}`]} />
+                      </div>
+                    ) : (
+                      <div key={lineIdx}>
+                        <span>{line.label}</span>
+                        {line.label.startsWith('Vyrazecka:') && <SubBetMarker result={subBetResultMap['vyrazackaOutcome']} />}
+                        {line.label.startsWith('Total Goals:') && <SubBetMarker result={subBetResultMap['totalGoals']} />}
+                      </div>
+                    )
+                  ))}
+                </div>
+                <div className="text-xs text-purple-200/60">{new Date(bet.$createdAt || '').toLocaleString()}</div>
+              </div>
+            );
+          })
+        )}
+      </div>
+      <div className="mt-3 flex items-center justify-between text-xs text-purple-200/80">
+        <span>Page {page} / {safeTotal}</span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            data-bets-page={page - 1}
+            data-bets-target="your-bets"
+            disabled={page <= 1}
+            className={`px-2 py-1 rounded border ${page > 1 ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50 cursor-pointer' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 cursor-not-allowed'}`}
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            data-bets-page={page + 1}
+            data-bets-target="your-bets"
+            disabled={page >= safeTotal}
+            className={`px-2 py-1 rounded border ${page < safeTotal ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50 cursor-pointer' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 cursor-not-allowed'}`}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Lazy-loaded panel: every player's bet history, paginated.
+export function AllBetsHistoryPanel({
+  allBetsHistory,
+  matchTeamInfoByMatchId,
+  page,
+  totalPages,
+}: {
+  allBetsHistory: any[];
+  matchTeamInfoByMatchId: Record<string, { match1?: { a: string[]; b: string[] }; match2?: { a: string[]; b: string[] }; match3?: { a: string[]; b: string[] } }>;
+  page: number;
+  totalPages: number;
+}) {
+  const safeTotal = Math.max(1, totalPages);
+  return (
+    <div data-bets-content="all-bets" data-current-page={page} data-total-pages={safeTotal}>
+      <div className="bg-neutral-900/70 border border-purple-700/60 rounded-lg p-4 max-h-[26rem] overflow-y-auto">
+        {allBetsHistory.length === 0 ? (
+          <div className="text-sm text-purple-200/70">No bet history available.</div>
+        ) : (
+          <div className="space-y-2">
+            {allBetsHistory.map((bet: any) => {
+              const subBetResultMap = getSubBetResultMap(bet);
+              return (
+                <div key={bet.$id} className="p-3 rounded border border-purple-900/70 bg-neutral-950/70 flex justify-between gap-4 text-sm">
+                  <div>
+                    <div className="font-semibold text-white">{bet.username}</div>
+                    <div className="text-xs text-purple-200/70">Match {String(bet.matchId || '').substring(0, 8)}... • Bet {formatCoins(bet.betAmount || 0)} • Odds {bet.odds?.total ? `x${bet.odds.total}` : 'n/a'}</div>
+                    <div className="text-xs text-purple-200/70 space-y-1">
+                      {buildPredictionLines(bet, matchTeamInfoByMatchId).map((line, lineIdx) => (
+                        line.type === 'match' ? (
+                          <div key={lineIdx}>
+                            <span>Match {line.matchNo}: </span>
+                            <span className={line.pickedSide === 'a' ? 'font-bold underline text-purple-100' : ''}>Team A: {line.teamA}</span>
+                            <span> | </span>
+                            <span className={line.pickedSide === 'b' ? 'font-bold underline text-purple-100' : ''}>Team B: {line.teamB}</span>
+                            <span> | Odds: {line.oddsLabel}</span>
+                            <SubBetMarker result={subBetResultMap[`match${line.matchNo}`]} />
+                          </div>
+                        ) : (
+                          <div key={lineIdx}>
+                            <span>{line.label}</span>
+                            {line.label.startsWith('Vyrazecka:') && <SubBetMarker result={subBetResultMap['vyrazackaOutcome']} />}
+                            {line.label.startsWith('Total Goals:') && <SubBetMarker result={subBetResultMap['totalGoals']} />}
+                          </div>
+                        )
+                      ))}
+                    </div>
+                    <div className="text-xs text-purple-200/60">{new Date(bet.$createdAt || '').toLocaleString()}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`font-bold ${bet.status === 'won' ? 'text-emerald-300' : bet.status === 'lost' ? 'text-rose-300' : 'text-indigo-200'}`}>
+                      {bet.status === 'won' ? `+${formatCoins(bet.winnings || 0)}` : bet.status === 'lost' ? 'LOST' : 'PENDING'}
+                    </div>
+                    <div className="text-xs text-purple-200/60">Correct {bet.correctPredictions || 0}/{bet.totalLegs ?? bet.numMatches ?? 0}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div className="mt-3 flex items-center justify-between text-xs text-purple-200/80">
+        <span>Page {page} / {safeTotal}</span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            data-bets-page={page - 1}
+            data-bets-target="all-bets"
+            disabled={page <= 1}
+            className={`px-2 py-1 rounded border ${page > 1 ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50 cursor-pointer' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 cursor-not-allowed'}`}
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            data-bets-page={page + 1}
+            data-bets-target="all-bets"
+            disabled={page >= safeTotal}
+            className={`px-2 py-1 rounded border ${page < safeTotal ? 'border-purple-600 bg-purple-900/40 hover:bg-purple-800/50 cursor-pointer' : 'border-neutral-700 bg-neutral-900/50 text-neutral-500 cursor-not-allowed'}`}
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,9 +1,26 @@
 import { Context } from "hono";
 import { formatCoins } from "../../logic/format";
 
-export function MatchResultPage({ c, result, username, bets = [] }: { c: Context; result: any, username: string | null; bets?: any[] }) {
+export function MatchResultPage({
+  c,
+  result,
+  username,
+  bets = [],
+  canEdit = false,
+  historyDocId = "",
+  editScores = [],
+}: {
+  c: Context;
+  result: any;
+  username: string | null;
+  bets?: any[];
+  canEdit?: boolean;
+  historyDocId?: string;
+  editScores?: any[];
+}) {
   const players = result.players || [];
   const scores = result.scores || [];
+  const playerNameById = new Map<string, string>(players.map((p: any) => [p.id, p.username]));
   type PredictionLine =
     | {
         type: "match";
@@ -292,6 +309,113 @@ export function MatchResultPage({ c, result, username, bets = [] }: { c: Context
             </div>
           )}
         </div>
+
+        {canEdit && historyDocId && editScores.length > 0 && (
+          <div className="bg-neutral-900/60 rounded-lg p-4 border border-amber-700/60 mt-6">
+            <h3 className="text-lg text-amber-200 mb-3 font-[Orbitron]">Edit match outcome</h3>
+            <p className="text-xs text-neutral-400 mb-3">
+              Recomputes profiles, global stats, settles bets and updates the daily log. Achievement progress (matches played, win streak) is left untouched.
+            </p>
+            <form
+              method="post"
+              action={`/v1/match-history/${historyDocId}/update`}
+              onsubmit="return confirm('Apply new match outcome? This updates player ELO/XP/coins, settles bets and updates the daily log.');"
+              className="space-y-4"
+            >
+              {editScores.map((round: any, idx: number) => {
+                const aIds: string[] = Array.isArray(round?.a) ? round.a : [];
+                const bIds: string[] = Array.isArray(round?.b) ? round.b : [];
+                const allIds = [...aIds, ...bIds];
+                const golden = round?.goldenVyrazacka || {};
+                const goldenPlayerId = String(golden?.playerId ?? '');
+                const scoreAVal = Number(round?.scoreA ?? 0);
+                const scoreBVal = Number(round?.scoreB ?? 0);
+                const goldenDiffVal = Number(golden?.diff ?? 0);
+                return (
+                  <div key={idx} className="rounded border border-amber-700/40 bg-neutral-950/60 p-3">
+                    <div className="text-xs uppercase tracking-wide text-amber-200/80 mb-2">
+                      Round {idx + 1} — original {scoreAVal}:{scoreBVal}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <label className="text-xs text-neutral-300 flex flex-col gap-1">
+                        <span>Team A: {aIds.map(id => playerNameById.get(id) || id).join(' & ')}</span>
+                        <input
+                          type="number"
+                          name={`score_a_${idx}`}
+                          min="0"
+                          max="10"
+                          value={scoreAVal}
+                          className="px-2 py-1 rounded bg-neutral-900 border border-neutral-700 text-white"
+                        />
+                      </label>
+                      <label className="text-xs text-neutral-300 flex flex-col gap-1">
+                        <span>Team B: {bIds.map(id => playerNameById.get(id) || id).join(' & ')}</span>
+                        <input
+                          type="number"
+                          name={`score_b_${idx}`}
+                          min="0"
+                          max="10"
+                          value={scoreBVal}
+                          className="px-2 py-1 rounded bg-neutral-900 border border-neutral-700 text-white"
+                        />
+                      </label>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                      {allIds.map(pid => {
+                        const vyrVal = Number(round?.vyrazacka?.[pid] ?? 0);
+                        return (
+                          <label key={pid} className="text-[11px] text-neutral-400 flex flex-col gap-1">
+                            <span>Vyrazecka — {playerNameById.get(pid) || pid}</span>
+                            <input
+                              type="number"
+                              name={`vyrazacka_${idx}_${pid}`}
+                              min="0"
+                              value={vyrVal}
+                              className="px-2 py-1 rounded bg-neutral-900 border border-neutral-700 text-white"
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="text-[11px] text-neutral-400 flex flex-col gap-1">
+                        <span>Golden vyrazacka — player</span>
+                        <select
+                          name={`golden_player_${idx}`}
+                          className="px-2 py-1 rounded bg-neutral-900 border border-neutral-700 text-white"
+                        >
+                          <option value="" selected={goldenPlayerId === ''}>(none)</option>
+                          {allIds.map(pid => (
+                            <option key={pid} value={pid} selected={goldenPlayerId === pid}>
+                              {playerNameById.get(pid) || pid}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="text-[11px] text-neutral-400 flex flex-col gap-1">
+                        <span>Golden diff</span>
+                        <input
+                          type="number"
+                          name={`golden_diff_${idx}`}
+                          min="0"
+                          max="10"
+                          value={goldenDiffVal}
+                          className="px-2 py-1 rounded bg-neutral-900 border border-neutral-700 text-white"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                type="submit"
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-black font-semibold rounded cursor-pointer"
+              >
+                Save updated outcome
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

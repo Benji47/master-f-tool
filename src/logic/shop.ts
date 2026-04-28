@@ -1,5 +1,5 @@
 import { updateProfileInMemory } from "./memoryStore";
-import { addBonusSpins } from "./freeSpins";
+import { addBonusSpins, addSuperSpins } from "./freeSpins";
 
 const sdk = require('node-appwrite');
 
@@ -16,9 +16,9 @@ export interface ShopItem {
   description: string;
   price: number;
   icon: string;
-  type: 'physical' | 'badge' | 'cosmetic' | 'spins';
+  type: 'physical' | 'badge' | 'cosmetic' | 'spins' | 'super_spin';
   badgeName?: string; // For badge items
-  spinCount?: number; // For spins items
+  spinCount?: number; // For spins items (and super_spin → number of super spins granted)
   repeatable?: boolean; // If true, player can buy multiple times
 }
 
@@ -63,6 +63,16 @@ export const SHOP_ITEMS: ShopItem[] = [
     icon: '💎',
     type: 'spins',
     spinCount: 100,
+    repeatable: true,
+  },
+  {
+    id: 'super_spin',
+    name: 'Super Spin (Točkář 🍀)',
+    description: '1 super spin for a 1:100 chance to win the exclusive Točkář 🍀 badge',
+    price: 1000000,
+    icon: '🍀',
+    type: 'super_spin',
+    spinCount: 1,
     repeatable: true,
   },
   {
@@ -223,8 +233,22 @@ export async function purchaseItem(
       }
     }
 
+    // Super spin item: instantly grant N super spins.
+    if (item.type === 'super_spin' && item.spinCount && item.spinCount > 0) {
+      try {
+        await addSuperSpins(username, item.spinCount);
+      } catch (e: any) {
+        console.error('failed to grant super spins', e);
+        try {
+          const refunded = await databases.updateDocument(databaseId, profileCollectionId, username, { coins: profile.coins });
+          updateProfileInMemory(refunded);
+        } catch {}
+        return { success: false, message: 'Failed to grant super spin, purchase refunded.' };
+      }
+    }
+
     // Create order record — fulfilled instantly for digital items.
-    const autoFulfilled = item.type === 'spins' || item.type === 'badge' || item.type === 'cosmetic';
+    const autoFulfilled = item.type === 'spins' || item.type === 'super_spin' || item.type === 'badge' || item.type === 'cosmetic';
     const order = await databases.createDocument(
       databaseId,
       ordersCollectionId,

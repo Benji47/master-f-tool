@@ -46,7 +46,25 @@ export interface SpinState {
   totalSpins: number;
   totalWonAllTime: number;
   bonusSpins: number;
+  // Super spin tracking — 1 free per day (resets 08:00 Bratislava) + persistent bonus.
+  superDayKey: string;
+  superDailyUsed: number;
+  superBonusSpins: number;
+  superSpinsAvailable: number; // computed: dailyLeft + bonus
+  superSpinsTotal: number;
+  wonTockar: boolean;
 }
+
+export interface SuperSpinEntry {
+  username: string;
+  won: boolean;
+  timestamp: number;
+}
+
+export const SUPER_SPIN_WIN_RATE = 0.01; // 1 in 100
+export const SUPER_SPINS_PER_DAY = 1;
+export const TOCKAR_BADGE_NAME = "Točkář 🍀";
+const MAX_SUPER_SPIN_LOG = 500;
 
 export interface JackpotHit {
   username: string;
@@ -58,6 +76,7 @@ export interface SpinStats {
   hitsByIndex: Record<string, number>;
   jackpotHits: JackpotHit[];
   totalSpins: number;
+  superSpinLog: SuperSpinEntry[];
 }
 
 function client() {
@@ -70,12 +89,15 @@ function client() {
 function parseStatsDoc(doc: any): SpinStats {
   let hits: Record<string, number> = {};
   let jackpots: JackpotHit[] = [];
+  let superLog: SuperSpinEntry[] = [];
   try { hits = JSON.parse(doc?.hitsByIndex || '{}') || {}; } catch { hits = {}; }
   try { const arr = JSON.parse(doc?.jackpotHits || '[]'); if (Array.isArray(arr)) jackpots = arr; } catch { jackpots = []; }
+  try { const arr = JSON.parse(doc?.superSpinLog || '[]'); if (Array.isArray(arr)) superLog = arr; } catch { superLog = []; }
   return {
     hitsByIndex: hits,
     jackpotHits: jackpots,
     totalSpins: Number(doc?.totalSpins || 0),
+    superSpinLog: superLog,
   };
 }
 
@@ -97,6 +119,7 @@ async function writeStats(stats: SpinStats): Promise<void> {
       hitsByIndex: JSON.stringify(stats.hitsByIndex || {}),
       jackpotHits: JSON.stringify(stats.jackpotHits || []),
       totalSpins: Number(stats.totalSpins || 0),
+      superSpinLog: JSON.stringify(stats.superSpinLog || []),
     });
   } catch (e) {
     console.error('writeStats error', e);
@@ -109,25 +132,47 @@ export async function getSpinStats(): Promise<SpinStats> {
 
 // ---------- Per-player stats (player_spin_stats collection) ----------
 
-export const RESET_HOUR = 8; // Spins reset at 08:00 local time
+export const RESET_HOUR = 8; // Spins reset at 08:00 Bratislava time
+const TIMEZONE = 'Europe/Bratislava';
+
+function bratislavaParts(d: Date): { year: number; month: number; day: number; hour: number; minute: number; second: number } {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TIMEZONE,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+  const obj: any = {};
+  fmt.formatToParts(d).forEach(p => { if (p.type !== 'literal') obj[p.type] = Number(p.value); });
+  if (obj.hour === 24) obj.hour = 0;
+  return obj;
+}
+
+// Offset between Bratislava wall-clock time and UTC in ms. Positive (+1h winter,
+// +2h summer). Resolves DST automatically because Intl handles it.
+function bratislavaOffsetMs(at: Date): number {
+  const p = bratislavaParts(at);
+  const fakeUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  const realMs = Math.floor(at.getTime() / 1000) * 1000;
+  return fakeUtc - realMs;
+}
 
 function todayKey(): string {
-  const d = new Date();
-  d.setHours(d.getHours() - RESET_HOUR);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  // "Day bucket" in Bratislava: shift now by -RESET_HOUR hours then take the
+  // Bratislava date. At 07:59 Bratislava we're still in yesterday's bucket.
+  const shifted = new Date(Date.now() - RESET_HOUR * 60 * 60 * 1000);
+  const p = bratislavaParts(shifted);
+  return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
 }
 
 export function getNextResetIso(): string {
   const now = new Date();
-  const reset = new Date();
-  reset.setHours(RESET_HOUR, 0, 0, 0);
-  if (now.getTime() >= reset.getTime()) {
-    reset.setDate(reset.getDate() + 1);
-  }
-  return reset.toISOString();
+  const offsetMs = bratislavaOffsetMs(now);
+  const p = bratislavaParts(now);
+  // Bratislava {today, RESET_HOUR}:00 expressed as a real UTC instant.
+  let resetMs = Date.UTC(p.year, p.month - 1, p.day, RESET_HOUR, 0, 0) - offsetMs;
+  if (resetMs <= now.getTime()) resetMs += 24 * 60 * 60 * 1000;
+  return new Date(resetMs).toISOString();
 }
 
 function parsePlayerStats(doc: any): SpinState {
@@ -136,6 +181,11 @@ function parsePlayerStats(doc: any): SpinState {
   try { hits = JSON.parse(doc?.hitsByIndex || '{}') || {}; } catch { hits = {}; }
   const storedDayKey = String(doc?.dayKey || '');
   const isToday = storedDayKey === today;
+  const storedSuperDayKey = String(doc?.superDayKey || '');
+  const isSuperToday = storedSuperDayKey === today;
+  const superDailyUsed = isSuperToday ? Math.max(0, Number(doc?.superDailyUsed || 0)) : 0;
+  const superBonusSpins = Math.max(0, Number(doc?.superBonusSpins || 0));
+  const superDailyLeft = Math.max(0, SUPER_SPINS_PER_DAY - superDailyUsed);
   return {
     dayKey: today,
     used: isToday ? Math.max(0, Number(doc?.used || 0)) : 0,
@@ -144,6 +194,12 @@ function parsePlayerStats(doc: any): SpinState {
     totalSpins: Math.max(0, Number(doc?.totalSpins || 0)),
     totalWonAllTime: Math.max(0, Number(doc?.totalWonAllTime || 0)),
     bonusSpins: Math.max(0, Number(doc?.bonusSpins || 0)),
+    superDayKey: today,
+    superDailyUsed,
+    superBonusSpins,
+    superSpinsAvailable: superDailyLeft + superBonusSpins,
+    superSpinsTotal: Math.max(0, Number(doc?.superSpinsTotal || 0)),
+    wonTockar: doc?.wonTockar === true || doc?.wonTockar === 'true',
   };
 }
 
@@ -154,17 +210,22 @@ async function readPlayerStats(profileId: string): Promise<SpinState> {
     return parsePlayerStats(doc);
   } catch (e: any) {
     if (e?.code === 404) {
-      return {
-        dayKey: todayKey(), used: 0, totalWon: 0,
-        hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0, bonusSpins: 0,
-      };
+      return defaultEmptyState();
     }
     console.error('readPlayerStats error', e);
-    return {
-      dayKey: todayKey(), used: 0, totalWon: 0,
-      hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0, bonusSpins: 0,
-    };
+    return defaultEmptyState();
   }
+}
+
+function defaultEmptyState(): SpinState {
+  const today = todayKey();
+  return {
+    dayKey: today, used: 0, totalWon: 0,
+    hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0, bonusSpins: 0,
+    superDayKey: today, superDailyUsed: 0, superBonusSpins: 0,
+    superSpinsAvailable: SUPER_SPINS_PER_DAY,
+    superSpinsTotal: 0, wonTockar: false,
+  };
 }
 
 async function writePlayerStats(profileId: string, state: SpinState): Promise<void> {
@@ -176,6 +237,11 @@ async function writePlayerStats(profileId: string, state: SpinState): Promise<vo
     used: Number(state.used || 0),
     totalWon: Number(state.totalWon || 0),
     bonusSpins: Number(state.bonusSpins || 0),
+    superDayKey: String(state.superDayKey || ''),
+    superDailyUsed: Number(state.superDailyUsed || 0),
+    superBonusSpins: Number(state.superBonusSpins || 0),
+    superSpinsTotal: Number(state.superSpinsTotal || 0),
+    wonTockar: state.wonTockar === true,
   };
   const databases = new sdk.Databases(client());
   try {
@@ -199,6 +265,111 @@ export async function addBonusSpins(profileId: string, amount: number): Promise<
   state.bonusSpins = Math.max(0, (state.bonusSpins || 0) + Math.floor(amount));
   await writePlayerStats(profileId, state);
   return state;
+}
+
+export async function addSuperSpins(profileId: string, amount: number): Promise<SpinState> {
+  const state = await readPlayerStats(profileId);
+  state.superBonusSpins = Math.max(0, (state.superBonusSpins || 0) + Math.floor(amount));
+  // Recompute available
+  const dailyLeft = Math.max(0, SUPER_SPINS_PER_DAY - state.superDailyUsed);
+  state.superSpinsAvailable = dailyLeft + state.superBonusSpins;
+  await writePlayerStats(profileId, state);
+  return state;
+}
+
+export interface SuperSpinResult {
+  ok: boolean;
+  message?: string;
+  won?: boolean;
+  badgeName?: string;
+  superSpinsAvailable?: number;
+  superSpinsTotal?: number;
+  wonTockar?: boolean;
+}
+
+export async function superSpin(profileId: string): Promise<SuperSpinResult> {
+  try {
+    const state = await readPlayerStats(profileId);
+    if (state.wonTockar) {
+      return { ok: false, message: 'You already won the badge — no more super spins for you.' };
+    }
+    const dailyLeft = Math.max(0, SUPER_SPINS_PER_DAY - state.superDailyUsed);
+    const bonusLeft = Math.max(0, state.superBonusSpins);
+    if (dailyLeft + bonusLeft <= 0) {
+      return { ok: false, message: 'No super spins left. Come back tomorrow or buy more in the Shop!' };
+    }
+
+    const profile = await getPlayerProfile(profileId);
+    if (!profile) return { ok: false, message: 'Profile not found' };
+
+    const won = Math.random() < SUPER_SPIN_WIN_RATE;
+
+    // Consume daily first; once exhausted, burn bonus.
+    let nextDailyUsed = state.superDailyUsed;
+    let nextBonus = state.superBonusSpins;
+    if (dailyLeft > 0) {
+      nextDailyUsed += 1;
+    } else {
+      nextBonus -= 1;
+    }
+    const nextDailyLeft = Math.max(0, SUPER_SPINS_PER_DAY - nextDailyUsed);
+
+    const nextState: SpinState = {
+      ...state,
+      superDailyUsed: nextDailyUsed,
+      superBonusSpins: nextBonus,
+      superSpinsAvailable: nextDailyLeft + nextBonus,
+      superSpinsTotal: (state.superSpinsTotal || 0) + 1,
+      wonTockar: state.wonTockar || won,
+    };
+
+    if (won) {
+      try {
+        const ownedBadges: string[] = profile.ownedBadges
+          ? (typeof profile.ownedBadges === 'string'
+              ? JSON.parse(profile.ownedBadges)
+              : profile.ownedBadges)
+          : [];
+        if (!ownedBadges.includes(TOCKAR_BADGE_NAME)) {
+          ownedBadges.push(TOCKAR_BADGE_NAME);
+          await updatePlayerStats(profileId, {
+            ownedBadges: JSON.stringify(ownedBadges),
+          });
+        }
+      } catch (e) {
+        console.error('superSpin: failed to grant badge', e);
+      }
+    }
+
+    await writePlayerStats(profileId, nextState);
+
+    // Append to global super-spin log so the leaderboard sees the attempt.
+    try {
+      const stats = await readStats();
+      const log = Array.isArray(stats.superSpinLog) ? stats.superSpinLog : [];
+      log.unshift({
+        username: profile.username || profileId,
+        won,
+        timestamp: Date.now(),
+      });
+      stats.superSpinLog = log.slice(0, MAX_SUPER_SPIN_LOG);
+      await writeStats(stats);
+    } catch (e) {
+      console.error('failed to update super spin global log', e);
+    }
+
+    return {
+      ok: true,
+      won,
+      badgeName: won ? TOCKAR_BADGE_NAME : undefined,
+      superSpinsAvailable: nextState.superSpinsAvailable,
+      superSpinsTotal: nextState.superSpinsTotal,
+      wonTockar: nextState.wonTockar,
+    };
+  } catch (e: any) {
+    console.error('superSpin error', e);
+    return { ok: false, message: e?.message || 'Super spin failed' };
+  }
 }
 
 // Remaining spins available right now (daily allowance + bonus).

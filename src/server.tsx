@@ -23,7 +23,7 @@ import { MatchResultPage } from "./pages/match/matchResult";
 import { findCurrentMatch } from "./logic/match";
 import { MatchHistoryPage } from "./pages/menu/matchHistory";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { FBetPage } from "./pages/menu/f-bet";
+import { FBetPage, YourBetsPanel, AllBetsHistoryPanel } from "./pages/menu/f-bet";
 import { TournamentsPage } from "./pages/tournaments/tournaments";
 import { CreateTournamentPage } from "./pages/tournaments/create";
 import { TournamentDetailPage } from "./pages/tournaments/detail";
@@ -53,14 +53,15 @@ import {
 } from "./logic/siteContent";
 import { HallOfFamePage } from "./pages/menu/hallOfFame";
 import { FeatureRequestsPage } from "./pages/menu/featureRequests";
-import { listFeatureRequests, createFeatureRequest, updateFeatureRequest, deleteFeatureRequest, toggleUpvote, setRequestStatus, toggleFlag } from "./logic/featureRequests";
+import { listFeatureRequests, createFeatureRequest, updateFeatureRequest, deleteFeatureRequest, toggleUpvote, toggleDownvote, setRequestStatus, toggleFlag } from "./logic/featureRequests";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { updateAchievementProgressAndUnlock, claimAchievementReward, getAllAchievementsForPlayer, getPlayerAchievements, unlockAchievement } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
 import { placeBet, getAllBets, getAllBetsPaginated, getBetsForMatch, getBetsForPlayerPaginated, resolveBets, getRoundOdds, getTotalGoalsOdds, getVyrazackaOutcomeOdds, VyrazackaOutcome } from "./logic/betting";
-import { spin, getSpinState, getSpinStats, getNextResetIso, RESET_HOUR, SPIN_PRIZES, FREE_SPINS_PER_DAY } from "./logic/freeSpins";
+import { spin, superSpin, getSpinState, getSpinStats, getNextResetIso, RESET_HOUR, SPIN_PRIZES, FREE_SPINS_PER_DAY, TOCKAR_BADGE_NAME, SUPER_SPIN_WIN_RATE } from "./logic/freeSpins";
 import { aggregateSeasonStats, buildEmptySeasonPlayer, filterMatchesForSeason, getAvailableSeasonIndexes, getCurrentSeasonIndex, getScopeFromQuery, getSeasonLabel, getSeasonWindow, StatsScope } from "./logic/season";
 import { buildFromMatchHistory, appendMatch, getComputedStats, isReady as computedStatsReady } from "./logic/computedStats";
+import { computeMatchEffects } from "./logic/matchEffects";
 import { loadAllIntoMemory, getProfileFromMemory, getAllProfilesFromMemory, getGlobalStatsFromMemory, updateProfileInMemory, updateGlobalStatsInMemory, refreshProfileFromDb, isMemoryReady } from "./logic/memoryStore";
 import { 
   createTournament, 
@@ -1669,9 +1670,24 @@ app.get("/v1/match-history/:id", async (c) => {
     const bets = await getBetsForMatch(result.matchId);
     const user = getCookie(c, "user") ?? "";
 
+    const canEdit = !!user;
+    let editScores: any[] = [];
+    if (canEdit) {
+      const historyDoc = await getMatchFromHistory(id);
+      editScores = historyDoc?.scores ?? [];
+    }
+
     return c.html(
       <MainLayout c={c}>
-        <MatchResultPage c={c} result={result} username={user} bets={bets} />
+        <MatchResultPage
+          c={c}
+          result={result}
+          username={user}
+          bets={bets}
+          canEdit={canEdit}
+          historyDocId={id}
+          editScores={editScores}
+        />
       </MainLayout>
     );
 
@@ -2629,6 +2645,311 @@ app.post("/v1/match/game/finish", async (c) => {
   return c.redirect(`/v1/match-history`);
 });
 
+// Edit a finished match's scores. Re-applies all side-effects as a diff
+// against the originally stored scores: profile stats, global stats, the
+// match-history document itself, bets (refund + re-resolve), and the daily
+// achievements feed for this matchId.
+app.post("/v1/match-history/:id/update", async (c) => {
+  const username = getCookie(c, "user") ?? "";
+  if (!username) return c.redirect("/v1/auth/login");
+
+  const historyDocId = c.req.param("id");
+  if (!historyDocId) return c.text("missing id", 400);
+
+  try {
+    const projectId = process.env.APPWRITE_PROJECT;
+    const apiKey = process.env.APPWRITE_KEY;
+    const databaseId = process.env.APPWRITE_DATABASE_ID;
+    if (!projectId || !apiKey || !databaseId) throw new Error('Appwrite not configured');
+
+    const client = new sdk.Client()
+      .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
+      .setProject(projectId)
+      .setKey(apiKey);
+    const databases = new sdk.Databases(client);
+
+    const history = await getMatchFromHistory(historyDocId);
+    if (!history) return c.text("history not found", 404);
+
+    const oldScores: any[] = history.scores ?? [];
+    const histPlayers = history.players ?? [];
+    const matchId = history.matchId || historyDocId;
+
+    // Build new scores by reusing pairings from old scores; only scoreA/scoreB,
+    // vyrazacka and goldenVyrazacka come from the form.
+    const form = await c.req.formData();
+    const clamp10 = (n: number) => Math.max(0, Math.min(10, Math.floor(n)));
+    const newScores = oldScores.map((old: any, idx: number) => {
+      const aArr: string[] = Array.isArray(old.a) ? old.a : [];
+      const bArr: string[] = Array.isArray(old.b) ? old.b : [];
+
+      const scoreA = clamp10(Number(form.get(`score_a_${idx}`) ?? old.scoreA ?? 0));
+      const scoreB = clamp10(Number(form.get(`score_b_${idx}`) ?? old.scoreB ?? 0));
+
+      const vyrazacka: Record<string, number> = {};
+      [...aArr, ...bArr].forEach(pid => {
+        const raw = form.get(`vyrazacka_${idx}_${pid}`);
+        const n = raw == null ? Number(old?.vyrazacka?.[pid] ?? 0) : Number(raw);
+        if (Number.isFinite(n) && n > 0) vyrazacka[pid] = Math.max(0, Math.floor(n));
+      });
+
+      const goldenPlayer = String(form.get(`golden_player_${idx}`) ?? '').trim();
+      const goldenDiff = Math.max(0, Math.min(10, Math.floor(Number(form.get(`golden_diff_${idx}`) ?? 0))));
+      let goldenVyrazacka: { playerId: string; side: 'a' | 'b'; diff: number } | undefined;
+      if (goldenPlayer) {
+        const side: 'a' | 'b' | null =
+          aArr.includes(goldenPlayer) ? 'a' : (bArr.includes(goldenPlayer) ? 'b' : null);
+        if (side) goldenVyrazacka = { playerId: goldenPlayer, side, diff: goldenDiff };
+      }
+
+      return {
+        a: aArr,
+        b: bArr,
+        scoreA,
+        scoreB,
+        vyrazacka,
+        ...(goldenVyrazacka ? { goldenVyrazacka } : {}),
+      };
+    });
+
+    // Compute effects for OLD and NEW score sets using the same player snapshots.
+    const inputPlayers = histPlayers.map((p: any) => ({
+      id: p.id,
+      username: p.username,
+      oldElo: Number(p.oldElo ?? 500),
+    }));
+    const oldEffects = computeMatchEffects(oldScores, inputPlayers);
+    const newEffects = computeMatchEffects(newScores, inputPlayers);
+
+    // Apply (new - old) diff to each player's profile.
+    for (const p of inputPlayers) {
+      const oldR = oldEffects.byId[p.id];
+      const newR = newEffects.byId[p.id];
+      if (!oldR || !newR) continue;
+
+      try {
+        const profile = await getPlayerProfileFast(p.id);
+        if (!profile) continue;
+
+        const eloDelta = newR.eloDelta - oldR.eloDelta;
+        const xpDelta = newR.xpGained - oldR.xpGained;
+        const coinsDelta = newR.coinsGained - oldR.coinsGained;
+        const winsDelta = newR.winsAdded - oldR.winsAdded;
+        const losesDelta = newR.losesAdded - oldR.losesAdded;
+        const ultWinDelta = newR.ultimateWinInc - oldR.ultimateWinInc;
+        const ultLoseDelta = newR.ultimateLoseInc - oldR.ultimateLoseInc;
+        const vyrDelta = newR.vyrazecky - oldR.vyrazecky;
+        const tzWinDelta = newR.ten_zero_wins - oldR.ten_zero_wins;
+        const tzLoseDelta = newR.ten_zero_loses - oldR.ten_zero_loses;
+        const goalsForDelta = newR.goals_scored - oldR.goals_scored;
+        const goalsAgainstDelta = newR.goals_conceded - oldR.goals_conceded;
+
+        const preEditXp = Number(profile.xp || 0);
+        const preEditElo = Number(profile.elo || 0);
+        const preEditCoins = Number(profile.coins || 0);
+        const newXp = preEditXp + xpDelta;
+        const newElo = preEditElo + eloDelta;
+        const newCoins = Math.max(0, preEditCoins + coinsDelta);
+
+        await updatePlayerStatsAndMemory(profile.$id, {
+          xp: newXp,
+          elo: newElo,
+          coins: newCoins,
+          wins: Math.max(0, (profile.wins || 0) + winsDelta),
+          loses: Math.max(0, (profile.loses || 0) + losesDelta),
+          ultimate_wins: Math.max(0, (profile.ultimate_wins || 0) + ultWinDelta),
+          ultimate_loses: Math.max(0, (profile.ultimate_loses || 0) + ultLoseDelta),
+          vyrazecky: Math.max(0, (profile.vyrazecky || 0) + vyrDelta),
+          ten_zero_wins: Math.max(0, (profile.ten_zero_wins || 0) + tzWinDelta),
+          ten_zero_loses: Math.max(0, (profile.ten_zero_loses || 0) + tzLoseDelta),
+          goals_scored: Math.max(0, (profile.goals_scored || 0) + goalsForDelta),
+          goals_conceded: Math.max(0, (profile.goals_conceded || 0) + goalsAgainstDelta),
+        });
+      } catch (e) {
+        console.error('match edit: profile update failed', p.id, e);
+      }
+    }
+
+    // Apply (new - old) diff to global stats. Match count stays the same.
+    try {
+      const globalStats = await getGlobalStatsFast();
+      if (globalStats) {
+        await updateGlobalStatsAndMemory({
+          totalGoals: Math.max(0, (globalStats.totalGoals || 0) + (newEffects.totalSumGoals - oldEffects.totalSumGoals)),
+          totalPodlezani: Math.max(0, (globalStats.totalPodlezani || 0) + (newEffects.totalSumPodlezani - oldEffects.totalSumPodlezani)),
+          totalVyrazecka: Math.max(0, (globalStats.totalVyrazecka || 0) + (newEffects.totalSumVyrazecka - oldEffects.totalSumVyrazecka)),
+        });
+      }
+    } catch (e) {
+      console.error('match edit: global stats update failed', e);
+    }
+
+    // Persist updated history doc with new scores + recomputed per-player aggregates.
+    const newHistoryPlayers: HistoryPlayers[] = inputPlayers.map((p: any) => {
+      const r = newEffects.byId[p.id];
+      const newEloAtMatch = Math.round(p.oldElo + (r?.eloDelta || 0));
+      return {
+        id: p.id,
+        username: p.username,
+        oldElo: Math.round(p.oldElo),
+        newElo: newEloAtMatch,
+        xpGain: Math.max(0, Math.round(r?.xpGained || 0)),
+        winsAdd: r?.winsAdded || 0,
+        losesAdd: r?.losesAdded || 0,
+        ultimateWinInc: r?.ultimateWinInc || 0,
+        ultimateLoseInc: r?.ultimateLoseInc || 0,
+        gamesAdded: r?.gamesAdded || 0,
+      };
+    });
+    try {
+      await databases.updateDocument(databaseId, 'matches_history', historyDocId, {
+        players_json: JSON.stringify(newHistoryPlayers),
+        scores_json: JSON.stringify(newScores),
+      });
+    } catch (e) {
+      console.error('match edit: history doc update failed', e);
+    }
+
+    // Bets: refund any winnings already paid out, reset bets to pending, re-resolve.
+    try {
+      const existingBets = await getBetsForMatch(matchId);
+      for (const bet of existingBets) {
+        if (bet.status === 'won' && bet.winnings > 0) {
+          try {
+            const profile = await getPlayerProfileFast(bet.playerId);
+            if (profile) {
+              await updatePlayerStatsAndMemory(profile.$id, {
+                coins: Math.max(0, (profile.coins || 0) - bet.winnings),
+              });
+            }
+          } catch (e) {
+            console.error('match edit: bet refund failed', bet.$id, e);
+          }
+        }
+        try {
+          await databases.updateDocument(databaseId, 'bets', bet.$id!, {
+            status: 'pending',
+            winnings: 0,
+            correctPredictions: 0,
+          });
+        } catch (e) {
+          console.error('match edit: bet reset failed', bet.$id, e);
+        }
+      }
+      await resolveBets(matchId, newScores);
+    } catch (e) {
+      console.error('match edit: bet handling failed', e);
+    }
+
+    // Daily achievements: drop the prior entries for this match and re-record
+    // the events the new outcome would produce. Recent feed (24h) is what matters
+    // here; older entries auto-expire.
+    try {
+      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const dailyRes = await databases.listDocuments(databaseId, 'daily-achievements', [
+        sdk.Query.greaterThan('timestamp', cutoff),
+        sdk.Query.limit(500),
+      ]);
+      for (const doc of (dailyRes.documents || [])) {
+        let dataObj: any = doc.data;
+        try { if (typeof dataObj === 'string') dataObj = JSON.parse(dataObj); } catch {}
+        if (dataObj?.matchId === matchId) {
+          try { await databases.deleteDocument(databaseId, 'daily-achievements', doc.$id); } catch {}
+        }
+      }
+    } catch (e) {
+      console.error('match edit: daily-achievements cleanup failed', e);
+    }
+
+    // Re-record events for the new outcome (level_up, elo rank change, shutout,
+    // podlezani, vyrazecka). Bet wins are recorded by resolveBets already.
+    const ts = Date.now();
+    for (const p of inputPlayers) {
+      const r = newEffects.byId[p.id];
+      if (!r) continue;
+      try {
+        const profile = await getPlayerProfileFast(p.id);
+        if (!profile) continue;
+
+        const postEditXp = Number(profile.xp || 0);
+        const postEditElo = Number(profile.elo || 0);
+        const preMatchXp = postEditXp - r.xpGained;
+        const preMatchElo = postEditElo - r.eloDelta;
+
+        const oldLevel = computeLevel(preMatchXp).level;
+        const newLevel = computeLevel(postEditXp).level;
+        if (newLevel > oldLevel) {
+          await recordAchievement({
+            timestamp: ts,
+            type: 'level_up',
+            playerId: p.id,
+            username: p.username,
+            data: { oldValue: oldLevel, newValue: newLevel, matchId },
+          });
+        }
+
+        if (postEditElo !== preMatchElo) {
+          const oldRank = getRankInfoFromElo(preMatchElo);
+          const newRank = getRankInfoFromElo(postEditElo);
+          if (oldRank.name !== newRank.name) {
+            await recordAchievement({
+              timestamp: ts,
+              type: postEditElo > preMatchElo ? 'elo_rank_up' : 'elo_rank_down',
+              playerId: p.id,
+              username: p.username,
+              data: { oldValue: preMatchElo, newValue: postEditElo, matchId },
+            });
+          }
+        }
+
+        if (r.ten_zero_wins > 0) {
+          await recordAchievement({
+            timestamp: ts,
+            type: 'shutout_win',
+            playerId: p.id,
+            username: p.username,
+            data: { matchId },
+          });
+        }
+        if (r.ten_zero_loses > 0) {
+          await recordAchievement({
+            timestamp: ts,
+            type: 'podlézání',
+            playerId: p.id,
+            username: p.username,
+            data: { matchId },
+          });
+        }
+        if (r.vyrazecky > 0) {
+          await recordAchievement({
+            timestamp: ts,
+            type: 'vyrazecka',
+            playerId: p.id,
+            username: p.username,
+            data: { vyrazeckaCount: r.vyrazecky, matchId },
+          });
+        }
+      } catch (e) {
+        console.error('match edit: re-record events failed', p.id, e);
+      }
+    }
+
+    // Rebuild computed stats from full match history so leaderboard/season views
+    // reflect the corrected match. Cheaper than a custom incremental "edit" path.
+    try {
+      const allMatches = await listAllMatchHistoryDocs();
+      buildFromMatchHistory(allMatches, (date) => getCurrentSeasonIndex(date));
+    } catch (e) {
+      console.error('match edit: computed stats rebuild failed', e);
+    }
+
+    return c.redirect(`/v1/match-history/${historyDocId}`);
+  } catch (err: any) {
+    console.error('match edit error', err);
+    return c.text('Failed to edit match', 500);
+  }
+});
+
 // Place a bet endpoint
 app.post("/v1/bet/place", async (c) => {
   try {
@@ -2773,6 +3094,117 @@ app.post("/v1/bet/place", async (c) => {
   }
 });
 
+// Build team-name lookup by matchId for the bets currently being rendered.
+// Pulls from active matches first, then fetches the missing matchIds from
+// matches_history in a single batched query so the panel can show real names.
+async function buildMatchTeamInfoForBets(bets: any[]): Promise<Record<string, { match1?: { a: string[]; b: string[] }; match2?: { a: string[]; b: string[] }; match3?: { a: string[]; b: string[] } }>> {
+  const out: Record<string, any> = {};
+  const fillFromMatch = (matchId: string, players: any[], scores: any[]) => {
+    const nameById = new Map<string, string>();
+    (players || []).forEach((p: any) => { nameById.set(p.id, p.username || p.id); });
+    const rounds = (scores || []).slice(0, 3);
+    const rows: any = {};
+    rounds.forEach((round: any, idx: number) => {
+      const key = `match${idx + 1}`;
+      rows[key] = {
+        a: (Array.isArray(round?.a) ? round.a : []).map((id: string) => nameById.get(id) || id),
+        b: (Array.isArray(round?.b) ? round.b : []).map((id: string) => nameById.get(id) || id),
+      };
+    });
+    if (Object.keys(rows).length > 0) out[matchId] = rows;
+  };
+
+  try {
+    const allMatches = await listAvailableMatches();
+    for (const m of allMatches) {
+      fillFromMatch(m.$id, m.players || [], m.scores || []);
+    }
+  } catch {}
+
+  const neededMatchIds = Array.from(new Set(
+    (bets || [])
+      .map(b => String(b?.matchId || ''))
+      .filter(id => id && !out[id])
+  ));
+
+  if (neededMatchIds.length === 0) return out;
+
+  try {
+    const projectId = process.env.APPWRITE_PROJECT;
+    const apiKey = process.env.APPWRITE_KEY;
+    const databaseId = process.env.APPWRITE_DATABASE_ID;
+    if (!projectId || !apiKey || !databaseId) return out;
+    const client = new sdk.Client()
+      .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
+      .setProject(projectId)
+      .setKey(apiKey);
+    const databases = new sdk.Databases(client);
+
+    // Appwrite Query.equal accepts an array → IN-style query. Cap at 100 ids per batch.
+    for (let i = 0; i < neededMatchIds.length; i += 100) {
+      const batch = neededMatchIds.slice(i, i + 100);
+      const res = await databases.listDocuments(databaseId, 'matches_history', [
+        sdk.Query.equal('matchId', batch),
+        sdk.Query.limit(batch.length),
+      ]);
+      for (const raw of (res.documents || [])) {
+        const parsed = parseMatchHistoryDoc(raw);
+        const id = parsed.matchId || raw.matchId;
+        if (!id || out[id]) continue;
+        fillFromMatch(id, parsed.players || [], (parsed.scores as any[]) || []);
+      }
+    }
+  } catch (e) {
+    console.error('buildMatchTeamInfoForBets history lookup failed', e);
+  }
+
+  return out;
+}
+
+// Lazy panel: player's own bets. Fetched only when the "Your Bets" tab is opened.
+app.get("/v1/f-bet/your-bets", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.text("Not logged in", 401);
+    const profile = await getPlayerProfileFast(username);
+    if (!profile) return c.text("Profile not found", 404);
+
+    const pageRaw = Number(c.req.query("page") ?? 1);
+    const page = Number.isFinite(pageRaw) ? Math.max(1, Math.floor(pageRaw)) : 1;
+    const pageSize = 12;
+
+    const data = await getBetsForPlayerPaginated(profile.$id, page, pageSize);
+    const totalPages = Math.max(1, Math.ceil((data.total || 0) / data.pageSize));
+    const matchTeamInfoByMatchId = await buildMatchTeamInfoForBets(data.bets);
+
+    return c.html(<YourBetsPanel playerBets={data.bets} matchTeamInfoByMatchId={matchTeamInfoByMatchId} page={data.page} totalPages={totalPages} />);
+  } catch (err: any) {
+    console.error("/v1/f-bet/your-bets error:", err);
+    return c.text("Failed", 500);
+  }
+});
+
+// Lazy panel: every player's bet history. Fetched only when the "All History" tab is opened.
+app.get("/v1/f-bet/all-bets", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.text("Not logged in", 401);
+
+    const pageRaw = Number(c.req.query("page") ?? 1);
+    const page = Number.isFinite(pageRaw) ? Math.max(1, Math.floor(pageRaw)) : 1;
+    const pageSize = 24;
+
+    const data = await getAllBetsPaginated(page, pageSize);
+    const totalPages = Math.max(1, Math.ceil((data.total || 0) / data.pageSize));
+    const matchTeamInfoByMatchId = await buildMatchTeamInfoForBets(data.bets);
+
+    return c.html(<AllBetsHistoryPanel allBetsHistory={data.bets} matchTeamInfoByMatchId={matchTeamInfoByMatchId} page={data.page} totalPages={totalPages} />);
+  } catch (err: any) {
+    console.error("/v1/f-bet/all-bets error:", err);
+    return c.text("Failed", 500);
+  }
+});
+
 // Free spin endpoint
 app.post("/v1/f-bet/spin", async (c) => {
   try {
@@ -2788,12 +3220,27 @@ app.post("/v1/f-bet/spin", async (c) => {
   }
 });
 
+// Super spin endpoint — 1:100 chance for the Točkář badge.
+app.post("/v1/f-bet/super-spin", async (c) => {
+  try {
+    const username = getCookie(c, "user") ?? null;
+    if (!username) return c.json({ ok: false, message: "Not logged in" }, 401);
+    const profile = await getPlayerProfileFast(username);
+    if (!profile) return c.json({ ok: false, message: "Profile not found" }, 404);
+    const result = await superSpin(profile.$id);
+    return c.json(result);
+  } catch (err: any) {
+    console.error("super-spin endpoint error:", err);
+    return c.json({ ok: false, message: "Super spin failed" }, 500);
+  }
+});
+
 // GET /v1/f-bet route (replace previous minimal implementation) - include per-match bets
 app.get("/v1/f-bet", async (c) => {
   try {
     const username = getCookie(c, "user") ?? null;
     const profile = username ? await getPlayerProfileFast(username) : null;
-    const spinState = profile ? await getSpinState(profile.$id) : { dayKey: "", used: 0, totalWon: 0, hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0, bonusSpins: 0 };
+    const spinState = profile ? await getSpinState(profile.$id) : { dayKey: "", used: 0, totalWon: 0, hitsByIndex: {}, totalSpins: 0, totalWonAllTime: 0, bonusSpins: 0, superSpinsAvailable: 0, superSpinsTotal: 0, wonTockar: false };
     const spinStatsData = await getSpinStats();
     const spinNextReset = getNextResetIso();
     const playerPageRaw = Number(c.req.query("playerPage") ?? 1);
@@ -2837,14 +3284,12 @@ app.get("/v1/f-bet", async (c) => {
       if (m.state === 'playing') playingMatches.push(enriched);
     }
 
-    const playerBetsPageData = profile
-      ? await getBetsForPlayerPaginated(profile.$id, playerPage, playerPageSize)
-      : { bets: [], total: 0, page: 1, pageSize: playerPageSize };
-    const allBetsHistoryPageData = await getAllBetsPaginated(allPage, allPageSize);
-    const playerBets = playerBetsPageData.bets;
-    const allBetsHistory = allBetsHistoryPageData.bets;
-    const playerBetsTotalPages = Math.max(1, Math.ceil((playerBetsPageData.total || 0) / playerBetsPageData.pageSize));
-    const allBetsTotalPages = Math.max(1, Math.ceil((allBetsHistoryPageData.total || 0) / allBetsHistoryPageData.pageSize));
+    // Both bet history panels are lazy-loaded by the client when the user
+    // opens those tabs. The initial page render gets empty placeholders.
+    const playerBets: any[] = [];
+    const allBetsHistory: any[] = [];
+    const playerBetsTotalPages = 1;
+    const allBetsTotalPages = 1;
 
     const historyByMatchId = new Map<string, MatchHistoryDoc>();
     allHistory.forEach((h) => {
@@ -2988,11 +3433,11 @@ app.get("/v1/f-bet", async (c) => {
           currentUser={username}
           currentUserProfile={profile}
           availableMatches={playingMatches}
-          playerBets={playerBetsEvaluated}
-          allBetsHistory={allBetsHistoryEvaluated}
-          playerBetsPage={playerBetsPageData.page}
+          playerBets={playerBets}
+          allBetsHistory={allBetsHistory}
+          playerBetsPage={1}
           playerBetsTotalPages={playerBetsTotalPages}
-          allBetsPage={allBetsHistoryPageData.page}
+          allBetsPage={1}
           allBetsTotalPages={allBetsTotalPages}
           matchTeamInfoByMatchId={matchTeamInfoByMatchId}
           spinsUsed={spinState.used}
@@ -3008,6 +3453,12 @@ app.get("/v1/f-bet", async (c) => {
           myTotalSpins={spinState.totalSpins}
           myTotalWonAllTime={spinState.totalWonAllTime}
           myBonusSpins={spinState.bonusSpins}
+          superSpinsAvailable={spinState.superSpinsAvailable}
+          mySuperSpinsTotal={spinState.superSpinsTotal}
+          wonTockar={spinState.wonTockar}
+          superSpinLog={spinStatsData.superSpinLog || []}
+          superSpinWinRate={SUPER_SPIN_WIN_RATE}
+          tockarBadgeName={TOCKAR_BADGE_NAME}
         />
       </MainLayout>
     );
@@ -3015,7 +3466,7 @@ app.get("/v1/f-bet", async (c) => {
     console.error("f-bet page error:", err);
     return c.html(
       <MainLayout c={c}>
-        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} allBetsHistory={[]} playerBetsPage={1} playerBetsTotalPages={1} allBetsPage={1} allBetsTotalPages={1} matchTeamInfoByMatchId={{}} spinsUsed={0} spinsTotalWon={0} spinPrizes={SPIN_PRIZES} freeSpinsPerDay={FREE_SPINS_PER_DAY} spinHitsByIndex={{}} spinTotalSpins={0} spinJackpotHits={[]} spinNextResetIso={getNextResetIso()} spinResetHour={RESET_HOUR} myHitsByIndex={{}} myTotalSpins={0} myTotalWonAllTime={0} myBonusSpins={0} />
+        <FBetPage c={c} currentUser={null} currentUserProfile={null} availableMatches={[]} playerBets={[]} allBetsHistory={[]} playerBetsPage={1} playerBetsTotalPages={1} allBetsPage={1} allBetsTotalPages={1} matchTeamInfoByMatchId={{}} spinsUsed={0} spinsTotalWon={0} spinPrizes={SPIN_PRIZES} freeSpinsPerDay={FREE_SPINS_PER_DAY} spinHitsByIndex={{}} spinTotalSpins={0} spinJackpotHits={[]} spinNextResetIso={getNextResetIso()} spinResetHour={RESET_HOUR} myHitsByIndex={{}} myTotalSpins={0} myTotalWonAllTime={0} myBonusSpins={0} superSpinsAvailable={0} mySuperSpinsTotal={0} wonTockar={false} superSpinLog={[]} superSpinWinRate={SUPER_SPIN_WIN_RATE} tockarBadgeName={TOCKAR_BADGE_NAME} />
       </MainLayout>
     );
   }
@@ -3668,6 +4119,18 @@ app.post("/v1/feature-requests/upvote", async (c) => {
   const id = String(form.get("id") ?? "");
   if (!id) return c.text("Missing id", 400);
   await toggleUpvote(id, profile.$id);
+  return c.redirect("/v1/feature-requests");
+});
+
+app.post("/v1/feature-requests/downvote", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const profile = await getPlayerProfileFast(username);
+  if (!profile) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  if (!id) return c.text("Missing id", 400);
+  await toggleDownvote(id, profile.$id);
   return c.redirect("/v1/feature-requests");
 });
 

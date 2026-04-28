@@ -72,7 +72,11 @@ export const shopBadges: Badge[] = [
   { name: "Skull 💀", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-gray-800 to-gray-600", text: "text-white" },
   { name: "Crown 👑", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500", text: "text-black" },
   { name: "Billionaire 💎", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-emerald-400 to-cyan-500", text: "text-black" },
+  // Super-spin exclusive: only obtainable via the 1:100 super spin
+  { name: "Točkář 🍀", minLevel: 0, maxLevel: 999999, bg: "bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-purple-700", text: "text-white", rainbow: true },
 ];
+
+export const TOCKAR_BADGE_NAME = "Točkář 🍀";
 
 // Get all available badges (level-based + shop)
 export function getAllBadges(): Badge[] {

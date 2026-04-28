@@ -22,6 +22,8 @@ export interface FeatureRequest {
   isTested: boolean;
   upvotes: number;
   upvotedBy: string[];
+  downvotes: number;
+  downvotedBy: string[];
   createdAt: string;
 }
 
@@ -37,6 +39,8 @@ function parseDoc(doc: any): FeatureRequest {
     isTested: doc.isTested === true || doc.isTested === 'true',
     upvotes: Number(doc.upvotes || 0),
     upvotedBy: doc.upvotedBy ? (typeof doc.upvotedBy === 'string' ? JSON.parse(doc.upvotedBy) : doc.upvotedBy) : [],
+    downvotes: Number(doc.downvotes || 0),
+    downvotedBy: doc.downvotedBy ? (typeof doc.downvotedBy === 'string' ? JSON.parse(doc.downvotedBy) : doc.downvotedBy) : [],
     createdAt: doc.$createdAt || doc.createdAt || '',
   };
 }
@@ -63,6 +67,8 @@ export async function createFeatureRequest(userId: string, username: string, tit
     status: 'open',
     upvotes: 0,
     upvotedBy: JSON.stringify([]),
+    downvotes: 0,
+    downvotedBy: JSON.stringify([]),
     createdAt: new Date().toISOString(),
   });
   return parseDoc(doc);
@@ -83,16 +89,44 @@ export async function toggleUpvote(id: string, userId: string): Promise<FeatureR
   const databases = getDb();
   const raw = await databases.getDocument(databaseId, collectionId, id);
   const req = parseDoc(raw);
-  const voters = req.upvotedBy;
-  const idx = voters.indexOf(userId);
-  if (idx >= 0) {
-    voters.splice(idx, 1);
+  const upvoters = req.upvotedBy;
+  const downvoters = req.downvotedBy;
+  const upIdx = upvoters.indexOf(userId);
+  const downIdx = downvoters.indexOf(userId);
+  if (upIdx >= 0) {
+    upvoters.splice(upIdx, 1);
   } else {
-    voters.push(userId);
+    upvoters.push(userId);
+    if (downIdx >= 0) downvoters.splice(downIdx, 1);
   }
   const doc = await databases.updateDocument(databaseId, collectionId, id, {
-    upvotes: voters.length,
-    upvotedBy: JSON.stringify(voters),
+    upvotes: upvoters.length,
+    upvotedBy: JSON.stringify(upvoters),
+    downvotes: downvoters.length,
+    downvotedBy: JSON.stringify(downvoters),
+  });
+  return parseDoc(doc);
+}
+
+export async function toggleDownvote(id: string, userId: string): Promise<FeatureRequest> {
+  const databases = getDb();
+  const raw = await databases.getDocument(databaseId, collectionId, id);
+  const req = parseDoc(raw);
+  const upvoters = req.upvotedBy;
+  const downvoters = req.downvotedBy;
+  const upIdx = upvoters.indexOf(userId);
+  const downIdx = downvoters.indexOf(userId);
+  if (downIdx >= 0) {
+    downvoters.splice(downIdx, 1);
+  } else {
+    downvoters.push(userId);
+    if (upIdx >= 0) upvoters.splice(upIdx, 1);
+  }
+  const doc = await databases.updateDocument(databaseId, collectionId, id, {
+    upvotes: upvoters.length,
+    upvotedBy: JSON.stringify(upvoters),
+    downvotes: downvoters.length,
+    downvotedBy: JSON.stringify(downvoters),
   });
   return parseDoc(doc);
 }
