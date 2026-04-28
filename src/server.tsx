@@ -1480,7 +1480,7 @@ app.get("/v1/match/state", async (c) => {
   }
 });
 
-List all available matches (open or full)
+// List all available matches (open or full)
 app.get("/v1/match/list", async (c) => {
   try {
     const matches = await listAvailableMatches();
