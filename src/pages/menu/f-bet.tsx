@@ -456,6 +456,21 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
       {/* SUPER SPIN — 1:100 chance for the Točkář badge */}
       {currentUser && (
         <div data-tab-pane="super" className="mb-8 relative overflow-hidden rounded-2xl border border-fuchsia-500/60 bg-gradient-to-br from-purple-950/85 via-fuchsia-900/55 to-emerald-900/35 p-6 shadow-[0_0_45px_rgba(217,70,239,0.18)]">
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes ss-pulse-glow { 0%,100% { box-shadow: 0 0 30px rgba(74,222,128,0.5), 0 0 60px rgba(217,70,239,0.4); } 50% { box-shadow: 0 0 60px rgba(34,211,238,0.9), 0 0 110px rgba(217,70,239,0.8); } }
+            @keyframes ss-win-burst { 0% { transform: scale(1); filter: brightness(1); } 30% { transform: scale(1.25); filter: brightness(2) saturate(1.6); } 60% { transform: scale(0.95); } 100% { transform: scale(1.05); filter: brightness(1.3); } }
+            @keyframes ss-shake { 0%,100% { transform: translateX(0); } 15% { transform: translateX(-10px) rotate(-2deg); } 30% { transform: translateX(8px) rotate(2deg); } 45% { transform: translateX(-6px) rotate(-1deg); } 60% { transform: translateX(5px) rotate(1deg); } 80% { transform: translateX(-2px); } }
+            @keyframes ss-confetti-fall { 0% { transform: translate(0,0) rotate(0deg) scale(0.6); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(var(--ss-tx,0), var(--ss-ty,200px)) rotate(var(--ss-rot,720deg)) scale(1); opacity: 0; } }
+            @keyframes ss-result-pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+            @keyframes ss-pointer-bounce { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-4px); } }
+            .ss-glowing { animation: ss-pulse-glow 0.5s ease-in-out infinite; }
+            .ss-win { animation: ss-win-burst 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+            .ss-lose { animation: ss-shake 0.6s ease-in-out; }
+            .ss-result-anim { animation: ss-result-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+            .ss-confetti-piece { position: absolute; top: 50%; left: 50%; font-size: 24px; pointer-events: none; animation: ss-confetti-fall 1.6s ease-out forwards; }
+            .ss-pointer { animation: ss-pointer-bounce 1.2s ease-in-out infinite; }
+            .ss-wheel { transition: transform 4.2s cubic-bezier(0.15, 0.85, 0.18, 1); transform-origin: center; }
+          `}} />
           <div className="absolute inset-0 pointer-events-none opacity-30" style={{
             backgroundImage: 'radial-gradient(circle at 25% 30%, rgba(34,197,94,0.3) 0%, transparent 45%), radial-gradient(circle at 80% 70%, rgba(217,70,239,0.45) 0%, transparent 45%)',
           }} />
@@ -469,14 +484,40 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
                 Super Spin
               </h2>
 
-              {/* Točkář badge preview */}
-              <div className="relative mb-4">
+              {/* Roulette wheel — 1° green slice (~1:100), rest red */}
+              <div className="relative mb-4 w-56 h-56" id="super-spin-badge-wrap">
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400 via-fuchsia-500 to-purple-600 blur-xl opacity-70 animate-pulse" />
-                <div className="relative w-44 h-44 rounded-full bg-gradient-to-br from-cyan-300 via-fuchsia-500 to-purple-700 border-4 border-emerald-300/80 shadow-[0_0_30px_rgba(74,222,128,0.5)] flex flex-col items-center justify-center">
-                  <div className="text-5xl mb-1 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">🍀</div>
-                  <div className="text-white font-black text-sm tracking-wider drop-shadow">Točkář</div>
-                  <div className="text-emerald-100 text-[10px] font-bold uppercase tracking-[0.18em] mt-1">Exclusive</div>
+
+                {/* Pointer */}
+                <div className="ss-pointer absolute z-20 left-1/2" style={{ top: '-10px', width: 0, height: 0, transform: 'translateX(-50%)', borderLeft: '14px solid transparent', borderRight: '14px solid transparent', borderTop: '24px solid #fde047', filter: 'drop-shadow(0 3px 4px rgba(0,0,0,0.7))' }} />
+
+                {/* Wheel */}
+                <div
+                  id="super-spin-wheel"
+                  className="ss-wheel absolute inset-0 rounded-full border-4 border-emerald-300/80 shadow-[0_0_30px_rgba(74,222,128,0.5)]"
+                  style={{
+                    background: 'conic-gradient(from -1.8deg, #10b981 0deg 3.6deg, #b91c1c 3.6deg 360deg)',
+                  }}
+                >
+                  {/* Tick marks every 36° (10 ticks) for visual reference */}
+                  <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+                    background: 'repeating-conic-gradient(from 0deg, transparent 0deg 35.6deg, rgba(0,0,0,0.25) 35.6deg 36deg)',
+                  }} />
+                  {/* Inner shading for depth */}
+                  <div className="absolute inset-2 rounded-full pointer-events-none" style={{
+                    background: 'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.18) 0%, transparent 45%), radial-gradient(circle, transparent 55%, rgba(0,0,0,0.45) 100%)',
+                  }} />
                 </div>
+
+                {/* Center hub (Točkář badge) */}
+                <div id="super-spin-badge" className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                  <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-cyan-300 via-fuchsia-500 to-purple-700 border-[3px] border-white/70 shadow-[0_0_20px_rgba(0,0,0,0.6)] flex flex-col items-center justify-center">
+                    <div className="text-3xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">🍀</div>
+                    <div className="text-white font-black text-[9px] tracking-wider drop-shadow">Točkář</div>
+                  </div>
+                </div>
+
+                <div id="super-spin-confetti" className="absolute inset-0 pointer-events-none overflow-visible z-30" />
               </div>
 
               <p className="text-purple-100/80 text-sm mb-1">
@@ -1158,7 +1199,7 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
             });
           })();
 
-          // ----- SUPER SPIN -----
+          // ----- SUPER SPIN (roulette wheel) -----
           (function(){
             const btn = document.getElementById('super-spin-btn');
             if (!btn) return;
@@ -1166,38 +1207,107 @@ export function FBetPage({ c, currentUser, currentUserProfile, availableMatches,
             const availableEl = document.querySelector('[data-super-available]');
             const myTotalEl = document.querySelector('[data-super-mytotal]');
             const statusEl = document.querySelector('[data-super-status]');
+            const wrap = document.getElementById('super-spin-badge-wrap');
+            const wheel = document.getElementById('super-spin-wheel');
+            const badge = document.getElementById('super-spin-badge');
+            const confettiHost = document.getElementById('super-spin-confetti');
+
+            // Cumulative wheel rotation so each spin keeps spinning forward.
+            // Green slice spans -1.8°..+1.8° (centered at top). Pointer is at 0°.
+            // For WIN: final rotation R must satisfy ((-R) mod 360) ∈ [-1.5°, 1.5°]
+            //   → R mod 360 ∈ [358.5°, 360°] ∪ [0°, 1.5°]
+            // For LOSE: pick R mod 360 ∈ [6°, 354°] (well clear of green).
+            let totalRotation = 0;
+
+            function fireConfetti(){
+              if (!confettiHost) return;
+              const emojis = ['🎉','✨','🍀','🌟','💎','🎊','⭐'];
+              for (let i = 0; i < 28; i++) {
+                const piece = document.createElement('span');
+                piece.className = 'ss-confetti-piece';
+                piece.textContent = emojis[i % emojis.length];
+                const angle = (Math.PI * 2 * i) / 28 + (Math.random() * 0.4 - 0.2);
+                const dist = 100 + Math.random() * 90;
+                piece.style.setProperty('--ss-tx', Math.cos(angle) * dist + 'px');
+                piece.style.setProperty('--ss-ty', Math.sin(angle) * dist + 'px');
+                piece.style.setProperty('--ss-rot', (Math.random() * 720 + 360) + 'deg');
+                piece.style.animationDelay = (Math.random() * 0.15) + 's';
+                confettiHost.appendChild(piece);
+              }
+              setTimeout(() => { if (confettiHost) confettiHost.innerHTML = ''; }, 2200);
+            }
+
+            function spinTo(won){
+              if (!wheel) return 0;
+              // 8 full turns plus landing offset.
+              const turns = 8 + Math.floor(Math.random() * 3); // 8–10 full rotations
+              let landing;
+              if (won) {
+                // Land on green: small angle within ±1.4° of top.
+                landing = (Math.random() * 2.8) - 1.4;
+                if (landing < 0) landing += 360;
+              } else {
+                // Land on red: anywhere in 6°..354°.
+                landing = 6 + Math.random() * 348;
+              }
+              totalRotation += turns * 360 + landing - (totalRotation % 360);
+              wheel.style.transform = 'rotate(' + totalRotation + 'deg)';
+              return 4200; // matches CSS transition duration
+            }
+
+            function clearResultAnims(){
+              if (badge) badge.classList.remove('ss-win');
+              if (wrap) wrap.classList.remove('ss-lose');
+              if (wheel) wheel.classList.remove('ss-glowing');
+              if (confettiHost) confettiHost.innerHTML = '';
+            }
+
             let busy = false;
             btn.addEventListener('click', async function() {
               if (busy || btn.disabled) return;
               busy = true;
               btn.disabled = true;
-              if (result) result.innerHTML = '<span class="text-fuchsia-200 animate-pulse">Spinning...</span>';
+              clearResultAnims();
+              if (result) result.innerHTML = '<span class="text-fuchsia-200 animate-pulse">🎡 Spinning the wheel...</span>';
+              if (wheel) wheel.classList.add('ss-glowing');
+
               let data;
               try {
                 const res = await fetch('/v1/f-bet/super-spin', { method: 'POST' });
                 data = await res.json();
               } catch (e) {
+                if (wheel) wheel.classList.remove('ss-glowing');
                 if (result) result.innerHTML = '<span class="text-rose-300">Network error</span>';
                 busy = false;
                 btn.disabled = false;
                 return;
               }
               if (!data.ok) {
+                if (wheel) wheel.classList.remove('ss-glowing');
                 if (result) result.innerHTML = '<span class="text-rose-300">' + (data.message || 'Failed') + '</span>';
                 busy = false;
                 btn.disabled = !((data.superSpinsAvailable || 0) > 0 && !data.wonTockar);
                 return;
               }
+
+              const dur = spinTo(!!data.won);
+              await new Promise(r => setTimeout(r, dur));
+
+              if (wheel) wheel.classList.remove('ss-glowing');
               if (availableEl && typeof data.superSpinsAvailable === 'number') availableEl.textContent = String(data.superSpinsAvailable);
               if (myTotalEl && typeof data.superSpinsTotal === 'number') myTotalEl.textContent = String(data.superSpinsTotal);
+
               if (data.won) {
+                if (badge) { void badge.offsetWidth; badge.classList.add('ss-win'); }
+                fireConfetti();
                 if (statusEl) statusEl.textContent = 'Won!';
-                if (result) result.innerHTML = '<span class="text-emerald-300">🎉 JACKPOT! You won the <span class="text-amber-300">' + (data.badgeName || 'Točkář 🍀') + '</span> badge! Refresh to equip.</span>';
+                if (result) result.innerHTML = '<span class="ss-result-anim inline-block text-emerald-300">🎉 JACKPOT! Trafil si zelenú! <span class="text-amber-300">' + (data.badgeName || 'Točkář 🍀') + '</span> je tvoj — refreshni na equip.</span>';
                 btn.disabled = true;
                 btn.innerHTML = '<span class="relative z-10">🍀 Already won</span>';
                 btn.className = 'relative group w-full px-6 py-4 rounded-xl font-black text-base uppercase tracking-widest transition-all shadow-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white cursor-not-allowed';
               } else {
-                if (result) result.innerHTML = '<span class="text-purple-200">😅 No luck — try again or buy more spins in the Shop.</span>';
+                if (wrap) { void wrap.offsetWidth; wrap.classList.add('ss-lose'); }
+                if (result) result.innerHTML = '<span class="ss-result-anim inline-block text-purple-200">😅 Červená — skús to znova alebo si kúp viac točení v Shope.</span>';
                 if ((data.superSpinsAvailable || 0) > 0) {
                   busy = false;
                   btn.disabled = false;
