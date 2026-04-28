@@ -75,7 +75,19 @@ export function parseMatchHistoryDoc(raw: any): MatchHistoryDoc {
  
   try {
     if (typeof scoresJsonRaw === 'string' && scoresJsonRaw.trim()) {
-      scores = JSON.parse(scoresJsonRaw);  // ✅ only parse non-empty trimmed strings
+      // Attempt to repair known corruption: missing commas between key-value pairs
+      // e.g. `"benji42":1"Franta"` → `"benji42":1,"Franta"`
+      const repairedJson = scoresJsonRaw.replace(/(\d)"([a-zA-Z])/g, '$1,"$2');
+      try {
+        scores = JSON.parse(repairedJson);
+        if (repairedJson !== scoresJsonRaw) {
+          console.warn('scores_json had missing commas and was repaired before parsing');
+        }
+      } catch (repairErr) {
+        // Repair did not help — log and fall back to empty scores
+        console.error('Failed to parse scores_json even after repair attempt:', scoresJsonRaw, repairErr);
+        scores = [];
+      }
     } else {
       scores = [];
     }
