@@ -112,11 +112,11 @@ export function parseDoc(raw: any): MatchDoc {
   }
   
   try {
-    // scores_json is always a string
-    if (typeof scoresJsonRaw === 'string') {
-      scores = JSON.parse(scoresJsonRaw || '[]');
+    // scores_json is always a string; trim before parsing to handle whitespace-only strings
+    if (typeof scoresJsonRaw === 'string' && scoresJsonRaw.trim()) {
+      scores = JSON.parse(scoresJsonRaw);
     } else {
-      scores = scoresJsonRaw;
+      scores = [];
     }
   } catch (e) {
     console.warn('Failed to parse scores_json', e);
