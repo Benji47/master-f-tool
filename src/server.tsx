@@ -1480,16 +1480,16 @@ app.get("/v1/match/state", async (c) => {
   }
 });
 
-// List all available matches (open or full)
-//app.get("/v1/match/list", async (c) => {
-//  try {
-//    const matches = await listAvailableMatches();
-//    return c.json({ matches });
-//  } catch (err: any) {
- //   console.error("list matches error:", err);
- //   return c.json({ error: 'failed' }, 500);
-//  }
-//});
+List all available matches (open or full)
+app.get("/v1/match/list", async (c) => {
+  try {
+    const matches = await listAvailableMatches();
+    return c.json({ matches });
+  } catch (err: any) {
+    console.error("list matches error:", err);
+    return c.json({ error: 'failed' }, 500);
+  }
+});
 
 // Create a new match
 app.post("/v1/match/create", async (c) => {
