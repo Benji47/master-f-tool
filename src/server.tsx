@@ -902,7 +902,7 @@ app.get("/v1/profile/summary/:username", async (c) => {
       achievements,
       recentMatches,
       canClaim: viewer === username,
-    });
+    }, 200);
   } catch (err: any) {
     console.error("profile summary error", err);
     return c.json({ error: "Failed to load profile summary" }, 500);
@@ -1474,7 +1474,7 @@ app.get("/v1/match/state", async (c) => {
   try {
     const match = await getMatch(matchId);
     if (!match) return c.json({ error: 'not found' }, 404);
-    return c.json(match);
+    return c.json(match, 200);
   } catch (err: any) {
     return c.json({ error: 'failed' }, 500);
   }
@@ -1740,7 +1740,7 @@ app.post("/v1/match/game/score", async (c) => {
     }
 
     const updated = await updateGameScores(matchId, scores);
-    return c.json({ ok: true, scores: updated.scores });
+    return c.json({ ok: true, scores: updated.scores }, 200);
   } catch (err: any) {
     console.error('update score error', err);
     return c.json({ error: 'failed' }, 500);
@@ -1776,7 +1776,7 @@ app.post("/v1/match/game/vyrazacka", async (c) => {
     scores[index].vyrazacka[playerId] = newValue;
 
     const updated = await updateGameScores(matchId, scores);
-    return c.json({ ok: true, newValue });
+    return c.json({ ok: true, newValue }, 200);
   } catch (err: any) {
     console.error('update vyrazacka error', err);
     return c.json({ error: 'failed' }, 500);
@@ -1817,7 +1817,7 @@ app.post("/v1/match/game/golden-vyrazacka", async (c) => {
     return c.json({ 
       ok: true, 
       goldenVyrazacka: updated.scores?.[index]?.goldenVyrazacka ?? null,
-    });
+    }, 200);
   } catch (err: any) {
     console.error('update golden vyrazacka error', err);
     return c.json({ error: 'failed' }, 500);
@@ -3213,7 +3213,7 @@ app.post("/v1/f-bet/spin", async (c) => {
     const profile = await getPlayerProfileFast(username);
     if (!profile) return c.json({ ok: false, message: "Profile not found" }, 404);
     const result = await spin(profile.$id);
-    return c.json(result);
+    return c.json(result, 200);
   } catch (err: any) {
     console.error("spin endpoint error:", err);
     return c.json({ ok: false, message: "Spin failed" }, 500);
@@ -3228,7 +3228,7 @@ app.post("/v1/f-bet/super-spin", async (c) => {
     const profile = await getPlayerProfileFast(username);
     if (!profile) return c.json({ ok: false, message: "Profile not found" }, 404);
     const result = await superSpin(profile.$id);
-    return c.json(result);
+    return c.json(result, 200);
   } catch (err: any) {
     console.error("super-spin endpoint error:", err);
     return c.json({ ok: false, message: "Super spin failed" }, 500);
