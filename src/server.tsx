@@ -1487,7 +1487,7 @@ app.get("/v1/match/list", async (c) => {
     return c.json({ matches });
   } catch (err: any) {
     console.error("list matches error:", err);
-    return c.json({ matches: [], error: 'failed' }, 500);
+    return c.json({ error: 'failed' }, 500);
   }
 });
 
