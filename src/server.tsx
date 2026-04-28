@@ -1484,7 +1484,7 @@ app.get("/v1/match/state", async (c) => {
 app.get("/v1/match/list", async (c) => {
   try {
     const matches = await listAvailableMatches();
-    return c.json({ matches });
+    return c.json({ matches }, 200);
   } catch (err: any) {
     console.error("list matches error:", err);
     return c.json({ error: 'failed' }, 500);
