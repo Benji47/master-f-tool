@@ -72,17 +72,18 @@ export function parseMatchHistoryDoc(raw: any): MatchHistoryDoc {
     players = [];
   }
 
+ 
   try {
-    // scores_json is always a string
-    if (typeof scoresJsonRaw === 'string') {
-      scores = JSON.parse(scoresJsonRaw || '[]');
+    if (typeof scoresJsonRaw === 'string' && scoresJsonRaw.trim()) {
+      scores = JSON.parse(scoresJsonRaw);
     } else {
-      scores = scoresJsonRaw;
+      scores = [];
     }
   } catch (e) {
-    console.warn('Failed to parse scores_json', e);
+    console.error('Failed to parse scores_json:', scoresJsonRaw, e);
     scores = [];
   }
+  
   return {
     $id: raw.$id,
     players: players,
