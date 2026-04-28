@@ -322,6 +322,19 @@ const app = new Hono<{
 void applySeasonRolloverIfNeeded();
 scheduleSeasonRolloverTimer();
 
+// Safety-net middleware: ensure no response ever leaves with an invalid
+// HTTP status code (e.g. 0 or undefined) caused by bare c.json() calls
+// that omit an explicit status argument.
+app.use(async (c, next) => {
+  await next();
+  if (!c.res.status || c.res.status === 0) {
+    c.res = new Response(c.res.body, {
+      status: 200,
+      headers: c.res.headers,
+    });
+  }
+});
+
 app.use("/static/*", serveStatic({ root: "./" }));
 // app.get('/favicon.ico', serveStatic({ root: './public' }));
 // app.get('/icon.jpg', serveStatic({ root: './public' }));
