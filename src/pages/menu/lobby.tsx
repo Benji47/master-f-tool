@@ -392,7 +392,7 @@ export async function LobbyPage({
                     Platinum: "bg-cyan-600/40",
                     Diamond: "bg-blue-600/40",
                     Master: "bg-purple-600/40",
-                    GrannyMaster 👵: "bg-red-600/40",
+                    GrannyMaster: "bg-red-600/40",
                   };
 
                   return (
