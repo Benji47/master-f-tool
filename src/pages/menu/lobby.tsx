@@ -375,7 +375,7 @@ export async function LobbyPage({
           <div className="flex flex-col gap-6">
             {[
               ["zElo", "Bronze", "Silver", "Gold"],
-              ["Platinum", "Diamond", "Master", "Grandmaster"],
+              ["Platinum", "Diamond", "Master", "GrannyMaster 👵"],
             ].map((rankRow, rowIdx) => (
               <div key={`row-${rowIdx}`} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {rankRow.map((rankName) => {
@@ -392,7 +392,7 @@ export async function LobbyPage({
                     Platinum: "bg-cyan-600/40",
                     Diamond: "bg-blue-600/40",
                     Master: "bg-purple-600/40",
-                    Grandmaster: "bg-red-600/40",
+                    GrannyMaster 👵: "bg-red-600/40",
                   };
 
                   return (
