@@ -8,6 +8,8 @@ import { DailyAchievementsPanel } from "./DailyAchievements";
 import { getDailyAchievements } from "../../logic/dailyAchievements";
 import { getAllAchievementsForPlayer } from "../../logic/achievements";
 import { getCurrentSeasonIndex, getSeasonLabel, getSeasonWindow } from "../../logic/season";
+import { Poll } from "../../logic/polls";
+import { PollsPanel } from "./Polls";
 
 // Season timer component
 function SeasonTimerPanel() {
@@ -64,6 +66,9 @@ export async function LobbyPage({
   walletCoins,
   players = [],
   incomingCoinMessages = [],
+  polls = [],
+  currentUserId = "",
+  isAdmin = false,
 }: {
   c: Context;
   playerProfile: PlayerProfile | null;
@@ -75,6 +80,9 @@ export async function LobbyPage({
   walletCoins?: number;
   players?: PlayerProfile[];
   incomingCoinMessages?: Array<{ from: string; amount: number; text: string; createdAt: string }>;
+  polls?: Poll[];
+  currentUserId?: string;
+  isAdmin?: boolean;
 }) {
   const dailyAchievements = await getDailyAchievements(24);
 
@@ -221,6 +229,9 @@ export async function LobbyPage({
               <span className="absolute top-18 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded px-3 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block">Logout</span>
             </form>
           </div>
+
+          {/* Polls panel - below 12-button grid */}
+          <PollsPanel polls={polls} currentUserId={currentUserId} totalPlayers={players.length} isAdmin={isAdmin} />
 
           {/* Stats/Daily Log/Global Stats - inline on mobile, hidden on lg (shown fixed on lg) */}
           <div className="w-full flex flex-col gap-4 lg:hidden">

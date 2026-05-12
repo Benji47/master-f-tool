@@ -54,6 +54,7 @@ import {
 import { HallOfFamePage } from "./pages/menu/hallOfFame";
 import { FeatureRequestsPage } from "./pages/menu/featureRequests";
 import { listFeatureRequests, createFeatureRequest, updateFeatureRequest, deleteFeatureRequest, toggleUpvote, toggleDownvote, setRequestStatus, toggleFlag, setPendingDelete, getFeatureRequest } from "./logic/featureRequests";
+import { listPolls, createPoll, voteOnPoll, deletePoll, setPollClosed, updatePoll, clearMyVote, ensurePollsCollection } from "./logic/polls";
 import { recordAchievement } from "./logic/dailyAchievements";
 import { updateAchievementProgressAndUnlock, claimAchievementReward, getAllAchievementsForPlayer, getPlayerAchievements, unlockAchievement } from "./logic/achievements";
 import { computeLevel, getRankInfoFromElo } from "./static/data";
@@ -653,6 +654,7 @@ app.get("/v1/lobby", async (c) => {
     const incomingCoinMessages = overallProfile?.userId
       ? await consumeCoinTransferMessages(overallProfile.userId)
       : [];
+    const polls = await listPolls();
 
     let playerData = overallProfile;
     let globalStats = overallGlobalStats;
@@ -697,6 +699,9 @@ app.get("/v1/lobby", async (c) => {
           walletCoins={overallProfile?.coins}
           players={allProfiles}
           incomingCoinMessages={incomingCoinMessages}
+          polls={polls}
+          currentUserId={overallProfile?.$id ?? ""}
+          isAdmin={isAdminUsername(username)}
         />
       </MainLayout>,
     );
@@ -4195,6 +4200,103 @@ app.post("/v1/feature-requests/toggle", async (c) => {
   return c.redirect("/v1/feature-requests");
 });
 
+// ===== Polls =====
+app.post("/v1/polls/create", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const profile = await getPlayerProfileFast(username);
+  if (!profile) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const question = String(form.get("question") ?? "").trim();
+  const optionsRaw = form.getAll("option").map(o => String(o).trim()).filter(Boolean);
+  if (!question || question.length < 3) return c.text("Otazka musi mat aspon 3 znaky", 400);
+  if (optionsRaw.length < 2) return c.text("Potrebne aspon 2 moznosti", 400);
+  await createPoll(question, optionsRaw, profile.$id, username);
+  return c.redirect("/v1/lobby");
+});
+
+app.post("/v1/polls/vote", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const profile = await getPlayerProfileFast(username);
+  if (!profile) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  const optionIndex = Number(form.get("optionIndex") ?? -1);
+  if (!id || !Number.isFinite(optionIndex) || optionIndex < 0) return c.text("Invalid data", 400);
+  try {
+    await voteOnPoll(id, profile.$id, optionIndex);
+  } catch (e: any) {
+    return c.text(e?.message || "Vote failed", 400);
+  }
+  return c.redirect("/v1/lobby");
+});
+
+app.post("/v1/polls/delete", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const profile = await getPlayerProfileFast(username);
+  if (!profile) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  if (!id) return c.text("Missing id", 400);
+  // Owner or admin can delete
+  const polls = await listPolls();
+  const poll = polls.find(p => p.$id === id);
+  if (!poll) return c.text("Not found", 404);
+  if (poll.createdBy !== profile.$id && !isAdminUsername(username)) return c.text("Forbidden", 403);
+  await deletePoll(id);
+  return c.redirect("/v1/lobby");
+});
+
+app.post("/v1/polls/update", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const profile = await getPlayerProfileFast(username);
+  if (!profile) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  const question = String(form.get("question") ?? "").trim();
+  const optionsRaw = form.getAll("option").map(o => String(o).trim()).filter(Boolean);
+  if (!id || !question || question.length < 3) return c.text("Invalid data", 400);
+  if (optionsRaw.length < 2) return c.text("Potrebne aspon 2 moznosti", 400);
+  const polls = await listPolls();
+  const poll = polls.find(p => p.$id === id);
+  if (!poll) return c.text("Not found", 404);
+  if (poll.createdBy !== profile.$id && !isAdminUsername(username)) return c.text("Forbidden", 403);
+  await updatePoll(id, question, optionsRaw);
+  return c.redirect("/v1/lobby");
+});
+
+app.post("/v1/polls/clear-vote", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const profile = await getPlayerProfileFast(username);
+  if (!profile) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  if (!id) return c.text("Missing id", 400);
+  await clearMyVote(id, profile.$id);
+  return c.redirect("/v1/lobby");
+});
+
+app.post("/v1/polls/close", async (c) => {
+  const username = getCookie(c, "user") ?? null;
+  if (!username) return c.redirect("/v1/auth/login");
+  const profile = await getPlayerProfileFast(username);
+  if (!profile) return c.redirect("/v1/auth/login");
+  const form = await c.req.formData();
+  const id = String(form.get("id") ?? "");
+  const closed = String(form.get("closed") ?? "true") === "true";
+  if (!id) return c.text("Missing id", 400);
+  const polls = await listPolls();
+  const poll = polls.find(p => p.$id === id);
+  if (!poll) return c.text("Not found", 404);
+  if (poll.createdBy !== profile.$id && !isAdminUsername(username)) return c.text("Forbidden", 403);
+  await setPollClosed(id, closed);
+  return c.redirect("/v1/lobby");
+});
+
 // Load all data into memory at server start
 (async () => {
   try {
@@ -4206,6 +4308,9 @@ app.post("/v1/feature-requests/toggle", async (c) => {
     const allMatches = await listRecentMatchHistoryDocs(10000);
     buildFromMatchHistory(allMatches, (date) => getCurrentSeasonIndex(date));
     console.log('[init] Computed stats ready');
+
+    // Ensure polls collection exists (auto-create if missing)
+    await ensurePollsCollection();
   } catch (e) {
     console.error('[init] Failed to initialize:', e);
   }
