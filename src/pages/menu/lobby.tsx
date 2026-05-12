@@ -42,7 +42,7 @@ function SeasonTimerPanel() {
             </div>
           </div>
           <div className="text-xs text-neutral-300 mt-2">
-            Current season: {seasonStartDate.toLocaleDateString()} → {new Date(seasonEndDate.getTime() - 86400000).toLocaleDateString()} (3 months)
+            Current season: {seasonStartDate.toLocaleDateString()} → {seasonEndDate.toLocaleDateString()} (3 months)
           </div>
         </div>
         <div id="season-ended" className="hidden text-yellow-400 font-bold">
