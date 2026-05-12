@@ -57,7 +57,7 @@ function parseDatePragueFallback(raw: string): Date {
 }
 
 const SEASON_ZERO_START = parseDatePragueFallback(process.env.SEASON_ZERO_START_DATE ?? "2025-11-24T00:00:00");
-const SEASON_ONE_START = parseDatePragueFallback(process.env.SEASON_ONE_START_DATE ?? "2026-02-24T00:00:00");
+const SEASON_ONE_START = parseDatePragueFallback(process.env.SEASON_ONE_START_DATE ?? "2026-02-23T00:00:00");
 const SEASON_DURATION_MONTHS = 3;
 
 export type SeasonWindow = {
