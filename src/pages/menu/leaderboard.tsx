@@ -117,9 +117,9 @@ export function LeaderboardPage({
     const badge = selectedBadgeName ? (getBadgeByName(selectedBadgeName) ?? levelBadge) : levelBadge;
     const rainbowClass = badge?.rainbow ? "rainbow-border" : "";
     return (
-      <span className="inline-flex items-center gap-2">
-        <span>{player.username}</span>
-        <span className={`${badge?.bg || "bg-neutral-700"} ${badge?.text || "text-neutral-100"} ${rainbowClass} px-2 py-0.5 rounded text-xs font-semibold`}>
+      <span className="inline-flex flex-wrap items-center gap-1 sm:gap-2 max-w-full">
+        <span className="break-all">{player.username}</span>
+        <span className={`${badge?.bg || "bg-neutral-700"} ${badge?.text || "text-neutral-100"} ${rainbowClass} px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold whitespace-nowrap`}>
           {renderBadgeName(badge?.name || "Unranked", badge?.iconUrl)}
         </span>
       </span>
@@ -202,34 +202,32 @@ export function LeaderboardPage({
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          <button data-tab="elo" className="tab-btn active px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">ELO</button>
-          <button data-tab="ultimate_wins" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Ultimate Wins</button>
-          <button data-tab="ultimate_loses" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Ultimate Loses</button>
-          <button data-tab="vyrazacka" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Vyrážečky</button>
-          <button data-tab="golden_scored" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Golden Scored</button>
-          <button data-tab="golden_received" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Golden Received</button>
-          <button data-tab="total_games" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Total Games</button>
-          <button data-tab="level" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Level</button>
-          <button data-tab="ten_zero_loses" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">10:0 Loses</button>
-          <button data-tab="ten_zero_wins" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">10:0 Wins</button>
-          <button data-tab="coins" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Coins</button>
-          <button data-tab="duos" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Duos by Winrate</button>
-          <button data-tab="duos_matches" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Duos by Matches</button>
-          <button data-tab="duo" className="tab-btn px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Duo Analyzer</button>
-          
-          <div className="">
-            <a href="/v1/lobby">
-              <button className="px-4 py-2 w-full bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors">
-                ← Back to Lobby
-              </button>
-            </a>
-          </div>
+        <div className="flex gap-2 mb-6 overflow-x-auto sm:flex-wrap pb-2 -mx-3 sm:mx-0 px-3 sm:px-0">
+          <button data-tab="elo" className="tab-btn active shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">ELO</button>
+          <button data-tab="ultimate_wins" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Ultimate Wins</button>
+          <button data-tab="ultimate_loses" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Ultimate Loses</button>
+          <button data-tab="vyrazacka" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Vyrážečky</button>
+          <button data-tab="golden_scored" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Golden Scored</button>
+          <button data-tab="golden_received" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Golden Received</button>
+          <button data-tab="total_games" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Total Games</button>
+          <button data-tab="level" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Level</button>
+          <button data-tab="ten_zero_loses" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">10:0 Loses</button>
+          <button data-tab="ten_zero_wins" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">10:0 Wins</button>
+          <button data-tab="coins" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Coins</button>
+          <button data-tab="duos" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Duos by Winrate</button>
+          <button data-tab="duos_matches" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Duos by Matches</button>
+          <button data-tab="duo" className="tab-btn shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-700 hover:bg-neutral-600 cursor-pointer text-white rounded-md font-semibold transition-colors text-xs sm:text-sm">Duo Analyzer</button>
+
+          <a href="/v1/lobby" className="shrink-0">
+            <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500 border-red-500 text-white rounded-md hover:bg-red-600 cursor-pointer font-semibold transition-colors text-xs sm:text-sm whitespace-nowrap">
+              ← Back to Lobby
+            </button>
+          </a>
         </div>
 
         {/* ELO Leaderboard */}
-        <div id="elo" className="leaderboard-tab active bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-[0.6fr_1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr_0.9fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+        <div id="elo" className="leaderboard-tab active bg-neutral-900/50 rounded-lg border border-neutral-800">
+          <div className="hidden sm:grid grid-cols-[0.6fr_1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr_0.9fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
             <div>Rank</div>
             <div className="col-span-2">Player</div>
             <div>ELO</div>
@@ -245,29 +243,79 @@ export function LeaderboardPage({
               const lvl = computeLevel(player.xp).level;
               const isCurrentPlayer = currentPlayer === player.username;
               const eloRank = getRankInfoFromElo(player.elo).name;
+              const wlRatio = player.loses > 0 ? Math.round(player.wins / player.loses * 100) / 100 : player.wins;
+              const goalRatio = player.goals_conceded > 0 ? Math.round(player.goals_scored / player.goals_conceded * 100) / 100 : player.goals_scored;
+              const avgGoals = (player.wins + player.loses) > 0 ? Math.round(((player.goals_scored) / (player.wins + player.loses)) * 100) / 100 : 0;
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.6fr_1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr_0.9fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
-                    ${getRowClass(isEven, isCurrentPlayer)} 
-                    hover:bg-neutral-700/40`}
+                  className={`text-neutral-300 transition-colors ${getRowClass(isEven, isCurrentPlayer)} hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsElo[idx]}</div>
-                  <div className={`col-span-2 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}> <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink></div>
-                  <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo} {'->'} {eloRank}</div>
-                  <div className="text-blue-400">LVL {computeLevel(player.xp).level} ({player.xp}xp)</div>
-                  <div className="text-neutral-400">{player.wins}:{player.loses} ({Math.round(player.wins / player.loses * 100) / 100})</div>
-                  <div className="text-neutral-400">{player.goals_scored}:{player.goals_conceded} ({Math.round(player.goals_scored / player.goals_conceded * 100) / 100})</div>
-                  <div className="text-neutral-400">{Math.round(((player.goals_scored) / (player.wins + player.loses)) * 100) / 100}</div>
-                  <div>
-                    <button
-                      type="button"
-                      data-profile-username={player.username}
-                      onclick="window.openProfileViewer(this)"
-                      className="px-2 py-1 text-xs rounded border border-purple-600/60 bg-neutral-900/60 hover:bg-purple-900/40 text-purple-200"
-                    >
-                      Show profile
-                    </button>
+                  {/* Mobile card layout */}
+                  <div className="sm:hidden p-3 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="font-bold text-base shrink-0">{rankLabelsElo[idx]}</span>
+                        <span className={`font-semibold min-w-0 ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
+                          <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        data-profile-username={player.username}
+                        onclick="window.openProfileViewer(this)"
+                        className="shrink-0 px-2 py-1 text-[10px] rounded border border-purple-600/60 bg-neutral-900/60 hover:bg-purple-900/40 text-purple-200"
+                      >
+                        Profile
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs pl-1">
+                      <div>
+                        <span className="text-neutral-500">ELO: </span>
+                        <span className={`font-bold ${eloColor(player.elo)}`}>{player.elo}</span>
+                        <span className="text-neutral-500"> → {eloRank}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500">LVL: </span>
+                        <span className="text-blue-400 font-semibold">{lvl}</span>
+                        <span className="text-neutral-500"> ({player.xp}xp)</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500">W:L: </span>
+                        <span className="text-neutral-200">{player.wins}:{player.loses}</span>
+                        <span className="text-neutral-500"> ({wlRatio})</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500">Goals: </span>
+                        <span className="text-neutral-200">{player.goals_scored}:{player.goals_conceded}</span>
+                        <span className="text-neutral-500"> ({goalRatio})</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-neutral-500">Avg goals/match: </span>
+                        <span className="text-neutral-200">{avgGoals}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop grid layout */}
+                  <div className="hidden sm:grid grid-cols-[0.6fr_1.2fr_1.2fr_1fr_1fr_1fr_1fr_1fr_0.9fr] gap-4 px-6 py-4">
+                    <div className="font-bold text-base sm:text-lg">{rankLabelsElo[idx]}</div>
+                    <div className={`col-span-2 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}> <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink></div>
+                    <div className={`font-bold ${eloColor(player.elo)}`}>{player.elo} {'->'} {eloRank}</div>
+                    <div className="text-blue-400">LVL {lvl} ({player.xp}xp)</div>
+                    <div className="text-neutral-400">{player.wins}:{player.loses} ({wlRatio})</div>
+                    <div className="text-neutral-400">{player.goals_scored}:{player.goals_conceded} ({goalRatio})</div>
+                    <div className="text-neutral-400">{avgGoals}</div>
+                    <div>
+                      <button
+                        type="button"
+                        data-profile-username={player.username}
+                        onclick="window.openProfileViewer(this)"
+                        className="px-2 py-1 text-xs rounded border border-purple-600/60 bg-neutral-900/60 hover:bg-purple-900/40 text-purple-200"
+                      >
+                        Show profile
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -277,7 +325,7 @@ export function LeaderboardPage({
 
         {/* Ultimate Wins Leaderboard */}
         <div id="ultimate_wins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
             <div className="col-span-2">Ultimate Wins</div>
@@ -291,11 +339,11 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsUltimateWins[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsUltimateWins[idx]}</div>
                   <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -309,7 +357,7 @@ export function LeaderboardPage({
 
         {/* Ultimate Loses Leaderboard */}
         <div id="ultimate_loses" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
             <div className="col-span-2">Ultimate Loses</div>
@@ -323,11 +371,11 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)} 
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsUltimateLoses[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsUltimateLoses[idx]}</div>
                   <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -341,7 +389,7 @@ export function LeaderboardPage({
 
         {/* Vyrážečky Leaderboard */}
         <div id="vyrazacka" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
             <div className="col-span-2">Vyrážečky</div>
@@ -359,11 +407,11 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsVyrazacka[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsVyrazacka[idx]}</div>
                   <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -377,7 +425,7 @@ export function LeaderboardPage({
 
         {/* Golden Vyrazacka Scored Leaderboard */}
         <div id="golden_scored" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-6 gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-2">Team</div>
             <div>Golden</div>
@@ -390,11 +438,11 @@ export function LeaderboardPage({
               goldenTeamsScored.map((team, idx) => (
                 <div
                   key={team.teamIds.join('|')}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-6 gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${idx % 2 === 0 ? 'bg-neutral-900/40' : 'bg-neutral-800/40'}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsGoldenScored[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsGoldenScored[idx]}</div>
                   <div className="col-span-2 font-semibold">{team.teamNames.join(' / ')}</div>
                   <div className="text-yellow-400 font-bold">{team.count}</div>
                   <div className="col-span-2 text-neutral-300">{formatScorers(team.scorers)}</div>
@@ -406,7 +454,7 @@ export function LeaderboardPage({
 
         {/* Golden Vyrazacka Received Leaderboard */}
         <div id="golden_received" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-6 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-6 gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-2">Team</div>
             <div>Received</div>
@@ -419,11 +467,11 @@ export function LeaderboardPage({
               goldenTeamsReceived.map((team, idx) => (
                 <div
                   key={team.teamIds.join('|')}
-                  className={`grid grid-cols-6 gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-6 gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${idx % 2 === 0 ? 'bg-neutral-900/40' : 'bg-neutral-800/40'}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsGoldenReceived[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsGoldenReceived[idx]}</div>
                   <div className="col-span-2 font-semibold">{team.teamNames.join(' / ')}</div>
                   <div className="text-red-400 font-bold">{team.count}</div>
                   <div className="col-span-2 text-neutral-300">{formatScorers(team.scorers)}</div>
@@ -435,7 +483,7 @@ export function LeaderboardPage({
 
         {/* Total Games Leaderboard */}
         <div id="total_games" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
             <div className="col-span-2">Total Games</div>
@@ -449,11 +497,11 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsTotalGames[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsTotalGames[idx]}</div>
                   <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -467,7 +515,7 @@ export function LeaderboardPage({
 
         {/* Level Leaderboard */}
         <div id="level" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-6 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-6 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
             <div>Level</div>
@@ -482,11 +530,11 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsLevels[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsLevels[idx]}</div>
                   <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -500,7 +548,7 @@ export function LeaderboardPage({
 
         {/* Ten Zero Loses Leaderboard */}
         <div id="ten_zero_loses" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
             <div className="col-span-2">10:0 Loses</div>
@@ -514,11 +562,11 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsTenZeroLoses[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsTenZeroLoses[idx]}</div>
                   <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -531,7 +579,7 @@ export function LeaderboardPage({
 
         {/* Ten Zero Wins Leaderboard */}
         <div id="ten_zero_wins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
             <div className="col-span-2">10:0 Wins</div>
@@ -544,11 +592,11 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsTenZeroWins[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsTenZeroWins[idx]}</div>
                   <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -561,7 +609,7 @@ export function LeaderboardPage({
 
         {/* Coins Leaderboard */}
         <div id="coins" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-3">Player</div>
             <div className="col-span-2">Coins</div>
@@ -574,11 +622,11 @@ export function LeaderboardPage({
               return (
                 <div
                   key={player.$id}
-                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-6 py-4 text-neutral-300 transition-colors
+                  className={`grid grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 text-neutral-300 text-xs sm:text-base transition-colors
                     ${getRowClass(isEven, isCurrentPlayer)}
                     hover:bg-neutral-700/40`}
                 >
-                  <div className="font-bold text-lg">{rankLabelsCoins[idx]}</div>
+                  <div className="font-bold text-base sm:text-lg">{rankLabelsCoins[idx]}</div>
                   <div className={`col-span-3 font-semibold ${getLevelBadgeColor(lvl).textInLeaderboards}`}>
                     <PlayerLink username={player.username}>{renderPlayerNameWithBadge(player)}</PlayerLink>
                   </div>
@@ -591,7 +639,7 @@ export function LeaderboardPage({
 
         {/* Duos Leaderboard */}
         <div id="duos" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-7 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="hidden sm:grid grid-cols-7 gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-2">Duo</div>
             <div>Matches</div>
@@ -606,7 +654,7 @@ export function LeaderboardPage({
 
         {/* Duos by Matches Leaderboard */}
         <div id="duos_matches" className="leaderboard-tab hidden bg-neutral-900/50 rounded-lg border border-neutral-800 overflow-x-auto">
-          <div className="grid grid-cols-7 gap-4 px-6 py-4 bg-neutral-500/50 font-bold text-neutral-200 text-lg">
+          <div className="hidden sm:grid grid-cols-7 gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-4 bg-neutral-500/50 font-bold text-neutral-200 text-xs sm:text-lg">
             <div>Rank</div>
             <div className="col-span-2">Duo</div>
             <div>Matches</div>
@@ -1030,13 +1078,27 @@ export function LeaderboardPage({
           ? String(Math.round((row.goalsFor / row.goalsAgainst) * 100) / 100)
           : 'inf';
         return (
-          '<div class="grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 ' + rowClass + ' hover:bg-neutral-700/40 transition-colors">' +
-            '<div class="font-bold text-lg">' + duosRankLabels[idx] + '</div>' +
-            '<div class="col-span-2 font-semibold text-white">' + row.duoNames + '</div>' +
-            '<div class="text-purple-400 font-bold">' + row.matches + '</div>' +
-            '<div class="text-neutral-400">' + row.wins + '-' + row.losses + '</div>' +
-            '<div class="font-bold ' + winRateColor + '">' + row.winRatePercent + '%</div>' +
-            '<div class="text-neutral-400">' + row.goalsFor + ':' + row.goalsAgainst + ' (' + goalRatio + ')</div>' +
+          '<div class="text-neutral-300 ' + rowClass + ' hover:bg-neutral-700/40 transition-colors">' +
+            '<div class="sm:hidden p-3 flex flex-col gap-1.5">' +
+              '<div class="flex items-center gap-2">' +
+                '<span class="font-bold text-base">' + duosRankLabels[idx] + '</span>' +
+                '<span class="font-semibold text-white text-sm break-words flex-1">' + row.duoNames + '</span>' +
+              '</div>' +
+              '<div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs pl-1">' +
+                '<div><span class="text-neutral-500">Matches: </span><span class="text-purple-400 font-semibold">' + row.matches + '</span></div>' +
+                '<div><span class="text-neutral-500">W-L: </span><span class="text-neutral-200">' + row.wins + '-' + row.losses + '</span></div>' +
+                '<div><span class="text-neutral-500">Win Rate: </span><span class="font-bold ' + winRateColor + '">' + row.winRatePercent + '%</span></div>' +
+                '<div><span class="text-neutral-500">Goals: </span><span class="text-neutral-200">' + row.goalsFor + ':' + row.goalsAgainst + '</span> <span class="text-neutral-500">(' + goalRatio + ')</span></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="hidden sm:grid grid-cols-7 gap-4 px-6 py-4">' +
+              '<div class="font-bold text-lg">' + duosRankLabels[idx] + '</div>' +
+              '<div class="col-span-2 font-semibold text-white">' + row.duoNames + '</div>' +
+              '<div class="text-purple-400 font-bold">' + row.matches + '</div>' +
+              '<div class="text-neutral-400">' + row.wins + '-' + row.losses + '</div>' +
+              '<div class="font-bold ' + winRateColor + '">' + row.winRatePercent + '%</div>' +
+              '<div class="text-neutral-400">' + row.goalsFor + ':' + row.goalsAgainst + ' (' + goalRatio + ')</div>' +
+            '</div>' +
           '</div>'
         );
       }).join('');
@@ -1059,13 +1121,27 @@ export function LeaderboardPage({
           ? String(Math.round((row.goalsFor / row.goalsAgainst) * 100) / 100)
           : 'inf';
         return (
-          '<div class="grid grid-cols-7 gap-4 px-6 py-4 text-neutral-300 ' + rowClass + ' hover:bg-neutral-700/40 transition-colors">' +
-            '<div class="font-bold text-lg">' + duosMatchesRankLabels[idx] + '</div>' +
-            '<div class="col-span-2 font-semibold text-white">' + row.duoNames + '</div>' +
-            '<div class="text-purple-400 font-bold">' + row.matches + '</div>' +
-            '<div class="text-neutral-400">' + row.wins + '-' + row.losses + '</div>' +
-            '<div class="font-bold ' + winRateColor + '">' + row.winRatePercent + '%</div>' +
-            '<div class="text-neutral-400">' + row.goalsFor + ':' + row.goalsAgainst + ' (' + goalRatio + ')</div>' +
+          '<div class="text-neutral-300 ' + rowClass + ' hover:bg-neutral-700/40 transition-colors">' +
+            '<div class="sm:hidden p-3 flex flex-col gap-1.5">' +
+              '<div class="flex items-center gap-2">' +
+                '<span class="font-bold text-base">' + duosMatchesRankLabels[idx] + '</span>' +
+                '<span class="font-semibold text-white text-sm break-words flex-1">' + row.duoNames + '</span>' +
+              '</div>' +
+              '<div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs pl-1">' +
+                '<div><span class="text-neutral-500">Matches: </span><span class="text-purple-400 font-semibold">' + row.matches + '</span></div>' +
+                '<div><span class="text-neutral-500">W-L: </span><span class="text-neutral-200">' + row.wins + '-' + row.losses + '</span></div>' +
+                '<div><span class="text-neutral-500">Win Rate: </span><span class="font-bold ' + winRateColor + '">' + row.winRatePercent + '%</span></div>' +
+                '<div><span class="text-neutral-500">Goals: </span><span class="text-neutral-200">' + row.goalsFor + ':' + row.goalsAgainst + '</span> <span class="text-neutral-500">(' + goalRatio + ')</span></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="hidden sm:grid grid-cols-7 gap-4 px-6 py-4">' +
+              '<div class="font-bold text-lg">' + duosMatchesRankLabels[idx] + '</div>' +
+              '<div class="col-span-2 font-semibold text-white">' + row.duoNames + '</div>' +
+              '<div class="text-purple-400 font-bold">' + row.matches + '</div>' +
+              '<div class="text-neutral-400">' + row.wins + '-' + row.losses + '</div>' +
+              '<div class="font-bold ' + winRateColor + '">' + row.winRatePercent + '%</div>' +
+              '<div class="text-neutral-400">' + row.goalsFor + ':' + row.goalsAgainst + ' (' + goalRatio + ')</div>' +
+            '</div>' +
           '</div>'
         );
       }).join('');
